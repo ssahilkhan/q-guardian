@@ -1,7 +1,7 @@
 <p align="center">
-  <img src="https://img.shields.io/badge/version-0.6.0-blue.svg" alt="Version">
+  <img src="https://img.shields.io/badge/version-0.9.0-blue.svg" alt="Version">
   <img src="https://img.shields.io/badge/python-3.12+-blue.svg" alt="Python">
-  <img src="https://img.shields.io/badge/tests-968%20passing-brightgreen.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/tests-1636%20passing-brightgreen.svg" alt="Tests">
   <img src="https://img.shields.io/badge/build-passing-brightgreen.svg" alt="Build">
   <img src="https://img.shields.io/badge/license-pending-orange.svg" alt="License">
   <img src="https://img.shields.io/badge/status-alpha-orange.svg" alt="Status">
@@ -385,7 +385,7 @@ pytest tests/unit/test_fusion_strategies.py -v
 | v0.6.0 | Hybrid Quantum Intelligence | Complete |
 | v0.7.0 | Adaptive Trust Management | Complete |
 | v0.8.0 | Advanced Policy Engine | Complete |
-| v0.9.0 | Autonomous Incident Response | Planned |
+| v0.9.0 | Autonomous Incident Response | Complete |
 | v1.0.0 | Public Release | Planned |
 
 ---
@@ -397,7 +397,7 @@ pytest tests/unit/test_fusion_strategies.py -v
   title  = {Q-Guardian: A Hybrid Quantum-Classical Framework for Runtime Security of Autonomous AI Agents},
   author = {Q-Guardian Research Team},
   year   = {2026},
-  version = {0.6.0},
+  version = {0.9.0},
   url    = {https://github.com/q-guardian/q-guardian}
 }
 ```

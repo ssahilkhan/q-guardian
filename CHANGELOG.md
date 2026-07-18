@@ -6,6 +6,39 @@ Format based on [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [0.9.0] — 2026-07-19
+
+### Autonomous Response & Recovery Engine
+
+**Module 9** — source-agnostic autonomous incident response orchestration with playbooks, quarantine, evidence collection, notifications, SOAR integrations, and recovery.
+
+#### Added
+
+- **Response Engine** — consumes PolicyDecision/RiskAssessment/ActionPlan → ResponseResult, idempotency, action mapping, source-agnostic
+- **Orchestration Engine** — playbook execution with dependency management, parallel steps, failure recovery (stop/skip/retry/rollback), step handlers
+- **Recovery Engine** — 7 recovery actions (resume_session, restore_runtime, restore_plugins, restore_memory, retry_request, restore_policy, restart_agent) with retry and custom handlers
+- **Rollback Engine** — checkpoint-based rollback with max checkpoint limits, target-specific queries, rollback-to-latest
+- **Approval Engine** — automatic, manual, multi-level, timeout, quorum approvals with approve/reject/cancel/expire
+- **Playbook Registry** — register/unregister, lookup by name/trigger, enabled/disabled filtering
+- **Playbook Parser** — parse YAML-like, JSON, and dict formats into PlaybookDefinition
+- **Playbook Executor** — execute playbooks through orchestration engine, trigger-based dispatch
+- **Playbook Validator** — validate definitions (names, dependencies, timeouts, retry counts, max steps)
+- **Built-in Playbook Templates** — block-threat, quarantine-agent, escalate-incident, rollback-operation
+- **Quarantine Manager** — timed release, manual release, auto-release expired, max duration caps
+- **Session/Agent/Plugin/Memory Quarantine** — target-specific convenience wrappers with appropriate blocked actions
+- **Evidence Collector** — collect, query by correlation/type, immutable records
+- **Evidence Snapshot** — point-in-time state snapshots linked to evidence records
+- **Evidence Timeline** — chronological event timelines with filtering (type, severity) and export (JSON, Markdown, CSV)
+- **Notification Notifier** — route notifications to channel handlers, record sent/failed status
+- **Email/Webhook/Slack/Teams Notifiers** — pluggable notification handlers with priority support
+- **SOAR Integrations** — Sentinel, Splunk, QRadar, Cortex XSOAR, ServiceNow (incidents, alerts, cases, change requests)
+- **Response Plugin** — pluggable response handlers with action binding
+- **Response Storage** — JSON file persistence for responses, quarantines, playbooks, evidence, recovery, rollbacks
+- 21 data models, 19 events, 13 exceptions, 19 enums
+- 173 unit tests, all passing
+
+---
+
 ## [0.8.0] — 2026-07-19
 
 ### Advanced Policy Engine
