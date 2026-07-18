@@ -383,8 +383,8 @@ pytest tests/unit/test_fusion_strategies.py -v
 | v0.4.0 | Prompt Security Engine | Complete |
 | v0.5.0 | Classical ML Security | Complete |
 | v0.6.0 | Hybrid Quantum Intelligence | Complete |
-| v0.7.0 | Adaptive Trust Management | Planned |
-| v0.8.0 | Policy Engine | Planned |
+| v0.7.0 | Adaptive Trust Management | Complete |
+| v0.8.0 | Advanced Policy Engine | Complete |
 | v0.9.0 | Autonomous Incident Response | Planned |
 | v1.0.0 | Public Release | Planned |
 

@@ -6,6 +6,49 @@ Format based on [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [0.8.0] — 2026-07-19
+
+### Advanced Policy Engine
+
+**Module 8** — standalone policy-as-code framework with advanced condition parsing, versioning, conflict detection, simulation, external DSL adapters, RBAC, and policy composition.
+
+#### Added
+
+- `AdvancedPolicyEngine` — full-featured orchestrator with registry, evaluator, conflict detector, version manager, simulation engine, DSL adapters, RBAC, and composition
+- **Condition Parser** — recursive-descent parser supporting AND/OR/NOT, parentheses, regex (`=~`, `!~`), temporal (`after`, `before`), membership (`in`, `not_in`), string ops (`contains`, `starts_with`, `ends_with`), existence (`exists`)
+- **Policy Registry** — in-memory with optional JSON file persistence, status management (draft/active/suspended/retired)
+- **Policy Evaluator** — collects ALL matching rules (not just first), priority-based winning, action parameters, temporal validity windows
+- **Conflict Detector** — detects redundant, contradicting, shadowed, and overlapping rules across and within policies
+- **Version Manager** — semantic versioning (major/minor/patch), snapshots, rollback, max version limits
+- **Simulation Engine** — dry-run evaluation, batch simulation, replay, policy comparison, rule overrides
+- **DSL Adapters** — Rego (OPA), Cedar (AWS), YAML, JSON import/export with adapter registry
+- **RBAC Manager** — admin/editor/viewer roles, custom roles, permission checking, built-in role protection
+- **Policy Composer** — templates, inheritance with depth limits, merge strategies (override/append/interleave), variable substitution
+- **Policy Storage** — JSON file persistence with save/load/delete/clear
+- 7 data models, 8 events, 8 exceptions, 8 enums
+- 266 unit tests, all passing
+
+---
+
+## [0.7.0] — 2026-07-19
+
+### Risk & Decision Intelligence Engine
+
+**Module 7** — transforms raw detections into intelligent, explainable security decisions.
+
+#### Added
+
+- `RiskAssessmentEngine` — top-level orchestrator for the full risk pipeline
+- **Assessment** — ThreatScorer, TrustEngine, ConfidenceEngine, SeverityEngine
+- **Policy** — PolicyEngine, PolicyRegistry, PolicyEvaluator, 4 built-in policies
+- **Actions** — ActionEngine, 6 responders, AuditTrail, Notifier
+- **Explainability** — ExplanationEngine, ReasoningGraphBuilder, ReportGenerator (JSON/Markdown/Text/Structured)
+- **Plugin** — RiskAnalysisPlugin for framework integration
+- **Storage** — RiskStorage (JSON persistence)
+- 229 unit tests, all passing
+
+---
+
 ## [0.6.0] — 2026-07-19
 
 ### Hybrid Quantum Intelligence
