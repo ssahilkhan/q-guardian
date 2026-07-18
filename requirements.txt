@@ -1,0 +1,44 @@
+# ============================================================
+# Q-Guardian Dependencies
+# ============================================================
+
+# --- Core ---
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+pydantic==2.10.4
+pydantic-settings==2.7.1
+python-dotenv==1.0.1
+python-multipart==0.0.20
+
+# --- Database ---
+motor==3.7.0
+pymongo==4.11.3
+
+# --- Security ---
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+bcrypt==4.2.1
+
+# --- Logging ---
+structlog==24.4.0
+
+# --- HTTP Client ---
+httpx==0.28.1
+
+# --- Utilities orjson==3.10.13
+python-dateutil==2.9.0.post0
+
+# --- Testing ---
+pytest==8.3.4
+pytest-asyncio==0.25.0
+pytest-cov==6.0.0
+httpx==0.28.1
+mongomock==4.2.0.post1
+
+# --- Code Quality ---
+ruff==0.8.6
+mypy==1.14.1
+pre-commit==4.0.1
+
+# --- Docker ---
+gunicorn==23.0.0

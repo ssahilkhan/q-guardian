@@ -1,0 +1,50 @@
+version: "3.9"
+
+services:
+  api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: q-guardian-api
+    ports:
+      - "8000:8000"
+    environment:
+      - ENVIRONMENT=development
+      - DEBUG=true
+      - MONGODB_URL=mongodb://mongo:27017
+      - MONGODB_DATABASE=q_guardian
+      - LOG_LEVEL=INFO
+    volumes:
+      - ../src:/app/src
+      - ../logs:/app/logs
+    depends_on:
+      mongo:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - q-guardian-network
+
+  mongo:
+    image: mongo:7
+    container_name: q-guardian-mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - q-guardian-network
+
+volumes:
+  mongo-data:
+    driver: local
+
+networks:
+  q-guardian-network:
+    driver: bridge
