@@ -90,7 +90,11 @@ class RiskAssessmentEngine:
         severity = self._severity_engine.classify(threat_score.threat_score)
         reasoning.append(f"Severity: {severity.severity.value}")
 
-        risk_score = self._compute_risk_score(threat_score.threat_score, confidence.normalized_confidence)
+        risk_score = self._compute_risk_score(
+            threat_score.threat_score,
+            confidence.normalized_confidence,
+            prediction.predicted_label,
+        )
         risk_level = self._score_to_risk_level(risk_score)
         reasoning.append(f"Final risk score: {risk_score:.4f} -> {risk_level.value}")
 
@@ -129,9 +133,22 @@ class RiskAssessmentEngine:
         """
         return [self.assess(p) for p in predictions]
 
-    def _compute_risk_score(self, threat_score: float, confidence: float) -> float:
-        """Combine threat score and confidence into final risk score."""
-        risk = threat_score * 0.7 + confidence * 0.3
+    def _compute_risk_score(
+        self, threat_score: float, confidence: float, predicted_label: str
+    ) -> float:
+        """Combine threat score and confidence into final risk score.
+
+        The composite threat score already includes a confidence component,
+        so for BENIGN predictions adding confidence again would inflate the
+        risk of confident safe prompts (e.g. a 100% confident benign prompt
+        would gain +0.30 and read as high risk). For threat predictions the
+        confidence blend is kept: a confident threat should weigh more than
+        an uncertain one.
+        """
+        if predicted_label == "benign":
+            risk = threat_score
+        else:
+            risk = threat_score * 0.7 + confidence * 0.3
         risk = max(self._config.min_risk_score, min(self._config.max_risk_score, risk))
         return round(risk, 6)
 

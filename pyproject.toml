@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "q-guardian"
-version = "0.9.0"
+version = "0.10.0rc1"
 description = "Q-Guardian: A Hybrid Quantum-Classical Framework for Runtime Security of Autonomous AI Agents"
 readme = "README.md"
 license = {text = "MIT"}
@@ -14,7 +14,7 @@ authors = [
 ]
 keywords = ["quantum", "security", "ai", "agents", "cybersecurity"]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 4 - Beta",
     "Intended Audience :: Science/Research",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3.12",
@@ -73,6 +73,9 @@ Homepage = "https://github.com/q-guardian/q-guardian"
 Documentation = "https://q-guardian.readthedocs.io"
 Repository = "https://github.com/q-guardian/q-guardian"
 Issues = "https://github.com/q-guardian/q-guardian/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]
 
 [tool.ruff]
 target-version = "py312"

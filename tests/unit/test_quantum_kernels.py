@@ -114,7 +114,8 @@ class TestQuantumKernelEstimator:
     def test_get_circuit_info(self) -> None:
         kernel = QuantumKernelEstimator(self.feature_map, self.backend)
         info = kernel.get_circuit_info()
-        assert info.num_qubits == 6
+        # SWAP test: 2n data qubits + 1 ancilla.
+        assert info.num_qubits == 7
         assert info.circuit_type.value == "kernel"
 
     def test_clear_cache(self) -> None:

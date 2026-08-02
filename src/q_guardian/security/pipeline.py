@@ -461,6 +461,32 @@ DEFAULT_RULES: list[PromptRule] = [
         keywords=["bypass", "override system", "break your rules", "ignore your rules"],
         confidence=0.8,
     ),
+    PromptRule(
+        rule_id="exf-001",
+        name="Credential/Data Exfiltration",
+        description="Requests to extract or return credentials, secrets or private data",
+        category=PromptCategory.DATA_EXFILTRATION,
+        severity=PromptSeverity.HIGH,
+        keywords=[
+            "api key",
+            "api keys",
+            "access token",
+            "secret key",
+            "credentials",
+            "credit card",
+            "bank details",
+            "social security",
+            "give me all",
+            "give me your",
+            "reveal all",
+            "return the secret",
+            "dump the secret",
+            "extract the secret",
+            "steal the secret",
+            "show me the key",
+        ],
+        confidence=0.8,
+    ),
 ]
 
 

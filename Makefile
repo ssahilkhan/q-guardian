@@ -37,6 +37,21 @@ docker-down: ## Stop Docker services
 docker-build: ## Build Docker images
 	docker-compose build
 
+build: ## Build wheel and sdist
+	python -m build
+
+package-validate: ## Validate package
+	python -m scripts.packaging.validate
+
+benchmark: ## Run benchmarks (smoke)
+	python -m scripts.benchmarks.run_benchmarks --iterations 10
+
+loadtest-quick: ## Run quick load test (100 sessions)
+	python -m scripts.loadtest.run_loadtest --profile quick
+
+profile-snapshot: ## Take memory snapshot
+	python -m scripts.profile.run_profiler snapshot
+
 clean: ## Clean up generated files
 	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
 	find . -type f -name "*.pyc" -delete 2>/dev/null || true

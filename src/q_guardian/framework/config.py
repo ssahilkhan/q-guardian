@@ -104,7 +104,19 @@ class FrameworkConfig(BaseModel):
         Returns:
             FrameworkConfig populated from Module 1 settings.
         """
-        return cls()
+        data: dict[str, Any] = {}
+
+        if hasattr(settings, "app"):
+            app = settings.app
+            if hasattr(app, "debug"):
+                data["runtime"] = {"enable_caching": not app.debug}
+
+        if hasattr(settings, "logging"):
+            logging_settings = settings.logging
+            if hasattr(logging_settings, "level"):
+                data.setdefault("runtime", {})["log_level"] = logging_settings.level
+
+        return cls(**data)
 
     def get_plugin_config(self, plugin_name: str) -> dict[str, Any]:
         """Get configuration overrides for a specific plugin.

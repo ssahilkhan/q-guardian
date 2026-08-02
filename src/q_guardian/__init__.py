@@ -1,6 +1,6 @@
 """Q-Guardian: A Hybrid Quantum-Classical Framework for Runtime Security of Autonomous AI Agents."""
 
-__version__ = "0.9.0"
+__version__ = "0.10.0"
 __title__ = "Q-Guardian"
 __description__ = "A Hybrid Quantum-Classical Framework for Runtime Security of Autonomous AI Agents"
 
@@ -71,7 +71,7 @@ from q_guardian.security.config import PromptSecurityConfig
 from q_guardian.ml.base import BaseThreatModel, ModelRegistry
 from q_guardian.ml.config import MLConfig
 from q_guardian.ml.enums import ModelType, ModelBackend, TrainingStatus, ModelStatus
-from q_guardian.ml.data import ModelMetadata, InferenceResult, TrainingResult, FeatureVector
+from q_guardian.ml.data import ModelMetadata, InferenceResult, TrainingResult, FeatureVector, EvaluationMetrics
 from q_guardian.ml.feature_pipeline import MLFeatureProvider
 from q_guardian.ml.models.anomaly import IsolationForestDetector
 from q_guardian.ml.models.classifier import RandomForestThreatClassifier, XGBoostThreatClassifier

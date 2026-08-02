@@ -133,6 +133,41 @@ q-guardian/
 
 ---
 
+## Documentation
+
+Full documentation index (technical documentation set in [`docs/`](docs/)):
+
+| Doc | File | Topic |
+|-----|------|-------|
+| 00 | [`docs/00_Project_Overview.md`](docs/00_Project_Overview.md) | Project overview, version, architecture, key numbers, doc index |
+| 01 | [`docs/01_Project_Structure.md`](docs/01_Project_Structure.md) | Full folder tree + file inventory |
+| 02 | [`docs/02_Folder_Documentation.md`](docs/02_Folder_Documentation.md) | Per-directory description |
+| 03 | [`docs/03_Source_File_Documentation.md`](docs/03_Source_File_Documentation.md) | Every source file, one entry |
+| 04 | [`docs/04_Configuration_File_Documentation.md`](docs/04_Configuration_File_Documentation.md) | Config, packaging, CI files |
+| 05 | [`docs/05_Test_File_Documentation.md`](docs/05_Test_File_Documentation.md) | Every test file |
+| 06 | [`docs/06_Architecture_Documentation.md`](docs/06_Architecture_Documentation.md) | Deep architecture |
+| 07 | [`docs/07_API_Reference_Documentation.md`](docs/07_API_Reference_Documentation.md) | HTTP + SDK API |
+| 08 | [`docs/08_Data_Model_Documentation.md`](docs/08_Data_Model_Documentation.md) | Data models / events / schemas |
+| 09 | [`docs/09_Database_Schema_Documentation.md`](docs/09_Database_Schema_Documentation.md) | MongoDB persistence |
+| 10 | [`docs/10_Security_Overview.md`](docs/10_Security_Overview.md) | Security model |
+| 11 | [`docs/11_Deployment_Guide.md`](docs/11_Deployment_Guide.md) | Docker / CI / deployment |
+| 12 | [`docs/12_Quantum_ML_Documentation.md`](docs/12_Quantum_ML_Documentation.md) | Quantum + classical ML |
+| 13 | [`docs/13_Plugin_System_Events_Hooks_SDK_Documentation.md`](docs/13_Plugin_System_Events_Hooks_SDK_Documentation.md) | Plugin system, events, hooks, SDK |
+| 14 | [`docs/14_Framework_Core_Infrastructure_Documentation.md`](docs/14_Framework_Core_Infrastructure_Documentation.md) | Framework core & infrastructure |
+| 15 | [`docs/15_Policy_Risk_Documentation.md`](docs/15_Policy_Risk_Documentation.md) | Policy + risk engines |
+| 16 | [`docs/16_Response_Recovery_Documentation.md`](docs/16_Response_Recovery_Documentation.md) | Response / recovery engines |
+| 17 | [`docs/17_Observability_Operations_Documentation.md`](docs/17_Observability_Operations_Documentation.md) | Observability subsystem |
+| 18 | [`docs/18_Tests_Scripts_Examples_Documentation.md`](docs/18_Tests_Scripts_Examples_Documentation.md) | Tests, scripts, examples |
+
+`docs/` also contains 17 user-facing guides: `user-guide.md`, `architecture-guide.md`,
+`configuration-guide.md`, `deployment-guide.md`, `developer-guide.md`, `event-system.md`,
+`framework-architecture.md`, `migration-guide.md`, `ml-security.md`, `operations-guide.md`,
+`plugin-development.md`, `plugin-dev-guide.md`, `quantum-analysis-research.md`,
+`runtime-architecture.md`, `security-review.md`, `troubleshooting-guide.md`,
+`api-reference.md`.
+
+---
+
 ## Modules
 
 ### Module 1 — Enterprise Foundation

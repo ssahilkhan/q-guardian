@@ -53,7 +53,9 @@ class TestWeightedVotingStrategy:
         ]
         result = s.fuse(preds)
         assert result.predicted_label == "benign"
-        assert result.confidence > 0.9
+        # Soft vote: the fused confidence is the weighted average of the
+        # providers' per-class probabilities, not a hard vote count.
+        assert abs(result.confidence - 0.8) < 0.01
         assert result.num_providers == 3
 
     def test_tie_breaking(self):
@@ -110,14 +112,16 @@ class TestWeightedVotingStrategy:
         result = s.fuse(preds)
         assert "benign" in result.reasoning_summary
 
-    def test_risk_score_averaged(self):
+    def test_risk_score_is_threat_probability(self):
         s = WeightedVotingStrategy()
         preds = [
-            _pred("a", "x", 0.5, risk=0.2),
-            _pred("b", "x", 0.5, risk=0.8),
+            _pred("a", "threat", 0.8),
+            _pred("b", "benign", 0.9),
         ]
         result = s.fuse(preds)
-        assert abs(result.risk_score - 0.5) < 0.01
+        # The fused risk is the threat probability from the soft vote, not
+        # the average of the providers' raw risk scores.
+        assert abs(result.risk_score - 0.4) < 0.01
 
     def test_health(self):
         s = WeightedVotingStrategy()

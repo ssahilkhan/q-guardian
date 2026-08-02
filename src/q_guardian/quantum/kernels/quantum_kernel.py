@@ -61,6 +61,7 @@ class QuantumKernelEstimator(QuantumKernel):
         X1: list[list[float]],
         X2: list[list[float]] | None = None,
     ) -> list[list[float]]:
+        symmetric = X2 is None
         if X2 is None:
             X2 = X1
 
@@ -68,9 +69,12 @@ class QuantumKernelEstimator(QuantumKernel):
         matrix = np.zeros((n1, n2), dtype=np.float64)
 
         for i in range(n1):
-            for j in range(n2):
+            start = i if symmetric else 0
+            for j in range(start, n2):
                 k_val = self.evaluate(X1[i], X2[j])
                 matrix[i][j] = k_val
+                if symmetric and i != j:
+                    matrix[j][i] = k_val
 
         return matrix.tolist()
 
@@ -86,8 +90,12 @@ class QuantumKernelEstimator(QuantumKernel):
         combined_circuit = self._build_kernel_circuit(encoded1.circuit, encoded2.circuit)
         result = self._execute_kernel_circuit(combined_circuit)
 
-        k_value = result.get("0" * combined_circuit.get("num_qubits", self.num_qubits * 2), 0.0)
-        k_value = max(0.0, min(1.0, k_value))
+        # SWAP test: only the ancilla is measured. The local simulator
+        # samples every qubit, so sum the probabilities of the outcomes
+        # where the ancilla (the most significant bit, qubit 0) is 0:
+        #   P(ancilla=0) = (1 + |<phi(x1)|phi(x2)>|^2) / 2
+        prob0 = sum(v for k, v in result.items() if k.startswith("0"))
+        k_value = max(0.0, min(1.0, 2.0 * prob0 - 1.0))
 
         self._cache[cache_key] = k_value
         return k_value
@@ -98,29 +106,31 @@ class QuantumKernelEstimator(QuantumKernel):
         circuit2: dict[str, Any],
     ) -> dict[str, Any]:
         n = self._feature_map.num_qubits
-        total_qubits = n * 2
+        ancilla = 0
+        # Register A on qubits 1..n, register B on qubits n+1..2n.
+        total_qubits = n * 2 + 1
 
         gates: list[dict[str, Any]] = []
 
         for gate in circuit1.get("gates", []):
-            new_qubits = [q for q in gate["qubits"]]
+            new_qubits = [q + 1 for q in gate["qubits"]]
             gates.append({"type": gate["type"], "qubits": new_qubits, "params": gate.get("params", [])})
 
         for gate in circuit2.get("gates", []):
-            new_qubits = [q + n for q in gate["qubits"]]
+            new_qubits = [q + 1 + n for q in gate["qubits"]]
             gates.append({"type": gate["type"], "qubits": new_qubits, "params": gate.get("params", [])})
 
-        gates.append({"type": "h", "qubits": [0], "params": []})
-
+        # Swap test: H on ancilla, controlled-swap between the two
+        # registers, then H on ancilla again.
+        gates.append({"type": "h", "qubits": [ancilla], "params": []})
         for i in range(n):
-            gates.append({"type": "cx", "qubits": [i, i + n], "params": []})
-
-        gates.append({"type": "h", "qubits": [0], "params": []})
+            gates.append({"type": "cswap", "qubits": [ancilla, 1 + i, 1 + n + i], "params": []})
+        gates.append({"type": "h", "qubits": [ancilla], "params": []})
 
         return {
             "num_qubits": total_qubits,
             "gates": gates,
-            "measurements": list(range(total_qubits)),
+            "measurements": [ancilla],
         }
 
     def _execute_kernel_circuit(self, circuit: dict[str, Any]) -> dict[str, float]:
@@ -147,9 +157,9 @@ class QuantumKernelEstimator(QuantumKernel):
         return QuantumCircuitInfo(
             name=self.name,
             circuit_type=CircuitType.KERNEL,
-            num_qubits=n * 2,
-            depth=n * 2,
-            gate_count=n * 4,
+            num_qubits=n * 2 + 1,
+            depth=n * 2 + 3,
+            gate_count=n * 2 + 2 + n,
         )
 
     def clear_cache(self) -> None:

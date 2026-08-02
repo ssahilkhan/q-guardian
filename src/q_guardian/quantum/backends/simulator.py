@@ -166,6 +166,10 @@ class LocalSimulatorBackend(QuantumBackend):
             return self._apply_cx(state, qubits[0], qubits[1], num_qubits)
         elif gate_type == "cz":
             return self._apply_cz(state, qubits[0], qubits[1], num_qubits)
+        elif gate_type == "swap":
+            return self._apply_swap(state, qubits[0], qubits[1], num_qubits)
+        elif gate_type == "cswap":
+            return self._apply_cswap(state, qubits[0], qubits[1], qubits[2], num_qubits)
         return state
 
     @staticmethod
@@ -204,40 +208,62 @@ class LocalSimulatorBackend(QuantumBackend):
 
     @staticmethod
     def _apply_single(state: np.ndarray, matrix: np.ndarray, qubit: int, num_qubits: int) -> np.ndarray:
-        n = len(state)
-        result = np.zeros(n, dtype=complex)
+        # Qubit q corresponds to index bit (num_qubits-1-q). Reshape so that
+        # bit is the middle axis: reshape(2^qubit, 2, 2^(num_qubits-1-qubit)).
         bit = num_qubits - 1 - qubit
-        for i in range(n):
-            if i & (1 << bit) == 0:
-                j = i | (1 << bit)
-                result[i] += matrix[0, 0] * state[i] + matrix[0, 1] * state[j]
-                result[j] += matrix[1, 0] * state[i] + matrix[1, 1] * state[j]
-        return result
+        a = state.reshape(2**qubit, 2, 2**bit)
+        s0 = a[:, 0, :]
+        s1 = a[:, 1, :]
+        out = np.empty_like(state)
+        b = out.reshape(2**qubit, 2, 2**bit)
+        b[:, 0, :] = matrix[0, 0] * s0 + matrix[0, 1] * s1
+        b[:, 1, :] = matrix[1, 0] * s0 + matrix[1, 1] * s1
+        return out
 
     @staticmethod
     def _apply_cx(state: np.ndarray, control: int, target: int, num_qubits: int) -> np.ndarray:
-        n = len(state)
-        result = np.zeros(n, dtype=complex)
-        c_bit = num_qubits - 1 - control
-        t_bit = num_qubits - 1 - target
-        for i in range(n):
-            if i & (1 << c_bit):
-                j = i ^ (1 << t_bit)
-                result[j] += state[i]
-            else:
-                result[i] += state[i]
-        return result
+        c = num_qubits - 1 - control
+        t = num_qubits - 1 - target
+        idx = np.arange(state.shape[0])
+        cbit = (idx >> c) & 1
+        mapped = idx ^ (1 << t)
+        return state[np.where(cbit == 1, mapped, idx)]
+
+    @staticmethod
+    def _apply_swap(state: np.ndarray, q0: int, q1: int, num_qubits: int) -> np.ndarray:
+        b0 = num_qubits - 1 - q0
+        b1 = num_qubits - 1 - q1
+        idx = np.arange(state.shape[0])
+        i0 = (idx >> b0) & 1
+        i1 = (idx >> b1) & 1
+        mapped = idx & ~(1 << b0) & ~(1 << b1)
+        mapped |= i1 << b0
+        mapped |= i0 << b1
+        return state[mapped]
+
+    @staticmethod
+    def _apply_cswap(state: np.ndarray, control: int, q1: int, q2: int, num_qubits: int) -> np.ndarray:
+        cb = num_qubits - 1 - control
+        b1 = num_qubits - 1 - q1
+        b2 = num_qubits - 1 - q2
+        idx = np.arange(state.shape[0])
+        cbit = (idx >> cb) & 1
+        i1 = (idx >> b1) & 1
+        i2 = (idx >> b2) & 1
+        mapped = idx & ~(1 << b1) & ~(1 << b2)
+        mapped |= i2 << b1
+        mapped |= i1 << b2
+        return state[np.where(cbit == 1, mapped, idx)]
 
     @staticmethod
     def _apply_cz(state: np.ndarray, qubit1: int, qubit2: int, num_qubits: int) -> np.ndarray:
-        n = len(state)
-        result = state.copy()
-        b1 = num_qubits - 1 - qubit1
-        b2 = num_qubits - 1 - qubit2
-        for i in range(n):
-            if i & (1 << b1) and i & (1 << b2):
-                result[i] *= -1
-        return result
+        out = state.copy()
+        c = num_qubits - 1 - qubit1
+        t = num_qubits - 1 - qubit2
+        idx = np.arange(state.shape[0])
+        mask = ((idx >> c) & 1) & ((idx >> t) & 1)
+        out[mask] *= -1
+        return out
 
     def _from_dict(self, data: Any) -> _LocalCircuit:
         if isinstance(data, dict) and "num_qubits" in data:

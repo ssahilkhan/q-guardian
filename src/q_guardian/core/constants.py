@@ -6,7 +6,7 @@ APP_TITLE: Final[str] = "Q-Guardian"
 APP_DESCRIPTION: Final[str] = (
     "A Hybrid Quantum-Classical Framework for Runtime Security of Autonomous AI Agents"
 )
-APP_VERSION: Final[str] = "0.1.0"
+APP_VERSION: Final[str] = "0.10.0"
 
 API_V1_PREFIX: Final[str] = "/api/v1"
 

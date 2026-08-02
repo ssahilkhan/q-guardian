@@ -32,6 +32,7 @@ _ACTION_MAP: dict[str, ResponseAction] = {
     "delayed_action": ResponseAction.DELAYED_ACTION,
     "retry": ResponseAction.RETRY,
     "rollback": ResponseAction.ROLLBACK,
+    "review": ResponseAction.WARN,
     "log": ResponseAction.LOG_ONLY,
     "log_only": ResponseAction.LOG_ONLY,
     "notify": ResponseAction.NOTIFY,
