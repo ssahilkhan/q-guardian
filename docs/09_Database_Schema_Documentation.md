@@ -1,6 +1,6 @@
 # 09 - Database Schema Documentation
 
-> Module: `src\q_guardian\database\` — Persistence for Q-Gaudrail v0.10.0rc1
+> Module: `src\q_guardian\database\` — Persistence for Q-Gaudrail v1.0.0
 > Storage engines: MongoDB (async, via Motor) as the primary store; JSON-file
 > backends for module-local state (risk, observability, response, ML, quantum, policy).
 > At the time of writing, **no MongoDB collections are defined** — the database layer

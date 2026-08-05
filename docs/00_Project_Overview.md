@@ -20,10 +20,10 @@ The project is a "guardian" layer that sits between an autonomous agent and its 
 | Field | Value |
 |---|---|
 | Package name | `q_guardian` |
-| Version | `0.10.0rc1` (declared in `pyproject.toml`) |
+| Version | `1.0.0` (declared in `pyproject.toml`) |
 | Python requirement | `>=3.12` |
-| License | pending (see `LICENSE_PENDING.md`; a `LICENSE` placeholder file exists) |
-| Status | pre-release (0.10 RC1), actively developed on `main` branch |
+| License | MIT (see `LICENSE`) |
+| Status | public release (v1.0.0), maintained on `main` branch |
 
 ## 3. Repository Location
 

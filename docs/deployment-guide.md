@@ -382,7 +382,7 @@ Response:
 {
   "status": "healthy",
   "application": "Q-Guardian",
-  "version": "0.10.0",
+  "version": "1.0.0",
   "environment": "production",
   "timestamp": "2026-07-19T12:00:00Z",
   "database": {

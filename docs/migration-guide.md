@@ -4,7 +4,7 @@
 
 1. [Version Compatibility Matrix](#version-compatibility-matrix)
 2. [Breaking Changes Between Versions](#breaking-changes-between-versions)
-3. [Migration from 0.8.x to 0.10.0](#migration-from-08x-to-0100)
+3. [Migration from 0.8.x to 1.0.0](#migration-from-08x-to-0100)
 4. [Deprecated APIs](#deprecated-apis)
 
 ---
@@ -140,7 +140,7 @@ class MyPlugin(Plugin):
 
 ---
 
-## Migration from 0.8.x to 0.10.0
+## Migration from 0.8.x to 1.0.0
 
 ### Step 1: Update Python Version
 
@@ -174,7 +174,7 @@ config = FrameworkConfig()
 guardian = Guardian(config=config)
 ```
 
-**After (0.10.0):**
+**After (1.0.0):**
 
 ```python
 from q_guardian import Guardian, FrameworkConfig
@@ -202,7 +202,7 @@ class MyPlugin(Plugin):
         return True
 ```
 
-**After (0.10.0):**
+**After (1.0.0):**
 
 ```python
 class MyPlugin(Plugin):
@@ -239,7 +239,7 @@ from q_guardian.ml import ThreatAnalysisPlugin
 
 plugin = ThreatAnalysisPlugin()
 
-# After (0.10.0)
+# After (1.0.0)
 from q_guardian.ml import ThreatAnalysisPlugin, MLConfig
 
 config = MLConfig(
@@ -286,14 +286,14 @@ ruff check src/ tests/
 
 | Deprecated | Replacement | Removed In |
 |------------|-------------|------------|
-| `Plugin.health() -> bool` | `Plugin.health() -> dict[str, Any]` | 0.10.0 |
-| `FrameworkConfig(runtime_enabled=True)` | `FrameworkConfig(runtime=RuntimeConfig(...))` | 0.10.0 |
+| `Plugin.health() -> bool` | `Plugin.health() -> dict[str, Any]` | 1.0.0 |
+| `FrameworkConfig(runtime_enabled=True)` | `FrameworkConfig(runtime=RuntimeConfig(...))` | 1.0.0 |
 
 ### 0.8.x Deprecations
 
 | Deprecated | Replacement | Removed In |
 |------------|-------------|------------|
-| `ThreatAnalysisPlugin(config=None)` with flat settings | `ThreatAnalysisPlugin(config=MLConfig(...))` | 0.10.0 |
+| `ThreatAnalysisPlugin(config=None)` with flat settings | `ThreatAnalysisPlugin(config=MLConfig(...))` | 1.0.0 |
 | Direct `ModelManager.register()` | `ModelManager.register_model()` | 0.9.0 |
 
 ### Upcoming Deprecations (Planned for 0.11.0)

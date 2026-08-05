@@ -409,7 +409,7 @@ version = "1.0.0"
 description = "A custom Q-Guardian plugin"
 requires-python = ">=3.12"
 dependencies = [
-    "q-guardian>=0.10.0",
+    "q-guardian>=1.0.0",
 ]
 
 [project.entry-points."q_guardian.plugins"]

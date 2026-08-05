@@ -22,7 +22,7 @@ class GoogleADKAdapter(Adapter):
 
     @property
     def version(self) -> str:
-        return "0.10.0"
+        return "1.0.0"
 
     @property
     def framework_name(self) -> str:

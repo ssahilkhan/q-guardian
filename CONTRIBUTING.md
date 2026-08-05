@@ -8,7 +8,7 @@ Thank you for your interest in contributing to Q-Guardian. This document provide
 
 ```bash
 # Clone the repository
-git clone https://github.com/q-guardian/q-guardian.git
+git clone https://github.com/ssahilkhan/q-guardian.git
 cd q-guardian
 
 # Create virtual environment

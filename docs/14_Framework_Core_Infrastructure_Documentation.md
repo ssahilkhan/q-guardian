@@ -43,7 +43,7 @@ adapter (`ConfigDict(arbitrary_types_allowed=True, populate_by_name=True)`):
 
 ### 2.1 `core\constants.py`
 
-`APP_TITLE="Q-Guardian"`, `APP_DESCRIPTION`, `APP_VERSION="0.10.0"`,
+`APP_TITLE="Q-Guardian"`, `APP_DESCRIPTION`, `APP_VERSION="1.0.0"`,
 `API_V1_PREFIX="/api/v1"`, `HEALTH_ENDPOINT="/health"`, `VERSION_ENDPOINT="/version"`,
 `ROOT_ENDPOINT="/"`, `CORRELATION_ID_HEADER="X-Correlation-ID"`,
 `REQUEST_ID_HEADER="X-Request-ID"`, `MONGODB_MIN/MAX_POOL_SIZE`, `MONGODB_TIMEOUT_MS`.
@@ -76,7 +76,7 @@ pydantic-settings, env-driven, categories keyed by env prefix:
 | Class | env_prefix | Key fields |
 |---|---|---|
 | `Environment(str, Enum)` | — | `development`, `testing`, `production` |
-| `AppSettings` | `APP_` | `name`, `version="0.10.0"`, `environment`, `debug=True`, `host`, `port=8000`, `log_level`, `log_dir` |
+| `AppSettings` | `APP_` | `name`, `version="1.0.0"`, `environment`, `debug=True`, `host`, `port=8000`, `log_level`, `log_dir` |
 | `DatabaseSettings` | `MONGODB_` | `url`, `database`, `min_pool_size=1`, `max_pool_size=10`, `timeout_ms=5000` |
 | `SecuritySettings` | — | `secret_key` (production guard via `validate_secret_key`), `jwt_algorithm="HS256"`, `jwt_expiration_minutes=30`, `api_key_header` |
 | `CORSSettings` | `CORS_` | `origins`, `allow_credentials`, `allow_methods`, `allow_headers` |
@@ -178,7 +178,7 @@ concrete domain implementations (no in-tree consumers beyond `api` schemas).
 Seven stubs exist (future integration): `GenericAdapter` (`generic`), `AutoGenAdapter`
 (`autogen`), `CrewAIAdapter` (`crewai`), `GoogleADKAdapter` (`google_adk`),
 `LangGraphAdapter` (`langgraph`), `OpenAIAgentsAdapter` (`openai_agents`),
-`SemanticKernelAdapter` (`semantic_kernel`). Each: `version="0.10.0"`, `initialize`
+`SemanticKernelAdapter` (`semantic_kernel`). Each: `version="1.0.0"`, `initialize`
 is a no-op, and the four data methods raise `NotImplementedError`. Only `Adapter` is
 exported publicly.
 

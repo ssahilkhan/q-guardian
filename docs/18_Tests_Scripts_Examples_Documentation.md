@@ -423,7 +423,7 @@ often scores even benign prompts ~0.60 ("high"), and auto-labels can misfire.
 |---|---|
 | `api-reference.md`, `architecture-guide.md`, `configuration-guide.md`, `deployment-guide.md`, `developer-guide.md` | REST + SDK reference; layered plugin-driven architecture; layered config + env precedence; Docker/Compose/MongoDB deployment; dev setup, testing, style. |
 | `event-system.md`, `framework-architecture.md` | Async pub/sub bus (wildcards, `"threat.*"`, `"*"`); `FrameworkStateMachine` (INITIALIZING/RUNNING/STOPPED/ERROR), plugins, hooks. |
-| `migration-guide.md`, `security-review.md`, `troubleshooting-guide.md` | Version compatibility + breaking changes (0.8.x→0.10.0); automated security review (2026-07-19, v0.9.0, "Moderate" posture); common error fixes. |
+| `migration-guide.md`, `security-review.md`, `troubleshooting-guide.md` | Version compatibility + breaking changes (0.8.x→1.0.0); automated security review (2026-07-19, v0.9.0, "Moderate" posture); common error fixes. |
 | `ml-security.md`, `quantum-analysis-research.md`, `operations-guide.md` | Module 5 ML layout; Module 6 research doc (IEEE-quality, v0.1.0); Prometheus/Grafana/alerting/backup. |
 | `plugin-dev-guide.md`, `plugin-development.md`, `runtime-architecture.md`, `user-guide.md` | Full + concise plugin lifecycle; runtime abstraction layer (no detection logic); end-user install/quick-start. |
 
@@ -442,7 +442,7 @@ often scores even benign prompts ~0.60 ("high"), and auto-labels can misfire.
 Regenerated automatically by PEP 517/518 builds and cleaned by `scripts/packaging/build.py`;
 not hand-maintained.
 
-- **`PKG-INFO`** (482 lines) — `Name: q-guardian`, `Version: 0.10.0rc1`, MIT, Python
+- **`PKG-INFO`** (482 lines) — `Name: q-guardian`, `Version: 1.0.0`, MIT, Python
   >=3.12, classifiers (Dev Status 4-Beta), full dependency list with extras
   (`ml`, `ml-xgboost`, `datasets`, `quantum`, `quantum-pennylane`, `dev`) + embedded README.
 - **`requires.txt`** (41 lines) — base runtime deps (fastapi, uvicorn[standard], pydantic,

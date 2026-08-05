@@ -34,7 +34,7 @@ class AppSettings(BaseSettings):
     )
 
     name: str = Field(default="Q-Guardian", description="Application name")
-    version: str = Field(default="0.10.0", description="Application version")
+    version: str = Field(default="1.0.0", description="Application version")
     environment: Environment = Field(
         default=Environment.DEVELOPMENT, description="Runtime environment"
     )

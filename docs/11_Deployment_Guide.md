@@ -1,6 +1,6 @@
 # 11 - Deployment Guide
 
-> Target: Q-Gaudrail v0.10.0rc1 — Python ≥3.12, FastAPI/uvicorn, MongoDB (Motor).
+> Target: Q-Gaudrail v1.0.0 — Python ≥3.12, FastAPI/uvicorn, MongoDB (Motor).
 > This guide covers local development, containerized deployment, CI/CD,
 > packaging, and the operational scripts shipped with the repo.
 

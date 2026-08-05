@@ -1,6 +1,6 @@
 """Q-Guardian: A Hybrid Quantum-Classical Framework for Runtime Security of Autonomous AI Agents."""
 
-__version__ = "0.10.0"
+__version__ = "1.0.0"
 __title__ = "Q-Guardian"
 __description__ = "A Hybrid Quantum-Classical Framework for Runtime Security of Autonomous AI Agents"
 

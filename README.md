@@ -1,10 +1,10 @@
 <p align="center">
-  <img src="https://img.shields.io/badge/version-0.9.0-blue.svg" alt="Version">
+  <img src="https://img.shields.io/badge/version-1.0.0-blue.svg" alt="Version">
   <img src="https://img.shields.io/badge/python-3.12+-blue.svg" alt="Python">
-  <img src="https://img.shields.io/badge/tests-1636%20passing-brightgreen.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/tests-2339%20passing-brightgreen.svg" alt="Tests">
   <img src="https://img.shields.io/badge/build-passing-brightgreen.svg" alt="Build">
-  <img src="https://img.shields.io/badge/license-pending-orange.svg" alt="License">
-  <img src="https://img.shields.io/badge/status-alpha-orange.svg" alt="Status">
+  <img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License">
+  <img src="https://img.shields.io/badge/status-release-brightgreen.svg" alt="Status">
 </p>
 
 <h1 align="center">Q-Guardian</h1>
@@ -46,21 +46,25 @@ The framework is designed to support reproducible research while remaining pract
 
 ## Architecture
 
-Q-Guardian follows **Clean Architecture** with strict separation of concerns. The framework is organized into six modules, each building on the previous, all connected through a plugin architecture and event bus.
+Q-Guardian follows **Clean Architecture** with strict separation of concerns. The framework is organized into ten modules, each building on the previous, all connected through a plugin architecture and event bus.
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                     Q-Guardian Framework                     │
-├─────────────┬─────────────┬─────────────┬──────────────────┤
-│  Module 1   │  Module 2   │  Module 3   │    Module 4      │
-│  Enterprise │  Framework  │  Runtime    │  Prompt Security │
-│  Foundation │    Core     │    Layer    │     Engine       │
-├─────────────┴──────┬──────┴─────────────┴──────────────────┤
-│                    │                                        │
-│              Module 5              │        Module 6        │
-│         Classical ML Security      │  Hybrid Quantum Intel  │
-│                                    │                       │
-└────────────────┴───────────────────┴───────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                       Q-Guardian Framework                       │
+├──────────────┬──────────────┬──────────────┬────────────────────┤
+│  Module 1    │  Module 2    │  Module 3    │     Module 4       │
+│  Enterprise  │  Framework   │  Runtime     │  Prompt Security   │
+│  Foundation  │    Core      │    Layer     │     Engine         │
+├──────────────┴──────┬───────┴──────────────┴────────────────────┤
+│                     │                                            │
+│        Module 5     │        Module 6     │      Module 7       │
+│  Classical ML       │   Hybrid Quantum    │   Risk & Decision   │
+│  Security           │      Intelligence   │      Intelligence   │
+├─────────────────────┴─────────────────────┴─────────────────────┤
+│                 Module 8: Advanced Policy Engine                 │
+│                 Module 9: Response & Recovery Engine             │
+│                 Module 10: Observability & Operations            │
+└──────────────────────────────────────────────────────────────────┘
                          │
                     Plugin System
                     Event Bus
@@ -90,7 +94,11 @@ Q-Guardian follows **Clean Architecture** with strict separation of concerns. Th
 | **Classical ML Security** | Isolation Forest, Random Forest, XGBoost, and ensemble threat detection |
 | **Quantum Analysis** | Quantum kernels, feature maps, and QSVM for high-dimensional threat spaces |
 | **Hybrid Fusion Engine** | Fuses rule, classical, and quantum predictions with interchangeable strategies |
-| **Explainability** | Reasoning traces and confidence calibration across all detection layers |
+| **Risk & Explainability** | Risk scoring, severity/threat/trust engines, and reasoning-graph explanations |
+| **Policy Engine** | Policy-as-code DSLs (Rego, Cedar, YAML, JSON), RBAC, composition, simulation |
+| **Response & Recovery** | Playbook orchestration, quarantine, evidence, rollback, and SOAR integrations |
+| **Observability** | Metrics, tracing, analytics, alerts, dashboards, OpenTelemetry/Prometheus |
+| **Explainability Demo** | Terminal demo visualizing the full runtime pipeline, feature-by-feature |
 | **Model Management** | Versioning, persistence, health monitoring, and lazy loading |
 | **FastAPI Enterprise** | Production-grade API with structured logging, CORS, and health checks |
 
@@ -106,27 +114,32 @@ q-guardian/
 │   ├── events/              # Async event bus and standard events
 │   ├── hooks/               # Pre/post processing hook manager
 │   ├── plugins/             # Plugin base classes and registry
-│   ├── adapters/            # AI framework adapter stubs
+│   ├── adapters/            # AI framework adapters (LangGraph, CrewAI, ...)
 │   ├── runtime/             # Runtime abstraction (agents, sessions, tools)
 │   ├── framework/           # Configuration and shared context
 │   ├── sdk/                 # Public SDK (Guardian facade)
 │   ├── security/            # Prompt Security Engine + extensibility ABCs
 │   ├── ml/                  # Classical ML threat detection
 │   ├── quantum/             # Quantum computing layer + hybrid fusion
+│   ├── risk/                # Risk scoring, explainability, actions
+│   ├── policy/              # Policy-as-code, RBAC, composition, simulation
+│   ├── response/            # Response, recovery, rollback, quarantine
+│   ├── observability/       # Metrics, tracing, analytics, alerts, dashboard
 │   ├── config/              # Pydantic-settings configuration
 │   ├── database/            # MongoDB async connection
 │   ├── models/              # Domain model base classes
 │   ├── schemas/             # API request/response schemas
 │   ├── repositories/        # Data access layer
 │   ├── services/            # Business logic layer
-│   ├── middleware/           # HTTP middleware
+│   ├── middleware/          # HTTP middleware
 │   ├── dependencies/        # Dependency injection
 │   ├── logging/             # Structured logging (structlog)
 │   ├── exceptions/          # Exception hierarchy
 │   └── utils/               # Utility functions
-├── tests/                   # 968 unit tests
-├── docs/                    # Architecture and API documentation
-├── scripts/                 # Utility scripts
+├── tests/                   # 2,339 unit/integration tests
+├── docs/                    # Architecture, API, and research documentation
+├── examples/                # Framework examples + explainable demo
+├── scripts/                 # Benchmark, load-test, profile, packaging scripts
 ├── docker/                  # Dockerfiles
 └── pyproject.toml           # Project configuration
 ```
@@ -213,6 +226,52 @@ QSVM classifier, quantum kernel hyper-parameter trainer (grid/random search with
 **Phase 3 — Hybrid Fusion Engine:**
 `PredictionProvider` ABC and `FusedPrediction` standardize how any detection source contributes to fusion. `ConfidenceCalibrator` normalizes scores across heterogeneous models. `HybridFusionEngine` orchestrates provider collection, calibration, and strategy delegation. Interchangeable fusion strategies: `WeightedVotingStrategy`, `ConfidenceFusionStrategy`, `AdaptiveFusionStrategy`, `StackingFusionStrategy` (default), and `BayesianFusionStrategy` (interface). Provider adapters bridge existing rule engines, classical ML models, and quantum models without modifying their source code.
 
+### Module 7 — Risk & Decision Intelligence
+
+Transforms raw detections into intelligent, explainable security decisions.
+
+**Components:** `RiskAssessmentEngine`, `ThreatScorer`, `TrustEngine`, `ConfidenceEngine`, `SeverityEngine`, `PolicyEngine`, `ActionEngine`, `ExplanationEngine` + `ReasoningGraphBuilder`, `ReportGenerator`, `RiskAnalysisPlugin`.
+
+### Module 8 — Advanced Policy Engine
+
+A standalone policy-as-code framework with condition parsing, versioning, conflict detection, simulation, external DSL adapters, RBAC, and composition.
+
+**Components:** `AdvancedPolicyEngine`, recursive-descent `ConditionParser`, `PolicyRegistry`, `PolicyEvaluator`, `ConflictDetector`, `VersionManager`, `SimulationEngine`, Rego/Cedar/YAML/JSON adapters, `RBACManager`, `PolicyComposer`.
+
+### Module 9 — Autonomous Response & Recovery
+
+Source-agnostic incident response orchestration with playbooks, quarantine, evidence collection, notifications, SOAR integrations, and recovery.
+
+**Components:** `ResponseEngine`, `OrchestrationEngine`, `RecoveryEngine`, `RollbackEngine`, `ApprovalEngine`, `PlaybookRegistry`/`Parser`/`Executor`/`Validator`, `QuarantineManager`, `EvidenceCollector`/`Snapshot`/`Timeline`, notifiers (email/webhook/Slack/Teams), and Sentinel/Splunk/QRadar/Cortex/ServiceNow integrations.
+
+### Module 10 — Enterprise Observability & Operations
+
+Full observability platform with metrics, tracing, analytics, alerts, health checks, dashboards, and OpenTelemetry/Prometheus exporters.
+
+**Components:** `MetricsEngine`/`MetricsRegistry`, `TraceEngine`, `AnalyticsEngine`, `AlertEngine`, `HealthEngine`, dashboard API, CSV/JSON/OpenTelemetry/Prometheus exporters, and Grafana/Datadog/CloudWatch/Azure Monitor integrations.
+
+---
+
+## Explainable Demo Mode
+
+`examples/explainable_demo.py` visualizes the complete runtime pipeline using the real implementation — nothing is simulated.
+
+```bash
+# Interactive mode — type prompts, get a step-by-step analysis each time
+python examples/explainable_demo.py
+
+# Single prompt
+python examples/explainable_demo.py "Explain how Quantum Support Vector Machines work."
+
+# Feature explanation mode (all 43 features + RF importances)
+python examples/explainable_demo.py "Hello world." --explain-features
+
+# Export a Mermaid flowchart of the runtime pipeline
+python examples/explainable_demo.py "Hello world." --export-mermaid
+```
+
+The demo walks through 10 stages: user input → preprocessing (per-step before/after) → 43-dim feature extraction → rule engine → classical ML (Random Forest + Isolation Forest) → quantum pipeline (encoding → feature map → SWAP-test kernel vs every support vector → QSVM) → hybrid weighted fusion → final verdict → code trace → per-feature explanation.
+
 ---
 
 ## Installation
@@ -225,7 +284,7 @@ QSVM classifier, quantum kernel hyper-parameter trainer (grid/random search with
 ### Core Installation
 
 ```bash
-git clone https://github.com/q-guardian/q-guardian.git
+git clone https://github.com/ssahilkhan/q-guardian.git
 cd q-guardian
 pip install -e .
 ```
@@ -383,13 +442,8 @@ class MySecurityPlugin(Plugin):
 ## Testing
 
 ```bash
-# Run all 968 tests
+# Run all 2,339 tests
 pytest tests/ -v
-
-# Run fast subset (861 tests, ~25s)
-pytest tests/ --ignore=tests/unit/test_quantum_qsvm.py \
-              --ignore=tests/unit/test_quantum_kernel_trainer.py \
-              --ignore=tests/unit/test_quantum_inference_engine.py -v
 
 # Run with coverage
 pytest tests/ -v --cov=q_guardian --cov-report=html
@@ -398,13 +452,13 @@ pytest tests/ -v --cov=q_guardian --cov-report=html
 pytest tests/unit/test_fusion_strategies.py -v
 ```
 
-| Test Suite | Tests |
-|-----------|-------|
-| Modules 1–5 (Enterprise, Framework, Runtime, Security, ML) | 501 |
-| Module 6 Phase 1 (Quantum Infrastructure) | 168 |
-| Module 6 Phase 2 (Quantum Learning) | 170 |
-| Module 6 Phase 3 (Hybrid Fusion) | 129 |
-| **Total** | **968** |
+| Test Suite | Files | Tests |
+|-----------|-------|-------|
+| `tests/unit` — Modules 1–8 (Enterprise → Risk/Policy, incl. quantum + fusion) | 70 | 1,449 |
+| `tests/response` — Module 9 (Response & Recovery) | 10 | 173 |
+| `tests/observability` — Module 10 (Observability) | 25 | 703 |
+| `tests/integration` | 3 | 14 |
+| **Total** | **108** | **2,339** |
 
 ---
 
@@ -418,10 +472,13 @@ pytest tests/unit/test_fusion_strategies.py -v
 | v0.4.0 | Prompt Security Engine | Complete |
 | v0.5.0 | Classical ML Security | Complete |
 | v0.6.0 | Hybrid Quantum Intelligence | Complete |
-| v0.7.0 | Adaptive Trust Management | Complete |
+| v0.7.0 | Risk & Decision Intelligence | Complete |
 | v0.8.0 | Advanced Policy Engine | Complete |
-| v0.9.0 | Autonomous Incident Response | Complete |
-| v1.0.0 | Public Release | Planned |
+| v0.9.0 | Autonomous Response & Recovery | Complete |
+| v0.10.0 | Observability & Operations (pre-release path) | Complete |
+| v1.0.0 | Public Release | Released |
+
+**Future work:** research paper publication, PyPI distribution, live-service integration tests, and fusion-calibration hardening on real-world threat corpora.
 
 ---
 
@@ -432,8 +489,8 @@ pytest tests/unit/test_fusion_strategies.py -v
   title  = {Q-Guardian: A Hybrid Quantum-Classical Framework for Runtime Security of Autonomous AI Agents},
   author = {Q-Guardian Research Team},
   year   = {2026},
-  version = {0.9.0},
-  url    = {https://github.com/q-guardian/q-guardian}
+  version = {1.0.0},
+  url    = {https://github.com/ssahilkhan/q-guardian}
 }
 ```
 
@@ -441,7 +498,7 @@ pytest tests/unit/test_fusion_strategies.py -v
 
 ## License
 
-License to be determined before public release. See [LICENSE_PENDING.md](LICENSE_PENDING.md).
+MIT License. See [LICENSE](LICENSE).
 
 ---
 
@@ -455,4 +512,4 @@ License to be determined before public release. See [LICENSE_PENDING.md](LICENSE
 
 ---
 
-*Q-Guardian is under active development. This repository is private until the research paper is completed.*
+*Q-Guardian v1.0.0 is publicly released. See the [CHANGELOG](CHANGELOG.md) for release history.*

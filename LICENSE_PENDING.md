@@ -1,8 +1,8 @@
-# License Pending
+# License Decision Record
 
-**Q-Guardian** is currently in a private research phase.
+**Q-Guardian** was developed during a private research phase.
 
-An official open-source license will be selected and added to this repository before its first public release. The license will be chosen to balance:
+An official open-source license has now been selected for public release. The choice balances:
 
 - **Open access** for academic research and citation
 - **Permissive use** for enterprise adoption and integration
@@ -10,13 +10,14 @@ An official open-source license will be selected and added to this repository be
 
 ## Current Status
 
-- The repository is **private** and accessible only to the research team
-- The current `LICENSE` file contains the development license (MIT) used during the private research phase
-- The final license for public release will be announced in the repository before making it public
+- The repository is **public** as of v1.0.0.
+- The license selected for public release is **MIT** — see [LICENSE](LICENSE).
+- This file is retained as a decision record of the licensing process.
 
 ## Timeline
 
-The public license will be determined before **v1.0.0**, which marks the official public release.
+- The public license was determined before **v1.0.0**, which marks the official public release.
+- Final decision: **MIT License**, in effect from **v1.0.0 (2026-08-05)**.
 
 ## Contact
 

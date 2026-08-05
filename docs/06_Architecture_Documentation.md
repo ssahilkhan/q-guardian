@@ -75,7 +75,7 @@ The canonical flow exercised by `examples/prompt_test_harness.py`:
 
 ### 4.1 Application entry (`api/app.py`)
 `create_app()` builds the FastAPI app with:
-- **Metadata:** title `Q-Guardian`, description, version `0.10.0`, `/docs`, `/redoc`, `/openapi.json`.
+- **Metadata:** title `Q-Guardian`, description, version `1.0.0`, `/docs`, `/redoc`, `/openapi.json`.
 - **Lifespan:** `setup_logging` → log `application_starting` → `get_db_client().connect()` (MongoDB; failure only warns) → on shutdown `db_client.disconnect()`.
 - **Middleware** (registered in this order; FastAPI executes in reverse registration order, so the last registered wraps the outermost):
   1. `TrustedHostMiddleware` — only when **not** production (`allowed_hosts=["*"]` in dev).

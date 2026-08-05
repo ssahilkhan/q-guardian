@@ -1,7 +1,7 @@
 # 10 - Security Overview
 
 > Module: `src\q_guardian\security\` + HTTP middleware + configuration — the
-> defense-in-depth surface of Q-Gaudrail v0.10.0rc1.
+> defense-in-depth surface of Q-Gaudrail v1.0.0.
 >
 > Q-Gaudrail protects AI agents at two levels: **HTTP transport** (headers, CORS,
 > correlation IDs, exception hygiene) and **application-level prompt security**

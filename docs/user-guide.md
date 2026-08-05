@@ -33,7 +33,7 @@ pip install q-guardian
 ### From Source
 
 ```bash
-git clone https://github.com/q-guardian/q-guardian.git
+git clone https://github.com/ssahilkhan/q-guardian.git
 cd q-guardian
 pip install -e .
 ```
@@ -64,7 +64,7 @@ pip install q-guardian[dev]
 
 ```python
 import q_guardian
-print(q_guardian.__version__)  # 0.10.0
+print(q_guardian.__version__)  # 1.0.0
 ```
 
 ---

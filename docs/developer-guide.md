@@ -24,7 +24,7 @@
 ### Clone and Install
 
 ```bash
-git clone https://github.com/q-guardian/q-guardian.git
+git clone https://github.com/ssahilkhan/q-guardian.git
 cd q-guardian
 pip install -e ".[dev]"
 ```

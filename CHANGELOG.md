@@ -6,6 +6,62 @@ Format based on [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [1.0.0] — 2026-08-05
+
+### Public Release — Enterprise Observability, Documentation & Explainable Demo
+
+The first public release. All 10 modules are complete, the documentation set is synchronized with the implementation, the license is finalized (MIT), and the project ships with CI workflows, developer tooling, and an explainable demo mode.
+
+#### Added
+
+- **Module 10 — Enterprise Observability & Operations Platform**
+  - **Metrics** — `MetricsEngine`, `MetricsRegistry`, collectors, aggregators, and exporters
+  - **Tracing** — `TraceEngine`, spans, exporters, correlation and context propagation
+  - **Analytics** — `AnalyticsEngine`, statistics, trend analysis, forecasting, and reports
+  - **Alerts** — `AlertEngine`, alert rules, routing, escalation, and notifiers
+  - **Health** — `HealthEngine`, health registry, checks, diagnostics, and heartbeat
+  - **Dashboard** — dashboard API, DTOs, endpoints, filters, and serializers
+  - **Exporters** — CSV, JSON, OpenTelemetry, and Prometheus
+  - **Integrations** — Grafana, Datadog, CloudWatch, Azure Monitor, and Prometheus
+  - 703 unit tests
+- **Comprehensive documentation set** — 19 numbered documents (`docs/00`–`docs/18`) plus 17 user-facing guides covering architecture, API, security, deployment, quantum/ML, policy/risk, response/recovery, and observability
+- **Developer scripts** — benchmark runner, load tester, profiling/memory tooling, packaging/validation, dataset builders, and a prompt CLI (`scripts/`)
+- **CI/CD** — GitHub Actions workflows for CI, benchmarking, and release
+- **Framework integration examples** — CrewAI, LangGraph, OpenAI Agents, Semantic Kernel, Google ADK, hybrid multi-agent, and a prompt-test harness (`examples/`)
+- **Explainable Demo Mode** — `examples/explainable_demo.py`, a terminal demo that visualizes the real runtime pipeline end to end (normalization → 43-dim feature extraction → rule engine → classical ML → quantum QSVM → hybrid fusion → risk → policy → response) with interactive REPL, `--explain-features` per-feature metadata, and `--export-mermaid` flowchart export
+- **Finalized license** — MIT (see `LICENSE`)
+
+#### Changed
+
+- Version standardized to `1.0.0` across `pyproject.toml`, `src/q_guardian/__init__.py`, README, and all documentation
+- Repository URLs updated to the public home (`github.com/ssahilkhan/q-guardian`)
+- README reflects the final architecture (10 modules), current test count, and release status
+- Migration guide retargeted from `0.8.x → 0.10.0` to `0.8.x → 1.0.0`
+
+#### Improved
+
+- Test suite grown to **2,339 test functions across 107 test files** (Modules 1–5: 1,449; Observability: 703; Response/Recovery: 173; Integration: 14)
+- Local statevector quantum simulator enables the full quantum pipeline (feature maps → kernels → QSVM → hybrid fusion) without external quantum SDKs
+
+#### Documentation
+
+- CHANGELOG history preserved intact; this entry supersedes no prior entries
+
+#### Known Limitations
+
+- Quantum backends beyond the local simulator (Qiskit Aer / IBM Runtime, PennyLane) are implemented as optional extras and not exercised in CI
+- `StackingFusionStrategy` remains the default fusion strategy; `BayesianFusionStrategy` is interface-only
+- MongoDB persistence and enterprise observability integrations are covered by unit tests but not integration-tested against live services
+
+#### Future Work
+
+- Publish the research paper and update the citation with the DOI
+- Add PyPI publication via the release workflow
+- Expand live integration tests (MongoDB, SOAR platforms, OpenTelemetry collectors)
+- Continue hardening fusion calibration on real-world threat corpora
+
+---
+
 ## [0.9.0] — 2026-07-19
 
 ### Autonomous Response & Recovery Engine
