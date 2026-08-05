@@ -1,0 +1,18 @@
+flowchart TD
+    A["User Prompt"] --> B["PromptNormalizer.normalize()"]
+    B --> C["PromptValidator.validate()"]
+    C --> D["PromptFeatureExtractor.extract()"]
+    D --> E["MLFeatureProvider.extract_vector() -> 43-dim"]
+    E --> F["RuleEngine.analyze()"]
+    E --> G["StandardScaler.transform()"]
+    G --> H["RandomForestThreatClassifier.predict()"]
+    G --> I["IsolationForestDetector.predict()"]
+    G --> J["QSVMModel.predict()"]
+    F --> K["HybridFusionEngine.fuse()"]
+    H --> K
+    I --> K
+    J --> K
+    K --> L["RiskAssessmentEngine.assess()"]
+    L --> M["PolicyEngine.evaluate()"]
+    M --> N["ResponseEngine.process()"]
+    N --> O["FINAL VERDICT + ACTION"]
