@@ -1,11 +1,10 @@
 """Tests for the advanced condition parser."""
 
 import pytest
-from datetime import datetime, timezone
 
 from q_guardian.policy.core.condition_parser import parse_condition
-from q_guardian.policy.data import Condition, CompoundCondition
-from q_guardian.policy.enums import ComparisonOperator, LogicalOperator, ConditionType
+from q_guardian.policy.data import CompoundCondition, Condition
+from q_guardian.policy.enums import ComparisonOperator, ConditionType, LogicalOperator
 from q_guardian.policy.exceptions import ConditionParseError
 
 
@@ -96,9 +95,7 @@ class TestCompoundConditions:
         assert c.operator == LogicalOperator.NOT
 
     def test_nested_and_or(self):
-        c = parse_condition(
-            "(risk_score >= 0.8 OR risk_score >= 0.9) AND confidence > 0.5"
-        )
+        c = parse_condition("(risk_score >= 0.8 OR risk_score >= 0.9) AND confidence > 0.5")
         assert isinstance(c, CompoundCondition)
         assert c.operator == LogicalOperator.AND
         assert isinstance(c.conditions[0], CompoundCondition)
@@ -106,7 +103,8 @@ class TestCompoundConditions:
 
     def test_complex_nesting(self):
         c = parse_condition(
-            "(risk_level == critical OR risk_level == severe) AND (confidence > 0.7 OR threat_score >= 0.9)"
+            "(risk_level == critical OR risk_level == severe) "
+            "AND (confidence > 0.7 OR threat_score >= 0.9)"
         )
         assert c.operator == LogicalOperator.AND
         assert len(c.conditions) == 2
@@ -161,9 +159,7 @@ class TestEvaluation:
         assert c.evaluate({"file": "data.csv"}) is False
 
     def test_nested_evaluation(self):
-        c = parse_condition(
-            "(risk_score >= 0.8 OR risk_level == critical) AND confidence > 0.5"
-        )
+        c = parse_condition("(risk_score >= 0.8 OR risk_level == critical) AND confidence > 0.5")
         assert c.evaluate({"risk_score": 0.9, "risk_level": "low", "confidence": 0.7}) is True
         assert c.evaluate({"risk_score": 0.3, "risk_level": "critical", "confidence": 0.8}) is True
         assert c.evaluate({"risk_score": 0.3, "risk_level": "low", "confidence": 0.3}) is False

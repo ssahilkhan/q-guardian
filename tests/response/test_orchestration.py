@@ -1,9 +1,8 @@
 """Tests for Orchestration Engine."""
 
-import pytest
 from q_guardian.response.data import PlaybookDefinition, PlaybookStep
-from q_guardian.response.enums import StepType, FailureStrategy, ResponseStatus
 from q_guardian.response.engine.orchestration_engine import OrchestrationEngine
+from q_guardian.response.enums import FailureStrategy, ResponseStatus
 
 
 def _step(name: str, action: str = "test_action", **kw: object) -> PlaybookStep:
@@ -65,8 +64,10 @@ class TestOrchestrationEngine:
 
     def test_step_failure_stop(self) -> None:
         eng = OrchestrationEngine()
+
         def fail_handler(step, ctx):
             raise RuntimeError("step failed")
+
         eng.register_handler("action", fail_handler)
         s1 = _step("s1", action="fail_action", failure_strategy=FailureStrategy.STOP)
         s2 = _step("s2", action="block", depends_on=["s1"])
@@ -77,11 +78,13 @@ class TestOrchestrationEngine:
     def test_step_failure_skip(self) -> None:
         eng = OrchestrationEngine()
         call_count = {"n": 0}
+
         def selective_fail_handler(step, ctx):
             if step.name == "s1":
                 raise RuntimeError("step failed")
             call_count["n"] += 1
             return {"ok": True}
+
         eng.register_handler("action", selective_fail_handler)
         s1 = _step("s1", action="fail_action", failure_strategy=FailureStrategy.SKIP)
         s2 = _step("s2", action="block")

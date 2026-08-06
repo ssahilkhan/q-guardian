@@ -16,10 +16,10 @@ from __future__ import annotations
 
 from typing import Any
 
-
 # =============================================================================
 # JWT Placeholder
 # =============================================================================
+
 
 class JWTService:
     """Placeholder for JWT token service.
@@ -31,9 +31,7 @@ class JWTService:
     - Token revocation
     """
 
-    async def create_access_token(
-        self, payload: dict[str, Any], expires_minutes: int = 30
-    ) -> str:
+    async def create_access_token(self, payload: dict[str, Any], expires_minutes: int = 30) -> str:
         """Create a JWT access token.
 
         Args:
@@ -69,6 +67,7 @@ class JWTService:
 # Authentication Placeholder
 # =============================================================================
 
+
 class AuthenticationService:
     """Placeholder for authentication service.
 
@@ -78,9 +77,7 @@ class AuthenticationService:
     - Multi-factor authentication
     """
 
-    async def authenticate(
-        self, username: str, password: str
-    ) -> dict[str, Any] | None:
+    async def authenticate(self, username: str, password: str) -> dict[str, Any] | None:
         """Authenticate a user with credentials.
 
         Args:
@@ -101,6 +98,7 @@ class AuthenticationService:
 # Authorization Placeholder
 # =============================================================================
 
+
 class AuthorizationService:
     """Placeholder for authorization service.
 
@@ -110,9 +108,7 @@ class AuthorizationService:
     - Resource-level authorization
     """
 
-    async def check_permission(
-        self, user_id: str, resource: str, action: str
-    ) -> bool:
+    async def check_permission(self, user_id: str, resource: str, action: str) -> bool:
         """Check if a user has permission for an action on a resource.
 
         Args:
@@ -133,6 +129,7 @@ class AuthorizationService:
 # =============================================================================
 # API Key Placeholder
 # =============================================================================
+
 
 class APIKeyService:
     """Placeholder for API key management.
@@ -164,6 +161,7 @@ class APIKeyService:
 # Rate Limiting Placeholder
 # =============================================================================
 
+
 class RateLimitService:
     """Placeholder for rate limiting service.
 
@@ -174,9 +172,7 @@ class RateLimitService:
     - Distributed rate limiting
     """
 
-    async def check_rate_limit(
-        self, identifier: str, limit: int = 100, window: int = 60
-    ) -> bool:
+    async def check_rate_limit(self, identifier: str, limit: int = 100, window: int = 60) -> bool:
         """Check if a request is within the rate limit.
 
         Args:

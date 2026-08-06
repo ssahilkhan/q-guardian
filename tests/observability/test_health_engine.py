@@ -1,8 +1,6 @@
-import pytest
-
+from q_guardian.observability.data import HealthCheckResult
+from q_guardian.observability.enums import HealthStatus
 from q_guardian.observability.health.health_engine import HealthEngine
-from q_guardian.observability.data import HealthCheckResult, HealthStatusModel
-from q_guardian.observability.enums import HealthStatus, HealthLevel
 
 
 class TestHealthEngineInitialization:

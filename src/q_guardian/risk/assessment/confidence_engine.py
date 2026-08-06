@@ -7,7 +7,6 @@ multiple prediction sources.
 from __future__ import annotations
 
 import math
-from typing import Any
 
 import structlog
 
@@ -99,14 +98,14 @@ class ConfidenceEngine:
                 weights = [1.0 / len(confidences)] * len(confidences)
 
         if self._config.aggregation_method == "weighted_average":
-            raw_agg = sum(c * w for c, w in zip(confidences, weights))
+            raw_agg = sum(c * w for c, w in zip(confidences, weights, strict=False))
         elif self._config.aggregation_method == "geometric_mean":
             product = 1.0
-            for c, w in zip(confidences, weights):
+            for c, w in zip(confidences, weights, strict=False):
                 product *= max(c, 1e-10) ** w
             raw_agg = product
         else:
-            raw_agg = sum(c * w for c, w in zip(confidences, weights))
+            raw_agg = sum(c * w for c, w in zip(confidences, weights, strict=False))
 
         raw_agg = max(0.0, min(1.0, raw_agg))
         normalized = self._apply_method(raw_agg)
@@ -140,11 +139,11 @@ class ConfidenceEngine:
 
     def _temperature_scale(self, confidence: float) -> float:
         """Apply temperature scaling."""
-        T = self._config.temperature
-        if T <= 0:
+        temperature = self._config.temperature
+        if temperature <= 0:
             return confidence
         logit = math.log(max(confidence, 1e-10) / max(1 - confidence, 1e-10))
-        scaled = 1.0 / (1.0 + math.exp(-logit / T))
+        scaled = 1.0 / (1.0 + math.exp(-logit / temperature))
         return max(0.0, min(1.0, scaled))
 
     def _min_max_normalize(self, confidence: float) -> float:

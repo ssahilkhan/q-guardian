@@ -114,7 +114,7 @@ class TestLinearRegression:
     def test_no_correlation(self) -> None:
         x = [1.0, 1.0, 1.0]
         y = [1.0, 2.0, 3.0]
-        slope, intercept, r_squared = StatisticsEngine.linear_regression(x, y)
+        slope, _intercept, r_squared = StatisticsEngine.linear_regression(x, y)
         assert slope == pytest.approx(0.0)
         assert r_squared == pytest.approx(0.0)
 

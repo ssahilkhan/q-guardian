@@ -6,8 +6,8 @@ import csv
 from pathlib import Path
 from typing import Any
 
-from q_guardian.ml.datasets.base import DatasetLoader
 from q_guardian.ml.data import DatasetEntry
+from q_guardian.ml.datasets.base import DatasetLoader
 from q_guardian.security.enums import PromptCategory, PromptSeverity
 
 
@@ -46,7 +46,7 @@ class CSVLoader(DatasetLoader):
         encoding = kwargs.get("encoding", "utf-8")
 
         entries: list[DatasetEntry] = []
-        with open(path, "r", encoding=encoding, newline="") as f:
+        with open(path, encoding=encoding, newline="") as f:
             reader = csv.DictReader(f, delimiter=delimiter)
             for row in reader:
                 label_str = row.get("label", "unknown")
@@ -64,12 +64,14 @@ class CSVLoader(DatasetLoader):
                 is_malicious_str = row.get("is_malicious", "false")
                 is_malicious = is_malicious_str.lower() in ("true", "1", "yes")
 
-                entries.append(DatasetEntry(
-                    prompt=row.get("prompt", ""),
-                    label=label,
-                    severity=severity,
-                    is_malicious=is_malicious,
-                    metadata={"source": source},
-                ))
+                entries.append(
+                    DatasetEntry(
+                        prompt=row.get("prompt", ""),
+                        label=label,
+                        severity=severity,
+                        is_malicious=is_malicious,
+                        metadata={"source": source},
+                    )
+                )
 
         return entries

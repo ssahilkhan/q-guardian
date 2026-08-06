@@ -10,9 +10,8 @@ import numpy as np
 import structlog
 
 from q_guardian.quantum.backends.base import QuantumBackend
-from q_guardian.quantum.config import QuantumBackendConfig
-from q_guardian.quantum.enums import BackendStatus, QuantumBackendType
 from q_guardian.quantum.data import BackendInfo, CircuitResult
+from q_guardian.quantum.enums import BackendStatus, QuantumBackendType
 
 logger = structlog.get_logger("quantum.local_simulator")
 
@@ -30,7 +29,9 @@ class _LocalCircuit:
         self.measurements: list[int] = []
         self._depth = 0
 
-    def add_gate(self, gate_type: str, qubits: list[int], params: list[float] | None = None) -> None:
+    def add_gate(
+        self, gate_type: str, qubits: list[int], params: list[float] | None = None
+    ) -> None:
         self.gates.append((gate_type, qubits, params or []))
         self._depth += 1
 
@@ -98,7 +99,9 @@ class LocalSimulatorBackend(QuantumBackend):
         elif isinstance(circuit, dict):
             local_circuit = self._from_dict(circuit)
         else:
-            local_circuit = self._from_dict(circuit) if hasattr(circuit, '__dict__') else self._from_dict({})
+            local_circuit = (
+                self._from_dict(circuit) if hasattr(circuit, "__dict__") else self._from_dict({})
+            )
 
         actual_shots = min(shots, 65536)
         counts = self._simulate(local_circuit, actual_shots)
@@ -201,13 +204,17 @@ class LocalSimulatorBackend(QuantumBackend):
     @staticmethod
     def _rz(theta: float) -> np.ndarray:
         return np.array(
-            [[complex(math.cos(theta / 2), -math.sin(theta / 2)), 0],
-             [0, complex(math.cos(theta / 2), math.sin(theta / 2))]],
+            [
+                [complex(math.cos(theta / 2), -math.sin(theta / 2)), 0],
+                [0, complex(math.cos(theta / 2), math.sin(theta / 2))],
+            ],
             dtype=complex,
         )
 
     @staticmethod
-    def _apply_single(state: np.ndarray, matrix: np.ndarray, qubit: int, num_qubits: int) -> np.ndarray:
+    def _apply_single(
+        state: np.ndarray, matrix: np.ndarray, qubit: int, num_qubits: int
+    ) -> np.ndarray:
         # Qubit q corresponds to index bit (num_qubits-1-q). Reshape so that
         # bit is the middle axis: reshape(2^qubit, 2, 2^(num_qubits-1-qubit)).
         bit = num_qubits - 1 - qubit
@@ -239,10 +246,13 @@ class LocalSimulatorBackend(QuantumBackend):
         mapped = idx & ~(1 << b0) & ~(1 << b1)
         mapped |= i1 << b0
         mapped |= i0 << b1
-        return state[mapped]
+        result: np.ndarray = state[mapped]
+        return result
 
     @staticmethod
-    def _apply_cswap(state: np.ndarray, control: int, q1: int, q2: int, num_qubits: int) -> np.ndarray:
+    def _apply_cswap(
+        state: np.ndarray, control: int, q1: int, q2: int, num_qubits: int
+    ) -> np.ndarray:
         cb = num_qubits - 1 - control
         b1 = num_qubits - 1 - q1
         b2 = num_qubits - 1 - q2

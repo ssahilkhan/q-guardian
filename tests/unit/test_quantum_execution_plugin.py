@@ -4,11 +4,10 @@ from __future__ import annotations
 
 import pytest
 
-from q_guardian.quantum.execution.executor import CircuitExecutor
 from q_guardian.quantum.backends.manager import BackendManager
 from q_guardian.quantum.backends.simulator import LocalSimulatorBackend
-from q_guardian.quantum.config import QuantumBackendConfig
 from q_guardian.quantum.exceptions import CircuitExecutionError
+from q_guardian.quantum.execution.executor import CircuitExecutor
 
 
 class TestCircuitExecutor:
@@ -84,10 +83,10 @@ class TestQuantumPlugin:
         assert "quantum_analyzer" in self.plugin.interfaces
 
     def test_register_model(self) -> None:
-        from q_guardian.quantum.models.base import BaseQuantumModel
+
         from q_guardian.quantum.data import QuantumModelMetadata
-        from q_guardian.quantum.enums import QuantumModelType, QuantumBackendType
-        from typing import Any
+        from q_guardian.quantum.enums import QuantumBackendType, QuantumModelType
+        from q_guardian.quantum.models.base import BaseQuantumModel
 
         class DummyQuantumModel(BaseQuantumModel):
             @property
@@ -97,6 +96,7 @@ class TestQuantumPlugin:
             @property
             def metadata(self):
                 from q_guardian.ml.data import ModelMetadata
+
                 return ModelMetadata(name="test", model_type="classification", backend="custom")
 
             @property
@@ -116,10 +116,12 @@ class TestQuantumPlugin:
 
             async def predict_quantum(self, features):
                 from q_guardian.quantum.data import QuantumInferenceResult
+
                 return QuantumInferenceResult(model_name="test-qm")
 
             async def classify_quantum(self, prompt, features):
                 from q_guardian.security.extensibility import DetectionResult
+
                 return DetectionResult(detector_name="test-qm")
 
         model = DummyQuantumModel()
@@ -127,9 +129,9 @@ class TestQuantumPlugin:
         assert "test-qm" in self.plugin.list_models()
 
     def test_unregister_model(self) -> None:
-        from q_guardian.quantum.models.base import BaseQuantumModel
         from q_guardian.quantum.data import QuantumModelMetadata
-        from q_guardian.quantum.enums import QuantumModelType, QuantumBackendType
+        from q_guardian.quantum.enums import QuantumBackendType, QuantumModelType
+        from q_guardian.quantum.models.base import BaseQuantumModel
 
         class DummyQM(BaseQuantumModel):
             @property
@@ -139,11 +141,16 @@ class TestQuantumPlugin:
             @property
             def metadata(self):
                 from q_guardian.ml.data import ModelMetadata
+
                 return ModelMetadata(name="dummy", model_type="classification", backend="custom")
 
             @property
             def quantum_metadata(self):
-                return QuantumModelMetadata(name="dummy-qm", model_type=QuantumModelType.VQC, backend_type=QuantumBackendType.LOCAL)
+                return QuantumModelMetadata(
+                    name="dummy-qm",
+                    model_type=QuantumModelType.VQC,
+                    backend_type=QuantumBackendType.LOCAL,
+                )
 
             @property
             def is_trained(self):
@@ -154,10 +161,12 @@ class TestQuantumPlugin:
 
             async def predict_quantum(self, features):
                 from q_guardian.quantum.data import QuantumInferenceResult
+
                 return QuantumInferenceResult(model_name="dummy-qm")
 
             async def classify_quantum(self, prompt, features):
                 from q_guardian.security.extensibility import DetectionResult
+
                 return DetectionResult(detector_name="dummy-qm")
 
         model = DummyQM()
@@ -173,12 +182,13 @@ class TestQuantumPlugin:
 
     @pytest.mark.asyncio
     async def test_initialize(self) -> None:
-        from q_guardian.framework.context import FrameworkContext
-        from q_guardian.events.bus import EventBus
-        from q_guardian.plugins.registry import PluginRegistry
-        from q_guardian.hooks.manager import HookManager
-        from q_guardian.framework.config import FrameworkConfig
         import logging
+
+        from q_guardian.events.bus import EventBus
+        from q_guardian.framework.config import FrameworkConfig
+        from q_guardian.framework.context import FrameworkContext
+        from q_guardian.hooks.manager import HookManager
+        from q_guardian.plugins.registry import PluginRegistry
 
         ctx = FrameworkContext(
             logger=logging.getLogger("test"),

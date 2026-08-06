@@ -233,11 +233,13 @@ class Span(BaseModel):
             self.status = status
 
     def add_event(self, name: str, attributes: dict[str, Any] | None = None) -> None:
-        self.events.append({
-            "name": name,
-            "timestamp": datetime.now(UTC).isoformat(),
-            "attributes": attributes or {},
-        })
+        self.events.append(
+            {
+                "name": name,
+                "timestamp": datetime.now(UTC).isoformat(),
+                "attributes": attributes or {},
+            }
+        )
 
     def set_attribute(self, key: str, value: Any) -> None:
         self.attributes[key] = value
@@ -302,9 +304,7 @@ class AlertRule(BaseModel):
     metric_name: str = Field(description="Metric to evaluate")
     condition: str = Field(description="Condition: gt, lt, eq, gte, lte")
     threshold: float = Field(description="Threshold value")
-    duration_seconds: int = Field(
-        default=0, description="Condition must be true for this duration"
-    )
+    duration_seconds: int = Field(default=0, description="Condition must be true for this duration")
     labels: dict[str, str] = Field(default_factory=dict)
     annotations: dict[str, str] = Field(default_factory=dict)
     enabled: bool = Field(default=True)
@@ -321,7 +321,7 @@ class AlertRule(BaseModel):
         op_fn = ops.get(self.condition)
         if op_fn is None:
             return False
-        return op_fn(value, self.threshold)
+        return bool(op_fn(value, self.threshold))
 
 
 class Alert(BaseModel):

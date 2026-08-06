@@ -6,7 +6,7 @@ from typing import Any
 
 import pytest
 
-from q_guardian.exceptions.base import ValidationException
+from q_guardian.exceptions.base import ValidationError
 from q_guardian.framework.context import FrameworkContext
 from q_guardian.plugins.base import Plugin, PluginMetadata, PluginStatus
 from q_guardian.plugins.registry import PluginRegistry
@@ -135,7 +135,7 @@ class TestPluginRegistry:
     def test_register_duplicate_raises(self, registry: PluginRegistry) -> None:
         """Verify duplicate registration raises error."""
         registry.register_plugin(SimplePlugin())
-        with pytest.raises(ValidationException):
+        with pytest.raises(ValidationError):
             registry.register_plugin(SimplePlugin())
 
     def test_unregister_plugin(self, registry: PluginRegistry) -> None:

@@ -85,7 +85,10 @@ class RiskAssessmentEngine:
         reasoning.append(f"Threat score: {threat_score.threat_score:.4f}")
 
         confidence = self._confidence_engine.normalize(prediction.confidence)
-        reasoning.append(f"Confidence: {confidence.normalized_confidence:.4f} (raw: {confidence.raw_confidence:.4f})")
+        reasoning.append(
+            f"Confidence: {confidence.normalized_confidence:.4f} "
+            f"(raw: {confidence.raw_confidence:.4f})"
+        )
 
         severity = self._severity_engine.classify(threat_score.threat_score)
         reasoning.append(f"Severity: {severity.severity.value}")

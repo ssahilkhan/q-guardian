@@ -6,12 +6,9 @@ the flow of information from input to final decision.
 
 from __future__ import annotations
 
-from typing import Any
-
 import structlog
 
 from q_guardian.risk.data import (
-    Explanation,
     PolicyDecision,
     ReasoningEdge,
     ReasoningGraph,
@@ -66,11 +63,13 @@ class ReasoningGraphBuilder:
             confidence=assessment.confidence.normalized_confidence,
         )
         nodes.append(scoring_node)
-        edges.append(ReasoningEdge(
-            source_node_id=input_node.node_id,
-            target_node_id=scoring_node.node_id,
-            label="scored by",
-        ))
+        edges.append(
+            ReasoningEdge(
+                source_node_id=input_node.node_id,
+                target_node_id=scoring_node.node_id,
+                label="scored by",
+            )
+        )
 
         conf_node = ReasoningNode(
             node_type=ReasoningNodeType.CONFIDENCE,
@@ -80,11 +79,13 @@ class ReasoningGraphBuilder:
             confidence=assessment.confidence.normalized_confidence,
         )
         nodes.append(conf_node)
-        edges.append(ReasoningEdge(
-            source_node_id=scoring_node.node_id,
-            target_node_id=conf_node.node_id,
-            label="calibrated",
-        ))
+        edges.append(
+            ReasoningEdge(
+                source_node_id=scoring_node.node_id,
+                target_node_id=conf_node.node_id,
+                label="calibrated",
+            )
+        )
 
         sev_node = ReasoningNode(
             node_type=ReasoningNodeType.RISK,
@@ -93,11 +94,13 @@ class ReasoningGraphBuilder:
             value=assessment.severity.model_dump(),
         )
         nodes.append(sev_node)
-        edges.append(ReasoningEdge(
-            source_node_id=conf_node.node_id,
-            target_node_id=sev_node.node_id,
-            label="classified",
-        ))
+        edges.append(
+            ReasoningEdge(
+                source_node_id=conf_node.node_id,
+                target_node_id=sev_node.node_id,
+                label="classified",
+            )
+        )
 
         risk_node = ReasoningNode(
             node_type=ReasoningNodeType.RISK,
@@ -106,11 +109,13 @@ class ReasoningGraphBuilder:
             value={"risk_score": assessment.risk_score, "risk_level": assessment.risk_level.value},
         )
         nodes.append(risk_node)
-        edges.append(ReasoningEdge(
-            source_node_id=sev_node.node_id,
-            target_node_id=risk_node.node_id,
-            label="determines risk",
-        ))
+        edges.append(
+            ReasoningEdge(
+                source_node_id=sev_node.node_id,
+                target_node_id=risk_node.node_id,
+                label="determines risk",
+            )
+        )
 
         for provider_id, ts in assessment.trust_scores.items():
             trust_node = ReasoningNode(
@@ -121,11 +126,13 @@ class ReasoningGraphBuilder:
                 confidence=ts.trust_score,
             )
             nodes.append(trust_node)
-            edges.append(ReasoningEdge(
-                source_node_id=scoring_node.node_id,
-                target_node_id=trust_node.node_id,
-                label="provider trust",
-            ))
+            edges.append(
+                ReasoningEdge(
+                    source_node_id=scoring_node.node_id,
+                    target_node_id=trust_node.node_id,
+                    label="provider trust",
+                )
+            )
 
         policy_node = ReasoningNode(
             node_type=ReasoningNodeType.POLICY,
@@ -138,11 +145,13 @@ class ReasoningGraphBuilder:
             },
         )
         nodes.append(policy_node)
-        edges.append(ReasoningEdge(
-            source_node_id=risk_node.node_id,
-            target_node_id=policy_node.node_id,
-            label="evaluated by",
-        ))
+        edges.append(
+            ReasoningEdge(
+                source_node_id=risk_node.node_id,
+                target_node_id=policy_node.node_id,
+                label="evaluated by",
+            )
+        )
 
         action_node = ReasoningNode(
             node_type=ReasoningNodeType.ACTION,
@@ -155,11 +164,13 @@ class ReasoningGraphBuilder:
             },
         )
         nodes.append(action_node)
-        edges.append(ReasoningEdge(
-            source_node_id=policy_node.node_id,
-            target_node_id=action_node.node_id,
-            label="prescribes",
-        ))
+        edges.append(
+            ReasoningEdge(
+                source_node_id=policy_node.node_id,
+                target_node_id=action_node.node_id,
+                label="prescribes",
+            )
+        )
 
         summary = (
             f"Risk {assessment.risk_score:.2f} ({assessment.risk_level.value}) "

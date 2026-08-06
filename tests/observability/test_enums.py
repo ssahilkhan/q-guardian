@@ -1,5 +1,3 @@
-import pytest
-
 from q_guardian.observability.enums import (
     AggregationType,
     AlertSeverity,
@@ -34,7 +32,7 @@ class TestMetricType:
         assert MetricType.TIMER == "timer"
 
     def test_str_representation(self) -> None:
-        assert str(MetricType.COUNTER) == "MetricType.COUNTER"
+        assert str(MetricType.COUNTER) == "counter"
 
     def test_is_str_subclass(self) -> None:
         assert isinstance(MetricType.COUNTER, str)
@@ -51,7 +49,7 @@ class TestMetricUnit:
         assert MetricUnit.REQUESTS_PER_SECOND == "requests_per_second"
 
     def test_str_representation(self) -> None:
-        assert str(MetricUnit.NONE) == "MetricUnit.NONE"
+        assert str(MetricUnit.NONE) == "none"
 
 
 class TestHealthStatus:
@@ -71,7 +69,7 @@ class TestHealthStatus:
         assert HealthStatus.MAINTENANCE == "maintenance"
 
     def test_str_representation(self) -> None:
-        assert str(HealthStatus.HEALTHY) == "HealthStatus.HEALTHY"
+        assert str(HealthStatus.HEALTHY) == "healthy"
 
 
 class TestHealthLevel:

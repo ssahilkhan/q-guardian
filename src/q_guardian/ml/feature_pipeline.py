@@ -7,25 +7,44 @@ are reusable by Module 6 (Quantum Analysis).
 
 from __future__ import annotations
 
-import math
-import re
-from collections import Counter
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import structlog
 
 from q_guardian.ml.config import MLConfig
 from q_guardian.ml.data import FeatureVector
 from q_guardian.security.extensibility import FeatureProvider
-from q_guardian.security.models import PromptFeatures
+
+if TYPE_CHECKING:
+    from q_guardian.security.models import PromptFeatures
 
 logger = structlog.get_logger("ml.feature_pipeline")
 
 _KEYWORDS = [
-    "ignore", "forget", "override", "bypass", "jailbreak", "system",
-    "prompt", "injection", "reveal", "secret", "password", "admin",
-    "root", "sudo", "execute", "inject", "malicious", "exploit",
-    "hack", "attack", "payload", "exfiltrate", "dump", "extract",
+    "ignore",
+    "forget",
+    "override",
+    "bypass",
+    "jailbreak",
+    "system",
+    "prompt",
+    "injection",
+    "reveal",
+    "secret",
+    "password",
+    "admin",
+    "root",
+    "sudo",
+    "execute",
+    "inject",
+    "malicious",
+    "exploit",
+    "hack",
+    "attack",
+    "payload",
+    "exfiltrate",
+    "dump",
+    "extract",
 ]
 
 
@@ -58,9 +77,7 @@ class MLFeatureProvider(FeatureProvider):
             self._feature_names = self._compute_feature_names()
         return list(self._feature_names)
 
-    async def extract_features(
-        self, prompt: str, base_features: PromptFeatures
-    ) -> dict[str, Any]:
+    async def extract_features(self, prompt: str, base_features: PromptFeatures) -> dict[str, Any]:
         """Extract additional ML features.
 
         Args:
@@ -106,9 +123,7 @@ class MLFeatureProvider(FeatureProvider):
 
         return features
 
-    def extract_vector(
-        self, prompt: str, base_features: PromptFeatures
-    ) -> FeatureVector:
+    def extract_vector(self, prompt: str, base_features: PromptFeatures) -> FeatureVector:
         """Synchronously extract a FeatureVector (for training pipelines).
 
         Args:
@@ -193,15 +208,29 @@ class MLFeatureProvider(FeatureProvider):
     def _compute_feature_names(self) -> list[str]:
         """Compute the ordered list of feature names."""
         names: list[str] = [
-            "length", "word_count", "line_count", "token_estimate",
-            "entropy", "uppercase_ratio", "digit_ratio", "special_char_count",
+            "length",
+            "word_count",
+            "line_count",
+            "token_estimate",
+            "entropy",
+            "uppercase_ratio",
+            "digit_ratio",
+            "special_char_count",
             "suspicious_keyword_count",
         ]
         names.extend(f"kw_{kw}" for kw in _KEYWORDS)
-        names.extend([
-            "code_block_count", "url_count", "markdown_usage",
-            "has_unicode_escaped", "has_html_tags", "repeated_pattern_count",
-            "unique_char_ratio", "avg_word_length", "punctuation_ratio",
-            "whitespace_ratio",
-        ])
+        names.extend(
+            [
+                "code_block_count",
+                "url_count",
+                "markdown_usage",
+                "has_unicode_escaped",
+                "has_html_tags",
+                "repeated_pattern_count",
+                "unique_char_ratio",
+                "avg_word_length",
+                "punctuation_ratio",
+                "whitespace_ratio",
+            ]
+        )
         return names

@@ -7,13 +7,15 @@ Enforces consistent model structure across all future modules.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from datetime import datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from q_guardian.utils.datetime_utils import get_utc_now
 from q_guardian.utils.uuid_utils import generate_uuid
+
+if TYPE_CHECKING:
+    from datetime import datetime
 
 
 class TimestampMixin(BaseModel):

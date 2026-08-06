@@ -7,12 +7,12 @@ logic services must implement.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, Generic, TypeVar
+from typing import Any, TypeVar
 
 T = TypeVar("T")
 
 
-class BaseService(ABC, Generic[T]):
+class BaseService[T](ABC):
     """Abstract base service defining business operation contracts.
 
     All service implementations must inherit from this class
@@ -23,11 +23,11 @@ class BaseService(ABC, Generic[T]):
     """
 
     @abstractmethod
-    async def get_by_id(self, id: str) -> T | None:
+    async def get_by_id(self, entity_id: str) -> T | None:
         """Retrieve an entity by its ID.
 
         Args:
-            id: The entity identifier.
+            entity_id: The entity identifier.
 
         Returns:
             The entity if found, None otherwise.
@@ -63,11 +63,11 @@ class BaseService(ABC, Generic[T]):
         """
 
     @abstractmethod
-    async def update(self, id: str, data: dict[str, Any]) -> T | None:
+    async def update(self, entity_id: str, data: dict[str, Any]) -> T | None:
         """Update an existing entity.
 
         Args:
-            id: The entity identifier.
+            entity_id: The entity identifier.
             data: Fields to update.
 
         Returns:
@@ -75,11 +75,11 @@ class BaseService(ABC, Generic[T]):
         """
 
     @abstractmethod
-    async def delete(self, id: str) -> bool:
+    async def delete(self, entity_id: str) -> bool:
         """Delete an entity.
 
         Args:
-            id: The entity identifier.
+            entity_id: The entity identifier.
 
         Returns:
             True if deleted successfully.

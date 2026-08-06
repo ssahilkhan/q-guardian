@@ -3,14 +3,15 @@ from __future__ import annotations
 import csv
 import io
 from datetime import UTC, datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import structlog
 
-from q_guardian.observability.data import Metric
 from q_guardian.observability.enums import ExporterType
 from q_guardian.observability.exceptions import ExporterError
-from q_guardian.utils.uuid_utils import generate_uuid
+
+if TYPE_CHECKING:
+    from q_guardian.observability.data import Metric
 
 logger = structlog.get_logger("observability.exporters.csv")
 
@@ -88,16 +89,18 @@ class CsvExporter:
             rows: list[list[str]] = []
             for trace in traces:
                 duration = trace.get("duration_ms")
-                rows.append([
-                    trace.get("trace_id", ""),
-                    trace.get("correlation_id", ""),
-                    trace.get("status", ""),
-                    trace.get("start_time", ""),
-                    trace.get("end_time", ""),
-                    str(duration) if duration is not None else "",
-                    str(trace.get("span_count", 0)),
-                    _json_dumps(trace.get("labels", {})),
-                ])
+                rows.append(
+                    [
+                        trace.get("trace_id", ""),
+                        trace.get("correlation_id", ""),
+                        trace.get("status", ""),
+                        trace.get("start_time", ""),
+                        trace.get("end_time", ""),
+                        str(duration) if duration is not None else "",
+                        str(trace.get("span_count", 0)),
+                        _json_dumps(trace.get("labels", {})),
+                    ]
+                )
             output = io.StringIO()
             writer = csv.writer(output, delimiter=self._delimiter)
             writer.writerow(headers)
@@ -119,9 +122,7 @@ class CsvExporter:
                 details={"trace_count": len(traces)},
             ) from exc
 
-    def _metrics_to_rows(
-        self, metrics: list[Metric]
-    ) -> tuple[list[str], list[list[str]]]:
+    def _metrics_to_rows(self, metrics: list[Metric]) -> tuple[list[str], list[list[str]]]:
         headers = [
             "metric_id",
             "name",
@@ -137,33 +138,35 @@ class CsvExporter:
             if metric.points:
                 for point in metric.points:
                     merged = {**metric.labels, **point.labels} if point.labels else metric.labels
-                    rows.append([
+                    rows.append(
+                        [
+                            metric.metric_id,
+                            metric.name,
+                            metric.metric_type.value,
+                            metric.unit.value,
+                            metric.description,
+                            point.timestamp.isoformat(),
+                            str(point.value),
+                            _json_dumps(merged),
+                        ]
+                    )
+            else:
+                latest = metric.latest_value()
+                rows.append(
+                    [
                         metric.metric_id,
                         metric.name,
                         metric.metric_type.value,
                         metric.unit.value,
                         metric.description,
-                        point.timestamp.isoformat(),
-                        str(point.value),
-                        _json_dumps(merged),
-                    ])
-            else:
-                latest = metric.latest_value()
-                rows.append([
-                    metric.metric_id,
-                    metric.name,
-                    metric.metric_type.value,
-                    metric.unit.value,
-                    metric.description,
-                    datetime.now(UTC).isoformat(),
-                    str(latest) if latest is not None else "",
-                    _json_dumps(metric.labels),
-                ])
+                        datetime.now(UTC).isoformat(),
+                        str(latest) if latest is not None else "",
+                        _json_dumps(metric.labels),
+                    ]
+                )
         return headers, rows
 
-    def _alerts_to_rows(
-        self, alerts: list[dict[str, Any]]
-    ) -> tuple[list[str], list[list[str]]]:
+    def _alerts_to_rows(self, alerts: list[dict[str, Any]]) -> tuple[list[str], list[list[str]]]:
         headers = [
             "alert_id",
             "rule_id",
@@ -182,25 +185,30 @@ class CsvExporter:
         ]
         rows: list[list[str]] = []
         for alert in alerts:
-            rows.append([
-                alert.get("alert_id", ""),
-                alert.get("rule_id", ""),
-                alert.get("rule_name", ""),
-                alert.get("state", ""),
-                alert.get("severity", ""),
-                alert.get("alert_type", ""),
-                alert.get("message", ""),
-                alert.get("created_at", ""),
-                alert.get("updated_at", ""),
-                alert.get("resolved_at", "") or "",
-                str(alert.get("evaluation_value", "")) if alert.get("evaluation_value") is not None else "",
-                str(alert.get("escalation_level", 0)),
-                _json_dumps(alert.get("labels", {})),
-                _json_dumps(alert.get("annotations", {})),
-            ])
+            rows.append(
+                [
+                    alert.get("alert_id", ""),
+                    alert.get("rule_id", ""),
+                    alert.get("rule_name", ""),
+                    alert.get("state", ""),
+                    alert.get("severity", ""),
+                    alert.get("alert_type", ""),
+                    alert.get("message", ""),
+                    alert.get("created_at", ""),
+                    alert.get("updated_at", ""),
+                    alert.get("resolved_at", "") or "",
+                    str(alert.get("evaluation_value", ""))
+                    if alert.get("evaluation_value") is not None
+                    else "",
+                    str(alert.get("escalation_level", 0)),
+                    _json_dumps(alert.get("labels", {})),
+                    _json_dumps(alert.get("annotations", {})),
+                ]
+            )
         return headers, rows
 
 
 def _json_dumps(data: Any) -> str:
     import json
+
     return json.dumps(data, default=str)

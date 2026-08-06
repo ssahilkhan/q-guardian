@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
-import structlog
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from q_guardian.observability.data import Alert
-from q_guardian.observability.enums import AlertSeverity
+import structlog
+
+if TYPE_CHECKING:
+    from q_guardian.observability.data import Alert
+    from q_guardian.observability.enums import AlertSeverity
 
 logger = structlog.get_logger(__name__)
 

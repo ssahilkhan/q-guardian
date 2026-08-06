@@ -2,17 +2,14 @@
 
 from __future__ import annotations
 
+import tempfile
 from typing import Any
 
-import pytest
-
-from q_guardian.ml.base import BaseThreatModel, ModelRegistry
+from q_guardian.ml.base import BaseThreatModel
 from q_guardian.ml.data import ModelMetadata
-from q_guardian.ml.enums import ModelBackend, ModelStatus, ModelType
+from q_guardian.ml.enums import ModelBackend, ModelType
 from q_guardian.ml.models.model_manager import ModelManager
 from q_guardian.ml.storage import ModelStorage
-
-import tempfile, os
 
 
 class DummyModel(BaseThreatModel):

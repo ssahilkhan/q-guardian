@@ -47,6 +47,7 @@ class TestHookManager:
     @pytest.mark.asyncio
     async def test_handler_modifies_context(self, manager: HookManager) -> None:
         """Verify handlers can modify the context."""
+
         async def add_field(field: str = "") -> dict[str, str]:
             return {"added": "value"}
 
@@ -94,6 +95,7 @@ class TestHookManager:
     @pytest.mark.asyncio
     async def test_list_hooks(self, manager: HookManager) -> None:
         """Verify hook listing."""
+
         async def handler(**kwargs: object) -> None:
             pass
 
@@ -108,6 +110,7 @@ class TestHookManager:
     @pytest.mark.asyncio
     async def test_clear(self, manager: HookManager) -> None:
         """Verify clear removes all hooks."""
+
         async def handler(**kwargs: object) -> None:
             pass
 
@@ -120,6 +123,7 @@ class TestHookManager:
     @pytest.mark.asyncio
     async def test_sync_handler(self, manager: HookManager) -> None:
         """Verify synchronous handlers are supported."""
+
         def sync_hook(**kwargs: object) -> dict[str, str]:
             return {"sync": "result"}
 

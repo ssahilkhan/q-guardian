@@ -2,16 +2,18 @@
 
 from __future__ import annotations
 
-from q_guardian.exceptions.base import ApplicationException
+from typing import Any
+
+from q_guardian.exceptions.base import ApplicationError
 
 
-class ObservabilityError(ApplicationException):
+class ObservabilityError(ApplicationError):
     """Base exception for all observability errors."""
 
     def __init__(
         self,
         message: str = "Observability error",
-        details: dict | None = None,
+        details: dict[str, Any] | None = None,
     ) -> None:
         super().__init__(
             message=message,
@@ -27,7 +29,7 @@ class MetricError(ObservabilityError):
     def __init__(
         self,
         message: str = "Metric operation failed",
-        details: dict | None = None,
+        details: dict[str, Any] | None = None,
     ) -> None:
         super().__init__(message=message, details=details)
         self.code = "METRIC_ERROR"
@@ -39,7 +41,7 @@ class TraceError(ObservabilityError):
     def __init__(
         self,
         message: str = "Trace operation failed",
-        details: dict | None = None,
+        details: dict[str, Any] | None = None,
     ) -> None:
         super().__init__(message=message, details=details)
         self.code = "TRACE_ERROR"
@@ -51,7 +53,7 @@ class HealthError(ObservabilityError):
     def __init__(
         self,
         message: str = "Health check failed",
-        details: dict | None = None,
+        details: dict[str, Any] | None = None,
     ) -> None:
         super().__init__(message=message, details=details)
         self.code = "HEALTH_ERROR"
@@ -63,7 +65,7 @@ class AnalyticsError(ObservabilityError):
     def __init__(
         self,
         message: str = "Analytics operation failed",
-        details: dict | None = None,
+        details: dict[str, Any] | None = None,
     ) -> None:
         super().__init__(message=message, details=details)
         self.code = "ANALYTICS_ERROR"
@@ -75,7 +77,7 @@ class AlertError(ObservabilityError):
     def __init__(
         self,
         message: str = "Alert operation failed",
-        details: dict | None = None,
+        details: dict[str, Any] | None = None,
     ) -> None:
         super().__init__(message=message, details=details)
         self.code = "ALERT_ERROR"
@@ -87,7 +89,7 @@ class ExporterError(ObservabilityError):
     def __init__(
         self,
         message: str = "Exporter operation failed",
-        details: dict | None = None,
+        details: dict[str, Any] | None = None,
     ) -> None:
         super().__init__(message=message, details=details)
         self.code = "EXPORTER_ERROR"
@@ -99,7 +101,7 @@ class DashboardError(ObservabilityError):
     def __init__(
         self,
         message: str = "Dashboard operation failed",
-        details: dict | None = None,
+        details: dict[str, Any] | None = None,
     ) -> None:
         super().__init__(message=message, details=details)
         self.code = "DASHBOARD_ERROR"
@@ -111,7 +113,7 @@ class StorageError(ObservabilityError):
     def __init__(
         self,
         message: str = "Storage operation failed",
-        details: dict | None = None,
+        details: dict[str, Any] | None = None,
     ) -> None:
         super().__init__(message=message, details=details)
         self.code = "OBSERVABILITY_STORAGE_ERROR"
@@ -123,7 +125,7 @@ class ConfigurationError(ObservabilityError):
     def __init__(
         self,
         message: str = "Configuration error",
-        details: dict | None = None,
+        details: dict[str, Any] | None = None,
     ) -> None:
         super().__init__(message=message, details=details)
         self.code = "CONFIGURATION_ERROR"

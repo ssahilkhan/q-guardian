@@ -1,9 +1,8 @@
 """Tests for Response Engine (core)."""
 
-import pytest
-from q_guardian.response.data import PolicyDecision, RiskAssessment, ActionPlan, ResponseRequest
-from q_guardian.response.enums import ResponseAction, ResponseStatus
+from q_guardian.response.data import ActionPlan, PolicyDecision, ResponseRequest, RiskAssessment
 from q_guardian.response.engine.response_engine import ResponseEngine
+from q_guardian.response.enums import ResponseAction, ResponseStatus
 
 
 def _make_request(
@@ -15,7 +14,9 @@ def _make_request(
     return ResponseRequest(
         correlation_id=correlation_id,
         policy_decision=PolicyDecision(action=action, outcome=action, risk_score=0.8),
-        risk_assessment=RiskAssessment(risk_score=0.8, risk_level=risk_level, threat_level=threat_level),
+        risk_assessment=RiskAssessment(
+            risk_score=0.8, risk_level=risk_level, threat_level=threat_level
+        ),
     )
 
 

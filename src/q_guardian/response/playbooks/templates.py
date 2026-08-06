@@ -2,8 +2,13 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from q_guardian.response.data import PlaybookDefinition, PlaybookStep
 from q_guardian.response.enums import FailureStrategy, StepType
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 def _step(
@@ -49,10 +54,13 @@ def create_quarantine_playbook() -> PlaybookDefinition:
         steps=[
             _step("collect-evidence", "collect_evidence"),
             _step("quarantine-agent", "quarantine", depends_on=["collect-evidence"]),
-            _step("request-approval", "request_approval",
-                  step_type=StepType.APPROVAL,
-                  depends_on=["quarantine-agent"],
-                  timeout=600),
+            _step(
+                "request-approval",
+                "request_approval",
+                step_type=StepType.APPROVAL,
+                depends_on=["quarantine-agent"],
+                timeout=600,
+            ),
             _step("notify-team", "notify", depends_on=["request-approval"]),
         ],
         tags=["security", "quarantine", "investigation"],
@@ -68,9 +76,12 @@ def create_escalation_playbook() -> PlaybookDefinition:
         steps=[
             _step("collect-evidence", "collect_evidence"),
             _step("escalate", "escalate", depends_on=["collect-evidence"]),
-            _step("notify-ops", "notify",
-                  parameters={"channel": "pagerduty", "priority": "critical"},
-                  depends_on=["escalate"]),
+            _step(
+                "notify-ops",
+                "notify",
+                parameters={"channel": "pagerduty", "priority": "critical"},
+                depends_on=["escalate"],
+            ),
             _step("create-ticket", "create_ticket", depends_on=["notify-ops"]),
         ],
         tags=["security", "escalation", "incident"],
@@ -93,7 +104,7 @@ def create_rollback_playbook() -> PlaybookDefinition:
     )
 
 
-BUILTIN_PLAYBOOKS: dict[str, callable] = {
+BUILTIN_PLAYBOOKS: dict[str, Callable[[], PlaybookDefinition]] = {
     "block-threat": create_block_threat_playbook,
     "quarantine-agent": create_quarantine_playbook,
     "escalate-incident": create_escalation_playbook,

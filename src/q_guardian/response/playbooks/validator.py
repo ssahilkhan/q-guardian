@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
-from q_guardian.response.data import PlaybookDefinition
-from q_guardian.response.enums import StepType
+from typing import TYPE_CHECKING
+
 from q_guardian.response.exceptions import PlaybookValidationError
+
+if TYPE_CHECKING:
+    from q_guardian.response.data import PlaybookDefinition
 
 
 class PlaybookValidator:
@@ -41,9 +44,7 @@ class PlaybookValidator:
             # Validate dependencies reference existing steps
             for dep in step.depends_on:
                 if dep not in step_ids and dep not in step_names:
-                    errors.append(
-                        f"Step '{step.name}': depends_on '{dep}' references unknown step"
-                    )
+                    errors.append(f"Step '{step.name}': depends_on '{dep}' references unknown step")
 
             # Validate timeout
             if step.timeout_seconds < 0:
@@ -64,6 +65,4 @@ class PlaybookValidator:
     def require_valid(self, playbook: PlaybookDefinition) -> None:
         errors = self.validate(playbook)
         if errors:
-            raise PlaybookValidationError(
-                f"Playbook validation failed: {'; '.join(errors)}"
-            )
+            raise PlaybookValidationError(f"Playbook validation failed: {'; '.join(errors)}")

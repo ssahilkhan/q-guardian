@@ -19,9 +19,7 @@ class PromptSecurityConfig(BaseModel):
     enabled: bool = Field(default=True, description="Enable prompt security engine")
 
     # Limits
-    max_prompt_length: int = Field(
-        default=100_000, description="Maximum prompt character count"
-    )
+    max_prompt_length: int = Field(default=100_000, description="Maximum prompt character count")
     min_prompt_length: int = Field(default=1, description="Minimum prompt character count")
     max_lines: int = Field(default=10_000, description="Maximum line count")
 
@@ -40,9 +38,7 @@ class PromptSecurityConfig(BaseModel):
     )
 
     # Severity thresholds
-    block_on_critical: bool = Field(
-        default=True, description="Block when CRITICAL findings exist"
-    )
+    block_on_critical: bool = Field(default=True, description="Block when CRITICAL findings exist")
     block_on_high_count: int = Field(
         default=2, description="Block when this many HIGH findings exist"
     )
@@ -55,9 +51,7 @@ class PromptSecurityConfig(BaseModel):
 
     # Logging
     log_findings: bool = Field(default=True, description="Log individual findings")
-    log_normalized_prompt: bool = Field(
-        default=False, description="Log the normalized prompt text"
-    )
+    log_normalized_prompt: bool = Field(default=False, description="Log the normalized prompt text")
 
     # Feature extraction
     suspicious_keywords: list[str] | None = Field(
@@ -71,9 +65,5 @@ class PromptSecurityConfig(BaseModel):
     ml_threshold: float = Field(default=0.5, description="ML detection threshold (future)")
 
     # Future Quantum configuration placeholders
-    quantum_enabled: bool = Field(
-        default=False, description="Enable quantum analysis (future)"
-    )
-    quantum_backend: str = Field(
-        default="", description="Quantum backend name (future)"
-    )
+    quantum_enabled: bool = Field(default=False, description="Enable quantum analysis (future)")
+    quantum_backend: str = Field(default="", description="Quantum backend name (future)")

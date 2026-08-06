@@ -1,8 +1,9 @@
 """Tests for the Policy Registry."""
 
-import pytest
-import tempfile
 import os
+import tempfile
+
+import pytest
 
 from q_guardian.policy.core.registry import PolicyRegistry
 from q_guardian.policy.data import AdvancedPolicyDefinition, AdvancedRule, Condition

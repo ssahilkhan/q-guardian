@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from enum import Enum, auto
+from enum import StrEnum
 
 
-class ResponseAction(str, Enum):
+class ResponseAction(StrEnum):
     """Actions the response engine can take."""
 
     ALLOW = "allow"
@@ -25,7 +25,7 @@ class ResponseAction(str, Enum):
     RESTORE = "restore"
 
 
-class ResponseStatus(str, Enum):
+class ResponseStatus(StrEnum):
     """Status of a response execution."""
 
     PENDING = "pending"
@@ -39,7 +39,7 @@ class ResponseStatus(str, Enum):
     PARTIAL = "partial"
 
 
-class StepStatus(str, Enum):
+class StepStatus(StrEnum):
     """Status of an individual playbook step."""
 
     PENDING = "pending"
@@ -52,7 +52,7 @@ class StepStatus(str, Enum):
     TIMED_OUT = "timed_out"
 
 
-class StepType(str, Enum):
+class StepType(StrEnum):
     """Types of playbook steps."""
 
     ACTION = "action"
@@ -67,7 +67,7 @@ class StepType(str, Enum):
     SUB_PLAYBOOK = "sub_playbook"
 
 
-class QuarantineType(str, Enum):
+class QuarantineType(StrEnum):
     """Types of quarantine targets."""
 
     AGENT = "agent"
@@ -78,7 +78,7 @@ class QuarantineType(str, Enum):
     FULL = "full"
 
 
-class QuarantineStatus(str, Enum):
+class QuarantineStatus(StrEnum):
     """Status of a quarantine."""
 
     ACTIVE = "active"
@@ -88,7 +88,7 @@ class QuarantineStatus(str, Enum):
     ESCALATED = "escalated"
 
 
-class EvidenceType(str, Enum):
+class EvidenceType(StrEnum):
     """Types of evidence artifacts."""
 
     PROMPT = "prompt"
@@ -104,7 +104,7 @@ class EvidenceType(str, Enum):
     CUSTOM = "custom"
 
 
-class NotificationChannel(str, Enum):
+class NotificationChannel(StrEnum):
     """Notification delivery channels."""
 
     EMAIL = "email"
@@ -117,7 +117,7 @@ class NotificationChannel(str, Enum):
     SMS = "sms"
 
 
-class NotificationPriority(str, Enum):
+class NotificationPriority(StrEnum):
     """Priority levels for notifications."""
 
     LOW = "low"
@@ -126,7 +126,7 @@ class NotificationPriority(str, Enum):
     CRITICAL = "critical"
 
 
-class ApprovalType(str, Enum):
+class ApprovalType(StrEnum):
     """Types of approval workflows."""
 
     AUTOMATIC = "automatic"
@@ -136,7 +136,7 @@ class ApprovalType(str, Enum):
     QUORUM = "quorum"
 
 
-class ApprovalStatus(str, Enum):
+class ApprovalStatus(StrEnum):
     """Status of an approval request."""
 
     PENDING = "pending"
@@ -146,7 +146,7 @@ class ApprovalStatus(str, Enum):
     CANCELLED = "cancelled"
 
 
-class IntegrationType(str, Enum):
+class IntegrationType(StrEnum):
     """SOAR integration types."""
 
     SENTINEL = "sentinel"
@@ -157,7 +157,7 @@ class IntegrationType(str, Enum):
     CUSTOM = "custom"
 
 
-class RollbackTarget(str, Enum):
+class RollbackTarget(StrEnum):
     """Targets that can be rolled back."""
 
     POLICY = "policy"
@@ -168,7 +168,7 @@ class RollbackTarget(str, Enum):
     FULL = "full"
 
 
-class RecoveryAction(str, Enum):
+class RecoveryAction(StrEnum):
     """Types of recovery actions."""
 
     RESUME_SESSION = "resume_session"
@@ -181,7 +181,7 @@ class RecoveryAction(str, Enum):
     CUSTOM = "custom"
 
 
-class TimelineFormat(str, Enum):
+class TimelineFormat(StrEnum):
     """Output formats for timelines."""
 
     JSON = "json"
@@ -190,7 +190,7 @@ class TimelineFormat(str, Enum):
     CSV = "csv"
 
 
-class FailureStrategy(str, Enum):
+class FailureStrategy(StrEnum):
     """How to handle step failures in playbooks."""
 
     STOP = "stop"

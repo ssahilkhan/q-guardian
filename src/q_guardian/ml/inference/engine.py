@@ -3,17 +3,17 @@
 from __future__ import annotations
 
 import time
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import structlog
 
-from q_guardian.ml.base import BaseThreatModel, ModelRegistry
+from q_guardian.ml.base import ModelRegistry
 from q_guardian.ml.config import MLConfig
-from q_guardian.ml.enums import ModelType
 from q_guardian.ml.data import InferenceResult
-from q_guardian.security.extensibility import DetectionResult, PromptDetector
-from q_guardian.security.models import PromptFeatures, PromptFinding
-from q_guardian.utils.uuid_utils import generate_uuid
+
+if TYPE_CHECKING:
+    from q_guardian.security.extensibility import PromptDetector
+    from q_guardian.security.models import PromptFeatures, PromptFinding
 
 logger = structlog.get_logger("ml.inference")
 
@@ -53,7 +53,9 @@ class InferenceEngine:
             classifier: The classifier to register.
         """
         self._classifiers.append(classifier)
-        logger.info("inference_classifier_registered", classifier=getattr(classifier, "name", "unknown"))
+        logger.info(
+            "inference_classifier_registered", classifier=getattr(classifier, "name", "unknown")
+        )
 
     def unregister_detector(self, name: str) -> bool:
         """Unregister a detector by name."""
@@ -130,11 +132,14 @@ class InferenceEngine:
         # Aggregate
         avg_risk = sum(risk_scores) / max(len(risk_scores), 1) if risk_scores else 0.0
         avg_confidence = sum(confidences) / max(len(confidences), 1) if confidences else 0.0
-        max_category = max(category_scores, key=category_scores.get) if category_scores else ""
+        max_category = (
+            max(category_scores, key=lambda k: category_scores.get(k, 0.0))
+            if category_scores
+            else ""
+        )
         max_category_score = category_scores.get(max_category, 0.0)
 
         # Determine if threat
-        is_threat = avg_risk > self._config.classification_threshold or max_category_score > self._config.classification_threshold
 
         return InferenceResult(
             model_name="inference-engine",

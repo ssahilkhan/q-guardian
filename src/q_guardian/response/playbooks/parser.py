@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import re
 from typing import Any
 
 import structlog
@@ -28,7 +27,7 @@ class PlaybookParser:
         try:
             data = json.loads(raw)
         except json.JSONDecodeError as e:
-            raise PlaybookError(f"Invalid JSON: {e}")
+            raise PlaybookError(f"Invalid JSON: {e}") from e
         return self._dict_to_playbook(data)
 
     def parse_dict(self, data: dict[str, Any]) -> PlaybookDefinition:
@@ -47,9 +46,7 @@ class PlaybookParser:
                     conditions=step_data.get("conditions", []),
                     timeout_seconds=float(step_data.get("timeout", 30)),
                     retry_count=int(step_data.get("retry", 0)),
-                    failure_strategy=FailureStrategy(
-                        step_data.get("failure", "stop")
-                    ),
+                    failure_strategy=FailureStrategy(step_data.get("failure", "stop")),
                     depends_on=step_data.get("depends_on", []),
                     on_success=step_data.get("on_success", ""),
                     on_failure=step_data.get("on_failure", ""),
@@ -101,29 +98,17 @@ class PlaybookParser:
                     current_step = {key: val} if val else {}
                 elif current_step is not None and raw_indent > indent_level:
                     if val:
-                        try:
-                            val = float(val)
-                        except ValueError:
-                            if val.lower() in ("true", "false"):
-                                val = val.lower() == "true"
-                            elif val.startswith("[") and val.endswith("]"):
-                                val = [v.strip().strip("'\"") for v in val[1:-1].split(",") if v.strip()]
-                    current_step[key] = val
+                        current_step[key] = PlaybookParser._coerce_value(val)
                 else:
                     if current_step is not None and current_section == "steps":
                         result.setdefault("steps", []).append(current_step)
                         current_step = None
                     if val:
-                        try:
-                            val = float(val)
-                        except ValueError:
-                            if val.lower() in ("true", "false"):
-                                val = val.lower() == "true"
-                            elif val.startswith("[") and val.endswith("]"):
-                                val = [v.strip().strip("'\"") for v in val[1:-1].split(",") if v.strip()]
+                        result[key] = PlaybookParser._coerce_value(val)
                     elif key == "steps":
-                        val = []
-                    result[key] = val
+                        result[key] = []
+                    else:
+                        result[key] = val
                     if key == "steps":
                         current_section = "steps"
                         indent_level = raw_indent
@@ -134,3 +119,17 @@ class PlaybookParser:
             result.setdefault("steps", []).append(current_step)
 
         return result
+
+    @staticmethod
+    def _coerce_value(raw: str) -> Any:
+        """Convert a raw string value into a typed value where possible."""
+        value: Any = raw
+        if raw:
+            try:
+                value = float(raw)
+            except ValueError:
+                if raw.lower() in ("true", "false"):
+                    value = raw.lower() == "true"
+                elif raw.startswith("[") and raw.endswith("]"):
+                    value = [v.strip().strip("'\"") for v in raw[1:-1].split(",") if v.strip()]
+        return value

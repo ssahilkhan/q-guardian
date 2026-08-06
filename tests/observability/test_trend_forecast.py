@@ -1,8 +1,9 @@
-import pytest
 from datetime import UTC, datetime
 
-from q_guardian.observability.analytics.trend_analysis import TrendAnalyzer
+import pytest
+
 from q_guardian.observability.analytics.forecasting import ForecastEngine
+from q_guardian.observability.analytics.trend_analysis import TrendAnalyzer
 from q_guardian.observability.enums import TrendDirection
 
 
@@ -123,5 +124,7 @@ class TestForecastEngine:
         assert result.method == "moving_average"
 
     def test_forecast_dispatcher_exponential_smoothing(self) -> None:
-        result = self.engine.forecast("cpu", [1.0, 2.0, 3.0], horizon=2, method="exponential_smoothing")
+        result = self.engine.forecast(
+            "cpu", [1.0, 2.0, 3.0], horizon=2, method="exponential_smoothing"
+        )
         assert result.method == "exponential_smoothing"

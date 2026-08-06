@@ -5,14 +5,17 @@ Shared pytest fixtures used across unit and integration tests.
 
 from __future__ import annotations
 
-from typing import AsyncGenerator, Any
+from typing import TYPE_CHECKING, Any
 
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 
 from q_guardian.api.app import create_app
-from q_guardian.config.settings import Environment, get_settings
+from q_guardian.config.settings import get_settings
+
+if TYPE_CHECKING:
+    from collections.abc import AsyncGenerator
 
 
 @pytest.fixture(scope="session")

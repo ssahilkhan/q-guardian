@@ -1,5 +1,3 @@
-import pytest
-
 from q_guardian.events.base import Event
 from q_guardian.observability.events import (
     AlertRaised,

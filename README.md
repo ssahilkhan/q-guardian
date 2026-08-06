@@ -1,7 +1,7 @@
 <p align="center">
-  <img src="https://img.shields.io/badge/version-1.0.0-blue.svg" alt="Version">
+  <img src="https://img.shields.io/badge/version-1.1.0-blue.svg" alt="Version">
   <img src="https://img.shields.io/badge/python-3.12+-blue.svg" alt="Python">
-  <img src="https://img.shields.io/badge/tests-2339%20passing-brightgreen.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/tests-2650%20passing-brightgreen.svg" alt="Tests">
   <img src="https://img.shields.io/badge/build-passing-brightgreen.svg" alt="Build">
   <img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License">
   <img src="https://img.shields.io/badge/status-release-brightgreen.svg" alt="Status">
@@ -136,7 +136,7 @@ q-guardian/
 │   ├── logging/             # Structured logging (structlog)
 │   ├── exceptions/          # Exception hierarchy
 │   └── utils/               # Utility functions
-├── tests/                   # 2,339 unit/integration tests
+├── tests/                   # 2,650 unit/integration tests
 ├── docs/                    # Architecture, API, and research documentation
 ├── examples/                # Framework examples + explainable demo
 ├── scripts/                 # Benchmark, load-test, profile, packaging scripts
@@ -442,7 +442,7 @@ class MySecurityPlugin(Plugin):
 ## Testing
 
 ```bash
-# Run all 2,339 tests
+# Run all 2,650 tests
 pytest tests/ -v
 
 # Run with coverage
@@ -454,11 +454,11 @@ pytest tests/unit/test_fusion_strategies.py -v
 
 | Test Suite | Files | Tests |
 |-----------|-------|-------|
-| `tests/unit` — Modules 1–8 (Enterprise → Risk/Policy, incl. quantum + fusion) | 70 | 1,449 |
-| `tests/response` — Module 9 (Response & Recovery) | 10 | 173 |
-| `tests/observability` — Module 10 (Observability) | 25 | 703 |
-| `tests/integration` | 3 | 14 |
-| **Total** | **108** | **2,339** |
+| `tests/unit` — Modules 1–8 (Enterprise → Risk/Policy, incl. quantum + fusion, benchmark, evaluation, embeddings) | 88 | ~2,080 |
+| `tests/response` — Module 9 (Response & Recovery) | 9 | ~168 |
+| `tests/observability` — Module 10 (Observability) | 24 | ~390 |
+| `tests/integration` | 2 | 12 |
+| **Total** | **123** | **2,650** |
 
 ---
 
@@ -477,6 +477,7 @@ pytest tests/unit/test_fusion_strategies.py -v
 | v0.9.0 | Autonomous Response & Recovery | Complete |
 | v0.10.0 | Observability & Operations (pre-release path) | Complete |
 | v1.0.0 | Public Release | Released |
+| v1.1.0 | Benchmark Platform, Evaluation Toolkit & Embeddings | Released |
 
 **Future work:** research paper publication, PyPI distribution, live-service integration tests, and fusion-calibration hardening on real-world threat corpora.
 
@@ -489,7 +490,7 @@ pytest tests/unit/test_fusion_strategies.py -v
   title  = {Q-Guardian: A Hybrid Quantum-Classical Framework for Runtime Security of Autonomous AI Agents},
   author = {Q-Guardian Research Team},
   year   = {2026},
-  version = {1.0.0},
+  version = {1.1.0},
   url    = {https://github.com/ssahilkhan/q-guardian}
 }
 ```
@@ -512,4 +513,4 @@ MIT License. See [LICENSE](LICENSE).
 
 ---
 
-*Q-Guardian v1.0.0 is publicly released. See the [CHANGELOG](CHANGELOG.md) for release history.*
+*Q-Guardian v1.1.0 is publicly released. See the [CHANGELOG](CHANGELOG.md) for release history.*

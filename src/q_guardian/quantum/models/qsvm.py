@@ -8,7 +8,7 @@ imports Qiskit or any quantum SDK directly.
 from __future__ import annotations
 
 import time
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import structlog
@@ -20,13 +20,15 @@ from q_guardian.quantum.data import (
     QuantumModelMetadata,
 )
 from q_guardian.quantum.enums import QuantumBackendType, QuantumModelType
-from q_guardian.quantum.exceptions import ModelNotTrainedError, TrainingError
-from q_guardian.quantum.feature_maps.base import QuantumFeatureMap
-from q_guardian.quantum.kernels.base import QuantumKernel
+from q_guardian.quantum.exceptions import TrainingError
 from q_guardian.quantum.models.base import BaseQuantumModel
+from q_guardian.security.enums import PromptCategory, PromptSeverity
 from q_guardian.security.extensibility import DetectionResult
 from q_guardian.security.models import PromptFeatures, PromptFinding
-from q_guardian.security.enums import PromptCategory, PromptSeverity
+
+if TYPE_CHECKING:
+    from q_guardian.quantum.feature_maps.base import QuantumFeatureMap
+    from q_guardian.quantum.kernels.base import QuantumKernel
 
 logger = structlog.get_logger("quantum.qsvm")
 
@@ -54,7 +56,7 @@ class QSVMModel(BaseQuantumModel):
 
     Lifecycle:
       1. Construct with kernel + feature_map + backend
-      2. train(X, y) — compute kernel matrix + fit decision boundary
+      2. train(x, y) — compute kernel matrix + fit decision boundary
       3. predict(features) — classify via kernel similarity
       4. save(path) / load(path) — persistence
 
@@ -156,24 +158,24 @@ class QSVMModel(BaseQuantumModel):
     def classes(self) -> list[int]:
         return list(self._classes)
 
-    def train(self, X: list[list[float]], y: list[int] | None = None) -> None:
-        if not X:
+    def train(self, x: list[list[float]], y: list[int] | None = None) -> None:
+        if not x:
             msg = "Cannot train QSVM with empty data"
             raise TrainingError(msg)
         if y is None:
             msg = "QSVM requires labeled data (y cannot be None)"
             raise TrainingError(msg)
-        if len(X) != len(y):
-            msg = f"X and y length mismatch: {len(X)} vs {len(y)}"
+        if len(x) != len(y):
+            msg = f"X and y length mismatch: {len(x)} vs {len(y)}"
             raise TrainingError(msg)
 
         start = time.monotonic()
-        self._train_X = list(X)
+        self._train_X = list(x)
         self._train_y = list(y)
         self._classes = sorted(set(y))
 
         kernel_start = time.monotonic()
-        self._kernel_matrix = self._kernel.compute_kernel_matrix(X)
+        self._kernel_matrix = self._kernel.compute_kernel_matrix(x)
         self._kernel_time_s = time.monotonic() - kernel_start
 
         self._fit_smo(self._kernel_matrix, y)
@@ -183,8 +185,8 @@ class QSVMModel(BaseQuantumModel):
 
         logger.info(
             "qsvm_trained",
-            samples=len(X),
-            features=len(X[0]) if X else 0,
+            samples=len(x),
+            features=len(x[0]) if x else 0,
             classes=len(self._classes),
             support_vectors=len(self._support_vectors),
             training_time_s=round(self._training_time_s, 3),
@@ -215,10 +217,7 @@ class QSVMModel(BaseQuantumModel):
         self._bias = 0.0
 
         for i in range(n):
-            decision = sum(
-                self._dual_coeffs[j] * y_arr[j] * k_mat[i][j]
-                for j in range(n)
-            )
+            decision = sum(self._dual_coeffs[j] * y_arr[j] * k_mat[i][j] for j in range(n))
             self._bias += y_arr[i] - decision
         self._bias /= n
 
@@ -232,13 +231,20 @@ class QSVMModel(BaseQuantumModel):
             for j, sv in enumerate(self._support_vectors):
                 k_val = self._kernel.evaluate(features, sv)
                 label = self._support_labels[j]
-                coeff = self._dual_coeffs[j] if j < len(self._dual_coeffs) else 1.0 / max(len(self._support_vectors), 1)
+                coeff = (
+                    self._dual_coeffs[j]
+                    if j < len(self._dual_coeffs)
+                    else 1.0 / max(len(self._support_vectors), 1)
+                )
                 sign = 1.0 if label == cls else -1.0
                 score += sign * coeff * k_val
             scores[cls] = score + self._bias
 
         total = sum(abs(v) for v in scores.values())
-        probabilities = {str(k): max(0.0, v / total) if total > 0 else 1.0 / len(scores) for k, v in scores.items()}
+        probabilities = {
+            str(k): max(0.0, v / total) if total > 0 else 1.0 / len(scores)
+            for k, v in scores.items()
+        }
 
         best_class = max(scores, key=scores.get)  # type: ignore[arg-type]
         confidence = max(probabilities.values()) if probabilities else 0.0
@@ -270,9 +276,7 @@ class QSVMModel(BaseQuantumModel):
             },
         )
 
-    async def classify_quantum(
-        self, prompt: str, features: PromptFeatures
-    ) -> DetectionResult:
+    async def classify_quantum(self, prompt: str, features: PromptFeatures) -> DetectionResult:
         feature_vector = [
             float(features.length),
             float(features.word_count),
@@ -314,15 +318,23 @@ class QSVMModel(BaseQuantumModel):
             severity = PromptSeverity.HIGH if confidence > 0.8 else PromptSeverity.MEDIUM
             risk_score = confidence
 
-            findings.append(PromptFinding(
-                rule_id="qsvm-detection",
-                rule_name="QSVM Threat Classification",
-                category=category,
-                severity=severity,
-                description=f"QSVM classified as threat class {class_idx} (confidence: {confidence:.3f})",
-                confidence=confidence,
-                metadata={"class_idx": class_idx, "probabilities": result.get("probabilities", {})},
-            ))
+            findings.append(
+                PromptFinding(
+                    rule_id="qsvm-detection",
+                    rule_name="QSVM Threat Classification",
+                    category=category,
+                    severity=severity,
+                    description=(
+                        f"QSVM classified as threat class {class_idx} "
+                        f"(confidence: {confidence:.3f})"
+                    ),
+                    confidence=confidence,
+                    metadata={
+                        "class_idx": class_idx,
+                        "probabilities": result.get("probabilities", {}),
+                    },
+                )
+            )
 
         return DetectionResult(
             detector_name=self._name,

@@ -3,19 +3,16 @@
 from __future__ import annotations
 
 import time
-from typing import Any
 
 import structlog
 
 from q_guardian.response.config import ResponseEngineConfig
 from q_guardian.response.data import (
-    PolicyDecision,
     ResponseRequest,
     ResponseResult,
     RiskAssessment,
 )
 from q_guardian.response.enums import ResponseAction, ResponseStatus
-from q_guardian.response.exceptions import ResponseEngineError
 
 logger = structlog.get_logger(__name__)
 
@@ -89,9 +86,7 @@ class ResponseEngine:
         )
         return result
 
-    def _resolve_action(
-        self, request: ResponseRequest, reasoning: list[str]
-    ) -> ResponseAction:
+    def _resolve_action(self, request: ResponseRequest, reasoning: list[str]) -> ResponseAction:
         """Determine the response action from inputs."""
         # Priority: action_plan > policy_decision > risk_assessment
         if request.action_plan and request.action_plan.actions:
@@ -104,8 +99,7 @@ class ResponseEngine:
             pd = request.policy_decision
             action = _ACTION_MAP.get(pd.action, ResponseAction.ALLOW)
             reasoning.append(
-                f"Action from policy '{pd.outcome}': {pd.action} "
-                f"(risk_score={pd.risk_score})"
+                f"Action from policy '{pd.outcome}': {pd.action} (risk_score={pd.risk_score})"
             )
             return action
 
@@ -118,20 +112,18 @@ class ResponseEngine:
         return ResponseAction.ALLOW
 
     @staticmethod
-    def _risk_to_action(
-        ra: RiskAssessment, reasoning: list[str]
-    ) -> ResponseAction:
+    def _risk_to_action(ra: RiskAssessment, reasoning: list[str]) -> ResponseAction:
         """Map a risk assessment to a response action."""
         if ra.risk_level in ("critical",) or ra.threat_level in ("critical",):
-            reasoning.append(f"Critical risk/threat -> BLOCK")
+            reasoning.append("Critical risk/threat -> BLOCK")
             return ResponseAction.BLOCK
         if ra.risk_level in ("severe", "high") or ra.threat_level in ("high",):
-            reasoning.append(f"High risk/threat -> ESCALATE")
+            reasoning.append("High risk/threat -> ESCALATE")
             return ResponseAction.ESCALATE
         if ra.risk_level in ("moderate",) or ra.threat_level in ("medium",):
-            reasoning.append(f"Moderate risk -> WARN")
+            reasoning.append("Moderate risk -> WARN")
             return ResponseAction.WARN
-        reasoning.append(f"Low risk -> ALLOW")
+        reasoning.append("Low risk -> ALLOW")
         return ResponseAction.ALLOW
 
     def get_result(self, correlation_id: str) -> ResponseResult | None:

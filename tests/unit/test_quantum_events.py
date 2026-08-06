@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from q_guardian.quantum.events import (
     BackendConnected,
     BackendDisconnected,

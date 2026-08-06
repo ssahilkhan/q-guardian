@@ -1,12 +1,11 @@
 """Tests for Policy Storage."""
 
-import pytest
-import tempfile
 import os
+import tempfile
 
-from q_guardian.policy.storage import PolicyStorage
 from q_guardian.policy.data import AdvancedPolicyDefinition, AdvancedRule, Condition
 from q_guardian.policy.enums import ComparisonOperator
+from q_guardian.policy.storage import PolicyStorage
 
 
 def _policy(name: str = "test") -> AdvancedPolicyDefinition:

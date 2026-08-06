@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-import time
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import structlog
@@ -11,11 +10,13 @@ from sklearn.ensemble import RandomForestClassifier
 
 from q_guardian.ml.base import BaseThreatModel
 from q_guardian.ml.config import MLConfig
+from q_guardian.ml.data import ModelMetadata
 from q_guardian.ml.enums import ModelBackend, ModelStatus, ModelType
-from q_guardian.ml.data import InferenceResult, ModelMetadata
-from q_guardian.security.enums import PromptCategory, PromptSeverity
-from q_guardian.security.extensibility import DetectionResult, PromptClassifier
-from q_guardian.security.models import PromptFeatures, PromptFinding
+from q_guardian.security.enums import PromptCategory
+from q_guardian.security.extensibility import PromptClassifier
+
+if TYPE_CHECKING:
+    from q_guardian.security.models import PromptFeatures
 
 logger = structlog.get_logger("ml.classifier")
 
@@ -90,14 +91,16 @@ class RandomForestThreatClassifier(PromptClassifier, BaseThreatModel):
     def classes(self) -> list[str]:
         return list(self._classes)
 
-    def train(self, X: list[list[float]], y: list[int]) -> None:
+    def train(self, x: list[list[float]], y: list[int] | None = None) -> None:
         """Train the Random Forest classifier.
 
         Args:
-            X: 2D array of feature vectors.
+            x: 2D array of feature vectors.
             y: Integer class labels.
         """
-        arr_X = np.array(X, dtype=np.float64)
+        if y is None:
+            raise ValueError("y labels are required for supervised classification")
+        x_arr = np.array(x, dtype=np.float64)
         arr_y = np.array(y, dtype=np.int32)
 
         self._model = RandomForestClassifier(
@@ -105,19 +108,17 @@ class RandomForestThreatClassifier(PromptClassifier, BaseThreatModel):
             max_depth=self._max_depth,
             random_state=self._config.random_state,
         )
-        self._model.fit(arr_X, arr_y)
+        self._model.fit(x_arr, arr_y)
 
         if hasattr(self._model, "classes_"):
             self._classes = [THREAT_CATEGORIES[int(c)] for c in self._model.classes_]
 
         self._metadata.status = ModelStatus.READY
-        self._metadata.training_samples = len(X)
-        self._metadata.feature_count = arr_X.shape[1] if arr_X.ndim == 2 else 0
-        logger.info("random_forest_trained", samples=len(X), classes=len(self._classes))
+        self._metadata.training_samples = len(x)
+        self._metadata.feature_count = x_arr.shape[1] if x_arr.ndim == 2 else 0
+        logger.info("random_forest_trained", samples=len(x), classes=len(self._classes))
 
-    async def classify(
-        self, prompt: str, features: PromptFeatures
-    ) -> dict[str, float]:
+    async def classify(self, prompt: str, features: PromptFeatures) -> dict[str, float]:
         """Classify a prompt into threat categories.
 
         Args:
@@ -128,16 +129,13 @@ class RandomForestThreatClassifier(PromptClassifier, BaseThreatModel):
             Dictionary mapping category names to probability scores.
         """
         if self._model is None:
-            return {cat: 0.0 for cat in THREAT_CATEGORIES}
+            return dict.fromkeys(THREAT_CATEGORIES, 0.0)
 
         vector = self._extract_vector(features)
         arr = np.array([vector], dtype=np.float64)
         probas = self._model.predict_proba(arr)[0]
 
-        return {
-            self._classes[i]: float(probas[i])
-            for i in range(len(self._classes))
-        }
+        return {self._classes[i]: float(probas[i]) for i in range(len(self._classes))}
 
     async def predict(self, features: list[float]) -> dict[str, Any]:
         """Run prediction on a numeric feature vector.
@@ -215,6 +213,7 @@ class XGBoostThreatClassifier(PromptClassifier, BaseThreatModel):
 
         try:
             import xgboost  # noqa: F401
+
             self._available = True
         except ImportError:
             self._metadata.status = ModelStatus.UNLOADED
@@ -244,15 +243,17 @@ class XGBoostThreatClassifier(PromptClassifier, BaseThreatModel):
     def classes(self) -> list[str]:
         return list(self._classes)
 
-    def train(self, X: list[list[float]], y: list[int]) -> None:
+    def train(self, x: list[list[float]], y: list[int] | None = None) -> None:
         """Train the XGBoost classifier."""
         if not self._available:
             msg = "XGBoost is not installed"
             raise RuntimeError(msg)
+        if y is None:
+            raise ValueError("y labels are required for supervised classification")
 
         import xgboost as xgb
 
-        arr_X = np.array(X, dtype=np.float32)
+        x_arr = np.array(x, dtype=np.float32)
         arr_y = np.array(y, dtype=np.int32)
 
         self._model = xgb.XGBClassifier(
@@ -263,31 +264,26 @@ class XGBoostThreatClassifier(PromptClassifier, BaseThreatModel):
             eval_metric="mlogloss",
             verbosity=0,
         )
-        self._model.fit(arr_X, arr_y)
+        self._model.fit(x_arr, arr_y)
 
         if hasattr(self._model, "classes_"):
             self._classes = [THREAT_CATEGORIES[int(c)] for c in self._model.classes_]
 
         self._metadata.status = ModelStatus.READY
-        self._metadata.training_samples = len(X)
-        self._metadata.feature_count = arr_X.shape[1] if arr_X.ndim == 2 else 0
-        logger.info("xgboost_trained", samples=len(X), classes=len(self._classes))
+        self._metadata.training_samples = len(x)
+        self._metadata.feature_count = x_arr.shape[1] if x_arr.ndim == 2 else 0
+        logger.info("xgboost_trained", samples=len(x), classes=len(self._classes))
 
-    async def classify(
-        self, prompt: str, features: PromptFeatures
-    ) -> dict[str, float]:
+    async def classify(self, prompt: str, features: PromptFeatures) -> dict[str, float]:
         """Classify a prompt into threat categories."""
         if self._model is None:
-            return {cat: 0.0 for cat in THREAT_CATEGORIES}
+            return dict.fromkeys(THREAT_CATEGORIES, 0.0)
 
         vector = self._extract_vector(features)
         arr = np.array([vector], dtype=np.float32)
         probas = self._model.predict_proba(arr)[0]
 
-        return {
-            self._classes[i]: float(probas[i])
-            for i in range(len(self._classes))
-        }
+        return {self._classes[i]: float(probas[i]) for i in range(len(self._classes))}
 
     async def predict(self, features: list[float]) -> dict[str, Any]:
         """Run prediction on a numeric feature vector."""

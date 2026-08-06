@@ -1,11 +1,8 @@
 """Tests for Policy Composition (templates, inheritance, merge)."""
 
-import pytest
-
 from q_guardian.policy.composition import PolicyComposer
 from q_guardian.policy.data import AdvancedPolicyDefinition, AdvancedRule, Condition
 from q_guardian.policy.enums import ComparisonOperator
-from q_guardian.policy.exceptions import PolicyCompositionError
 
 
 def _policy(name: str, **kwargs) -> AdvancedPolicyDefinition:
@@ -59,9 +56,7 @@ class TestPolicyComposer:
         child = composer.inherit(
             parent,
             "child",
-            rule_overrides=[
-                {"match_by": "name", "match_value": "target-rule", "action": "warn"}
-            ],
+            rule_overrides=[{"match_by": "name", "match_value": "target-rule", "action": "warn"}],
         )
         assert child.rules[0].action == "warn"
 
@@ -71,9 +66,7 @@ class TestPolicyComposer:
         child = composer.inherit(
             parent,
             "child",
-            rule_overrides=[
-                {"match_by": "action", "match_value": "block", "action": "log"}
-            ],
+            rule_overrides=[{"match_by": "action", "match_value": "block", "action": "log"}],
         )
         assert child.rules[0].action == "log"
 
@@ -137,7 +130,9 @@ class TestPolicyComposer:
                 )
             ],
         )
-        result = composer.apply_template(template, "prod-policy", context={"env": "production", "action": "block"})
+        result = composer.apply_template(
+            template, "prod-policy", context={"env": "production", "action": "block"}
+        )
         assert result.name == "prod-policy"
         assert "production" in result.description
 

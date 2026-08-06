@@ -2,23 +2,20 @@
 
 from __future__ import annotations
 
-import json
-import time
 from datetime import UTC, datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import structlog
 
-from q_guardian.observability.data import Alert, HealthReport, Metric
 from q_guardian.observability.enums import (
-    AlertSeverity,
     AlertState,
-    ExporterType,
     HealthStatus,
-    MetricType,
 )
 from q_guardian.observability.exceptions import ExporterError
 from q_guardian.utils.uuid_utils import generate_uuid
+
+if TYPE_CHECKING:
+    from q_guardian.observability.data import Alert, HealthReport, Metric
 
 logger = structlog.get_logger("observability.integrations.prometheus")
 
@@ -51,7 +48,6 @@ class PrometheusIntegration:
         timeseries: list[dict[str, Any]] = []
         for metric in metrics:
             metric_type_label = metric.metric_type.value
-            help_text = metric.description or f"Q-Guardian metric: {metric.name}"
 
             labels: dict[str, str] = {
                 "__name__": f"qguardian_{metric.name}",
@@ -73,7 +69,10 @@ class PrometheusIntegration:
                 }
                 timeseries.append(sample)
 
-            if not timeseries or timeseries[-1].get("labels", {}).get("__name__") != f"qguardian_{metric.name}":
+            if (
+                not timeseries
+                or timeseries[-1].get("labels", {}).get("__name__") != f"qguardian_{metric.name}"
+            ):
                 default_val = metric.latest_value()
                 if default_val is not None:
                     sample = {
@@ -111,24 +110,30 @@ class PrometheusIntegration:
 
             samples: list[dict[str, Any]] = []
             for point in metric.points:
-                samples.append({
-                    "value": self._format_sample_value(point.value),
-                    "timestamp": int(point.timestamp.timestamp() * 1000),
-                })
+                samples.append(
+                    {
+                        "value": self._format_sample_value(point.value),
+                        "timestamp": int(point.timestamp.timestamp() * 1000),
+                    }
+                )
 
             if not samples:
                 default_val = metric.latest_value()
                 if default_val is not None:
-                    samples = [{
-                        "value": self._format_sample_value(default_val),
-                        "timestamp": int(datetime.now(UTC).timestamp() * 1000),
-                    }]
+                    samples = [
+                        {
+                            "value": self._format_sample_value(default_val),
+                            "timestamp": int(datetime.now(UTC).timestamp() * 1000),
+                        }
+                    ]
 
-            timeseries.append({
-                "labels": labels,
-                "exemplars": [],
-                "samples": samples,
-            })
+            timeseries.append(
+                {
+                    "labels": labels,
+                    "exemplars": [],
+                    "samples": samples,
+                }
+            )
 
         return {
             "request": {
@@ -187,7 +192,7 @@ class PrometheusIntegration:
                 "labels": labels,
                 "annotations": annotations,
                 "startsAt": starts_at,
-                "generatorURL": f"http://q-guardian:9090/alerts",
+                "generatorURL": "http://q-guardian:9090/alerts",
                 "fingerprint": alert.alert_id[:8],
                 "status": {
                     "state": self._map_alertmanager_state(alert.state),
@@ -247,7 +252,10 @@ class PrometheusIntegration:
                                 },
                                 "annotations": {
                                     "summary": f"Q-Guardian alert: {name}",
-                                    "description": f"Q-Guardian rule '{name}' has been firing for {for_duration}",
+                                    "description": (
+                                        f"Q-Guardian rule '{name}' has been "
+                                        f"firing for {for_duration}"
+                                    ),
                                 },
                             }
                         ],
@@ -266,92 +274,78 @@ class PrometheusIntegration:
         }
 
         lines: list[str] = []
+        lines.append("# HELP qguardian_health_overall_score Overall health score of Q-Guardian")
+        lines.append("# TYPE qguardian_health_overall_score gauge")
         lines.append(
-            f'# HELP qguardian_health_overall_score Overall health score of Q-Guardian'
-        )
-        lines.append(f'# TYPE qguardian_health_overall_score gauge')
-        lines.append(
-            f'qguardian_health_overall_score '
+            f"qguardian_health_overall_score "
             f'{{job="{self._job_label}",instance="{self._instance_label}"}} '
-            f'{health.overall_score}'
+            f"{health.overall_score}"
         )
 
         lines.append(
-            f'# HELP qguardian_health_overall_status_code Overall health status as numeric code'
+            "# HELP qguardian_health_overall_status_code Overall health status as numeric code"
         )
-        lines.append(f'# TYPE qguardian_health_overall_status_code gauge')
+        lines.append("# TYPE qguardian_health_overall_status_code gauge")
         overall_code = status_value_map.get(health.overall_status, -1.0)
         lines.append(
-            f'qguardian_health_overall_status_code '
+            f"qguardian_health_overall_status_code "
             f'{{job="{self._job_label}",instance="{self._instance_label}",'
             f'status="{health.overall_status.value}"}} '
-            f'{overall_code}'
+            f"{overall_code}"
         )
 
+        lines.append("# HELP qguardian_health_uptime_seconds Framework uptime in seconds")
+        lines.append("# TYPE qguardian_health_uptime_seconds gauge")
         lines.append(
-            f'# HELP qguardian_health_uptime_seconds Framework uptime in seconds'
-        )
-        lines.append(f'# TYPE qguardian_health_uptime_seconds gauge')
-        lines.append(
-            f'qguardian_health_uptime_seconds '
+            f"qguardian_health_uptime_seconds "
             f'{{job="{self._job_label}",instance="{self._instance_label}"}} '
-            f'{health.framework_uptime_seconds}'
+            f"{health.framework_uptime_seconds}"
         )
 
+        lines.append("# HELP qguardian_health_active_warnings Number of active warnings")
+        lines.append("# TYPE qguardian_health_active_warnings gauge")
         lines.append(
-            f'# HELP qguardian_health_active_warnings Number of active warnings'
-        )
-        lines.append(f'# TYPE qguardian_health_active_warnings gauge')
-        lines.append(
-            f'qguardian_health_active_warnings '
+            f"qguardian_health_active_warnings "
             f'{{job="{self._job_label}",instance="{self._instance_label}"}} '
-            f'{health.active_warnings}'
+            f"{health.active_warnings}"
         )
 
+        lines.append("# HELP qguardian_health_active_failures Number of active failures")
+        lines.append("# TYPE qguardian_health_active_failures gauge")
         lines.append(
-            f'# HELP qguardian_health_active_failures Number of active failures'
-        )
-        lines.append(f'# TYPE qguardian_health_active_failures gauge')
-        lines.append(
-            f'qguardian_health_active_failures '
+            f"qguardian_health_active_failures "
             f'{{job="{self._job_label}",instance="{self._instance_label}"}} '
-            f'{health.active_failures}'
+            f"{health.active_failures}"
         )
 
-        lines.append(
-            f'# HELP qguardian_health_component_score Health score per component'
-        )
-        lines.append(f'# TYPE qguardian_health_component_score gauge')
+        lines.append("# HELP qguardian_health_component_score Health score per component")
+        lines.append("# TYPE qguardian_health_component_score gauge")
         for comp in health.components:
             lines.append(
-                f'qguardian_health_component_score '
+                f"qguardian_health_component_score "
                 f'{{job="{self._job_label}",instance="{self._instance_label}",'
                 f'component="{comp.component}",status="{comp.status.value}"}} '
-                f'{comp.health_score}'
+                f"{comp.health_score}"
             )
 
-        lines.append(
-            f'# HELP qguardian_health_component_warnings Number of warnings per component'
-        )
-        lines.append(f'# TYPE qguardian_health_component_warnings gauge')
+        lines.append("# HELP qguardian_health_component_warnings Number of warnings per component")
+        lines.append("# TYPE qguardian_health_component_warnings gauge")
         for comp in health.components:
             lines.append(
-                f'qguardian_health_component_warnings '
+                f"qguardian_health_component_warnings "
                 f'{{job="{self._job_label}",instance="{self._instance_label}",'
                 f'component="{comp.component}"}} '
-                f'{len(comp.warnings)}'
+                f"{len(comp.warnings)}"
             )
 
-        lines.append(
-            f'# HELP qguardian_health_component_failures Number of failures per component'
-        )
-        lines.append(f'# TYPE qguardian_health_component_failures gauge')
+        lines.append("# HELP qguardian_health_component_failures Number of failures per component")
+        lines.append("# TYPE qguardian_health_component_failures gauge")
         for comp in health.components:
             lines.append(
-                f'qguardian_health_component_failures '
+                f"qguardian_health_component_failures "
                 f'{{job="{self._job_label}",instance="{self._instance_label}",'
                 f'component="{comp.component}"}} '
-                f'{len(comp.failures)}'
+                f"{len(comp.failures)}"
             )
 
         exposition_text = "\n".join(lines) + "\n"

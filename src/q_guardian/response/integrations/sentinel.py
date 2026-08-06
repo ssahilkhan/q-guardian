@@ -8,7 +8,6 @@ import structlog
 
 from q_guardian.response.data import IntegrationConfig, IntegrationResult
 from q_guardian.response.enums import IntegrationType
-from q_guardian.response.exceptions import IntegrationError
 
 logger = structlog.get_logger(__name__)
 

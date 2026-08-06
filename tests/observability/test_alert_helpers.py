@@ -1,12 +1,9 @@
-import pytest
-
 from q_guardian.observability.alerts.alert_rules import AlertRuleManager
-from q_guardian.observability.alerts.routing import AlertRouter
-from q_guardian.observability.alerts.notifier import LogNotifier, WebhookNotifier, CallbackNotifier
 from q_guardian.observability.alerts.escalation import EscalationManager, EscalationPolicy
+from q_guardian.observability.alerts.notifier import CallbackNotifier, LogNotifier, WebhookNotifier
+from q_guardian.observability.alerts.routing import AlertRouter
 from q_guardian.observability.data import Alert, AlertRule
-from q_guardian.observability.enums import AlertSeverity, AlertState, AlertType
-from q_guardian.observability.exceptions import AlertError
+from q_guardian.observability.enums import AlertSeverity, AlertState
 
 
 class TestAlertRuleManager:
@@ -44,7 +41,9 @@ class TestAlertRuleManager:
         mgr = AlertRuleManager()
         rule = AlertRule(rule_id="r1", name="old", metric_name="m", condition="gt", threshold=1.0)
         mgr.add_rule(rule)
-        updated = AlertRule(rule_id="r1", name="new", metric_name="m", condition="lt", threshold=5.0)
+        updated = AlertRule(
+            rule_id="r1", name="new", metric_name="m", condition="lt", threshold=5.0
+        )
         assert mgr.update_rule(updated) is True
         assert mgr.get_rule("r1").name == "new"
 
@@ -56,8 +55,12 @@ class TestAlertRuleManager:
 
     def test_list_rules(self) -> None:
         mgr = AlertRuleManager()
-        mgr.add_rule(AlertRule(rule_id="r1", name="a", metric_name="m", condition="gt", threshold=1.0))
-        mgr.add_rule(AlertRule(rule_id="r2", name="b", metric_name="m", condition="lt", threshold=5.0))
+        mgr.add_rule(
+            AlertRule(rule_id="r1", name="a", metric_name="m", condition="gt", threshold=1.0)
+        )
+        mgr.add_rule(
+            AlertRule(rule_id="r2", name="b", metric_name="m", condition="lt", threshold=5.0)
+        )
         rules = mgr.list_rules()
         assert len(rules) == 2
 

@@ -134,7 +134,9 @@ class TestCompute:
         assert result.value == 3.0
 
     def test_compute_percentile(self):
-        result = MetricAggregator.compute(list(range(1, 101)), AggregationType.PERCENTILE, percentile=95.0)
+        result = MetricAggregator.compute(
+            list(range(1, 101)), AggregationType.PERCENTILE, percentile=95.0
+        )
         assert result.value == pytest.approx(95.0, abs=0.1)
 
     def test_compute_empty_data(self):

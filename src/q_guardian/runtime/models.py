@@ -11,7 +11,6 @@ algorithms — only reusable runtime abstractions.
 
 from __future__ import annotations
 
-import copy
 from datetime import UTC, datetime
 from typing import Any
 
@@ -27,7 +26,6 @@ from q_guardian.runtime.enums import (
     ToolType,
 )
 from q_guardian.utils.uuid_utils import generate_uuid
-
 
 # ---------------------------------------------------------------------------
 # Agent
@@ -56,8 +54,12 @@ class Agent(BaseModel):
     capabilities: list[str] = Field(default_factory=list, description="Agent capabilities")
     metadata: dict[str, Any] = Field(default_factory=dict, description="Additional agent metadata")
     status: AgentStatus = Field(default=AgentStatus.INACTIVE, description="Agent lifecycle status")
-    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC), description="Creation timestamp")
-    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC), description="Last update timestamp")
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC), description="Creation timestamp"
+    )
+    updated_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC), description="Last update timestamp"
+    )
 
     def activate(self) -> None:
         """Transition agent to ACTIVE status."""
@@ -101,12 +103,20 @@ class AgentSession(BaseModel):
     conversation_id: str = Field(default="", description="Parent conversation identifier")
     agent_id: str = Field(description="Agent that owns this session")
     user_id: str = Field(default="", description="End-user identifier")
-    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC), description="Session creation time")
-    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC), description="Last activity time")
-    status: SessionStatus = Field(default=SessionStatus.OPEN, description="Session lifecycle status")
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC), description="Session creation time"
+    )
+    updated_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC), description="Last activity time"
+    )
+    status: SessionStatus = Field(
+        default=SessionStatus.OPEN, description="Session lifecycle status"
+    )
     request_count: int = Field(default=0, description="Number of requests in session")
     response_count: int = Field(default=0, description="Number of responses in session")
-    metadata: dict[str, Any] = Field(default_factory=dict, description="Additional session metadata")
+    metadata: dict[str, Any] = Field(
+        default_factory=dict, description="Additional session metadata"
+    )
 
     def open(self) -> None:
         """Transition session to OPEN status."""
@@ -180,10 +190,16 @@ class AgentRequest(BaseModel):
     session_id: str = Field(default="", description="Session this request belongs to")
     agent_id: str = Field(default="", description="Target agent identifier")
     prompt: str = Field(description="The prompt text")
-    timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC), description="Request timestamp")
+    timestamp: datetime = Field(
+        default_factory=lambda: datetime.now(UTC), description="Request timestamp"
+    )
     source: str = Field(default="unknown", description="Request origin (api, user, system)")
-    attachments: list[dict[str, Any]] = Field(default_factory=list, description="Attached files or data")
-    metadata: dict[str, Any] = Field(default_factory=dict, description="Additional request metadata")
+    attachments: list[dict[str, Any]] = Field(
+        default_factory=list, description="Attached files or data"
+    )
+    metadata: dict[str, Any] = Field(
+        default_factory=dict, description="Additional request metadata"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -218,14 +234,22 @@ class AgentResponse(BaseModel):
 
     model_config = ConfigDict(populate_by_name=True)
 
-    response_id: str = Field(default_factory=generate_uuid, description="Unique response identifier")
+    response_id: str = Field(
+        default_factory=generate_uuid, description="Unique response identifier"
+    )
     request_id: str = Field(default="", description="Corresponding request identifier")
     session_id: str = Field(default="", description="Session this response belongs to")
     output: str = Field(default="", description="Agent output text")
-    timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC), description="Response timestamp")
+    timestamp: datetime = Field(
+        default_factory=lambda: datetime.now(UTC), description="Response timestamp"
+    )
     execution_time: float = Field(default=0.0, description="Execution time in seconds")
-    token_usage: TokenUsage = Field(default_factory=TokenUsage, description="Token usage statistics")
-    metadata: dict[str, Any] = Field(default_factory=dict, description="Additional response metadata")
+    token_usage: TokenUsage = Field(
+        default_factory=TokenUsage, description="Token usage statistics"
+    )
+    metadata: dict[str, Any] = Field(
+        default_factory=dict, description="Additional response metadata"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -250,7 +274,9 @@ class ToolInvocation(BaseModel):
     tool_type: ToolType = Field(default=ToolType.FUNCTION, description="Tool type category")
     arguments: dict[str, Any] = Field(default_factory=dict, description="Tool arguments")
     result: Any = Field(default=None, description="Tool execution result")
-    started_at: datetime = Field(default_factory=lambda: datetime.now(UTC), description="Start timestamp")
+    started_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC), description="Start timestamp"
+    )
     completed_at: datetime | None = Field(default=None, description="Completion timestamp")
     duration: float = Field(default=0.0, description="Execution duration in seconds")
     success: bool = Field(default=True, description="Whether execution succeeded")
@@ -280,7 +306,9 @@ class MemoryAccess(BaseModel):
     operation: MemoryOperation = Field(description="Type of operation")
     key: str = Field(description="Memory key or identifier")
     value: Any = Field(default=None, description="Value being read/written")
-    timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC), description="Operation timestamp")
+    timestamp: datetime = Field(
+        default_factory=lambda: datetime.now(UTC), description="Operation timestamp"
+    )
     agent_id: str = Field(default="", description="Agent performing the access")
     session_id: str = Field(default="", description="Session context")
     metadata: dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
@@ -304,11 +332,15 @@ class SecurityContext(BaseModel):
     trust_score: float = Field(default=1.0, ge=0.0, le=1.0, description="Trust score 0-1")
     risk_score: float = Field(default=0.0, ge=0.0, le=1.0, description="Risk score 0-1")
     confidence: float = Field(default=0.0, ge=0.0, le=1.0, description="Analysis confidence 0-1")
-    active_policies: list[str] = Field(default_factory=list, description="Currently active policies")
+    active_policies: list[str] = Field(
+        default_factory=list, description="Currently active policies"
+    )
     alerts: list[str] = Field(default_factory=list, description="Active security alerts")
     violations: list[str] = Field(default_factory=list, description="Policy violations detected")
     blocked: bool = Field(default=False, description="Whether execution is blocked")
-    metadata: dict[str, Any] = Field(default_factory=dict, description="Additional security metadata")
+    metadata: dict[str, Any] = Field(
+        default_factory=dict, description="Additional security metadata"
+    )
 
     def update_trust(self, score: float) -> None:
         """Update trust score with bounds checking.
@@ -374,7 +406,9 @@ class ThreatContext(BaseModel):
     confidence: float = Field(default=0.0, ge=0.0, le=1.0, description="Detection confidence")
     indicators: list[str] = Field(default_factory=list, description="Indicators of compromise")
     evidence: dict[str, Any] = Field(default_factory=dict, description="Supporting evidence")
-    timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC), description="Detection timestamp")
+    timestamp: datetime = Field(
+        default_factory=lambda: datetime.now(UTC), description="Detection timestamp"
+    )
     source: str = Field(default="unknown", description="Detection source")
     metadata: dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
 
@@ -398,4 +432,6 @@ class RiskContext(BaseModel):
     explanation: str = Field(default="", description="Human-readable risk explanation")
     recommendation: str = Field(default="", description="Recommended action")
     metadata: dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
-    calculated_at: datetime = Field(default_factory=lambda: datetime.now(UTC), description="Calculation timestamp")
+    calculated_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC), description="Calculation timestamp"
+    )

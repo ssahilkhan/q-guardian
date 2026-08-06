@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING
 
 import structlog
 
-from q_guardian.risk.data import PolicyDecision, PolicyDefinition, RiskAssessment
 from q_guardian.risk.policy.evaluator import PolicyEvaluator
 from q_guardian.risk.policy.policies import (
     create_default_policy,
@@ -15,6 +14,9 @@ from q_guardian.risk.policy.policies import (
     create_strict_policy,
 )
 from q_guardian.risk.policy.policy_registry import PolicyRegistry
+
+if TYPE_CHECKING:
+    from q_guardian.risk.data import PolicyDecision, RiskAssessment
 
 logger = structlog.get_logger("risk.policy_engine")
 

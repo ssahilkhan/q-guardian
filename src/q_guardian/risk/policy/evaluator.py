@@ -11,7 +11,7 @@ from typing import Any
 import structlog
 
 from q_guardian.risk.data import PolicyDecision, PolicyDefinition, PolicyRule, RiskAssessment
-from q_guardian.risk.enums import DecisionOutcome, PolicyAction, PolicySeverity
+from q_guardian.risk.enums import DecisionOutcome, PolicyAction
 
 logger = structlog.get_logger("risk.evaluator")
 
@@ -72,7 +72,9 @@ class PolicyEvaluator:
             action = best_match.action
             severity = best_match.severity
             outcome = self._action_to_outcome(action)
-            reasoning.append(f"Selected action: {action.value} (rule priority={best_match.priority})")
+            reasoning.append(
+                f"Selected action: {action.value} (rule priority={best_match.priority})"
+            )
         else:
             action = policy.default_action
             severity = policy.default_severity
@@ -137,7 +139,7 @@ class PolicyEvaluator:
                         return False
 
                     right_val = self._parse_value(right_str)
-                    return op_func(left_val, right_val)
+                    return bool(op_func(left_val, right_val))
 
         return False
 

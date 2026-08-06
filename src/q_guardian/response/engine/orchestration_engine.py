@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import time
-from typing import Any, Callable
+from collections.abc import Callable
+from datetime import UTC, datetime
+from typing import Any
 
 import structlog
 
@@ -11,12 +13,9 @@ from q_guardian.response.data import (
     PlaybookDefinition,
     PlaybookExecution,
     PlaybookStep,
-    ResponseRequest,
-    ResponseResult,
     StepResult,
 )
-from q_guardian.response.enums import ResponseStatus, StepStatus, StepType
-from q_guardian.response.exceptions import OrchestrationError
+from q_guardian.response.enums import ResponseStatus, StepStatus
 
 logger = structlog.get_logger(__name__)
 
@@ -132,12 +131,10 @@ class OrchestrationEngine:
 
         if execution.status == ResponseStatus.IN_PROGRESS:
             execution.status = (
-                ResponseStatus.COMPLETED
-                if not failed_steps
-                else ResponseStatus.PARTIAL
+                ResponseStatus.COMPLETED if not failed_steps else ResponseStatus.PARTIAL
             )
 
-        execution.completed_at = time.monotonic()
+        execution.completed_at = datetime.now(UTC)
         execution.execution_time_ms = (time.monotonic() - start) * 1000
         self._executions[execution.execution_id] = execution
         self._step_outputs[execution.execution_id] = step_outputs
@@ -152,9 +149,7 @@ class OrchestrationEngine:
 
         return execution
 
-    def _execute_step(
-        self, step: PlaybookStep, context: dict[str, Any]
-    ) -> Any:
+    def _execute_step(self, step: PlaybookStep, context: dict[str, Any]) -> Any:
         """Execute a single step using registered handlers."""
         handler = self._handlers.get(step.step_type.value)
         if handler is None:

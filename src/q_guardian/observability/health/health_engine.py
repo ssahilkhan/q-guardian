@@ -3,17 +3,23 @@ from __future__ import annotations
 import threading
 import time
 from datetime import UTC, datetime
-from typing import Any, Awaitable, Callable
+from typing import TYPE_CHECKING, Any, cast
 
 import structlog
 
-from q_guardian.observability.data import HealthCheckResult, HealthReport, HealthStatusModel, TimeWindow
+from q_guardian.observability.data import (
+    HealthCheckResult,
+    HealthReport,
+    HealthStatusModel,
+)
 from q_guardian.observability.enums import HealthLevel, HealthStatus
-from q_guardian.observability.exceptions import HealthError
 from q_guardian.observability.health.diagnostics import DiagnosticEngine
 from q_guardian.observability.health.health_registry import HealthRegistry
 from q_guardian.observability.health.heartbeat import HeartbeatManager
 from q_guardian.utils.uuid_utils import generate_uuid
+
+if TYPE_CHECKING:
+    from collections.abc import Awaitable, Callable, Coroutine
 
 logger = structlog.get_logger("observability.health_engine")
 
@@ -109,11 +115,17 @@ class HealthEngine:
 
         try:
             import asyncio
+
             loop = asyncio.get_event_loop()
             if loop.is_running():
                 import concurrent.futures
+
                 with concurrent.futures.ThreadPoolExecutor() as pool:
-                    future = pool.submit(asyncio.run, check_fn())
+                    future: concurrent.futures.Future[HealthCheckResult] = pool.submit(
+                        lambda: asyncio.run(
+                            cast("Coroutine[Any, Any, HealthCheckResult]", check_fn())
+                        )
+                    )
                     result = future.result(timeout=30.0)
             else:
                 result = loop.run_until_complete(check_fn())
@@ -212,12 +224,11 @@ class HealthEngine:
         with self._lock:
             heartbeat_status = {}
             for name in self._components:
+                last_heartbeat = self._heartbeat_manager.get_last_heartbeat(name)
                 heartbeat_status[name] = {
                     "alive": self._heartbeat_manager.is_alive(name),
                     "last_heartbeat": (
-                        self._heartbeat_manager.get_last_heartbeat(name).isoformat()
-                        if self._heartbeat_manager.get_last_heartbeat(name) is not None
-                        else None
+                        last_heartbeat.isoformat() if last_heartbeat is not None else None
                     ),
                     "timed_out": self._heartbeat_manager.is_timed_out(name),
                 }
@@ -229,8 +240,7 @@ class HealthEngine:
     def to_dict(self) -> dict[str, Any]:
         with self._lock:
             components_dict = {
-                name: model.model_dump(mode="json")
-                for name, model in self._components.items()
+                name: model.model_dump(mode="json") for name, model in self._components.items()
             }
             checks_registered = list(self._checks.keys())
 

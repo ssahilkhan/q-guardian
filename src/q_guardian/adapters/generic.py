@@ -36,9 +36,7 @@ class GenericAdapter(Adapter):
         msg = "GenericAdapter.connect_agent not yet implemented"
         raise NotImplementedError(msg)
 
-    async def process_prompt(
-        self, prompt: str, context: dict[str, Any]
-    ) -> dict[str, Any]:
+    async def process_prompt(self, prompt: str, context: dict[str, Any]) -> dict[str, Any]:
         msg = "GenericAdapter.process_prompt not yet implemented"
         raise NotImplementedError(msg)
 

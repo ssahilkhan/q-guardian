@@ -6,8 +6,8 @@ import json
 from pathlib import Path
 from typing import Any
 
-from q_guardian.ml.datasets.base import DatasetLoader
 from q_guardian.ml.data import DatasetEntry
+from q_guardian.ml.datasets.base import DatasetLoader
 from q_guardian.security.enums import PromptCategory, PromptSeverity
 
 
@@ -46,13 +46,14 @@ class JSONLoader(DatasetLoader):
         if not fmt:
             fmt = "jsonl" if path.suffix == ".jsonl" else "json"
 
-        with open(path, "r", encoding=encoding) as f:
+        with open(path, encoding=encoding) as f:
             if fmt == "jsonl":
                 data = [json.loads(line) for line in f if line.strip()]
             else:
                 data = json.load(f)
                 if isinstance(data, dict):
-                    data = data.get("data", data.get("entries", [data]))
+                    raw_entries = data.get("data", data.get("entries", [data]))
+                    data = raw_entries if isinstance(raw_entries, list) else [raw_entries]
 
         entries: list[DatasetEntry] = []
         for row in data:
@@ -73,12 +74,14 @@ class JSONLoader(DatasetLoader):
 
             is_malicious = bool(row.get("is_malicious", False))
 
-            entries.append(DatasetEntry(
-                prompt=row.get("prompt", ""),
-                label=label,
-                severity=severity,
-                is_malicious=is_malicious,
-                metadata={"source": source},
-            ))
+            entries.append(
+                DatasetEntry(
+                    prompt=row.get("prompt", ""),
+                    label=label,
+                    severity=severity,
+                    is_malicious=is_malicious,
+                    metadata={"source": source},
+                )
+            )
 
         return entries

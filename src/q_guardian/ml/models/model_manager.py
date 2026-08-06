@@ -2,14 +2,16 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import structlog
 
 from q_guardian.ml.base import BaseThreatModel, ModelRegistry
 from q_guardian.ml.enums import ModelStatus, ModelType
-from q_guardian.ml.data import ModelMetadata
 from q_guardian.ml.storage import ModelStorage
+
+if TYPE_CHECKING:
+    from q_guardian.ml.data import ModelMetadata
 
 logger = structlog.get_logger("ml.model_manager")
 
@@ -113,7 +115,7 @@ class ModelManager:
             # For sklearn/xgboost models, the artifact is the raw model object.
             # We store it in the model's internal attribute if it has one.
             if hasattr(model, "_model"):
-                model._model = artifact  # type: ignore[union-attr]
+                model._model = artifact
             meta.status = ModelStatus.READY
             self._loaded_models[name] = model
             logger.info("model_lazy_loaded", model_name=name)

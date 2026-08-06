@@ -27,15 +27,9 @@ class PluginConfig(BaseModel):
 class RuntimeConfig(BaseModel):
     """Runtime behavior configuration."""
 
-    max_concurrent_agents: int = Field(
-        default=100, description="Maximum concurrent agent sessions"
-    )
-    request_timeout_seconds: int = Field(
-        default=30, description="Request timeout in seconds"
-    )
-    enable_caching: bool = Field(
-        default=True, description="Enable response caching"
-    )
+    max_concurrent_agents: int = Field(default=100, description="Maximum concurrent agent sessions")
+    request_timeout_seconds: int = Field(default=30, description="Request timeout in seconds")
+    enable_caching: bool = Field(default=True, description="Enable response caching")
 
 
 class PolicyConfig(BaseModel):
@@ -59,18 +53,14 @@ class DashboardConfig(BaseModel):
     """Security dashboard configuration."""
 
     enabled: bool = Field(default=False, description="Enable the dashboard")
-    refresh_interval_seconds: int = Field(
-        default=30, description="Dashboard refresh interval"
-    )
+    refresh_interval_seconds: int = Field(default=30, description="Dashboard refresh interval")
 
 
 class PromptScannerConfig(BaseModel):
     """Prompt scanner configuration."""
 
     enabled: bool = Field(default=True, description="Enable prompt scanning")
-    sensitivity: str = Field(
-        default="medium", description="Scanning sensitivity level"
-    )
+    sensitivity: str = Field(default="medium", description="Scanning sensitivity level")
 
 
 class FrameworkConfig(BaseModel):
@@ -161,6 +151,6 @@ class FrameworkConfig(BaseModel):
                         setattr(self, key, value)
             except ImportError:
                 msg = "PyYAML is required for YAML configuration loading"
-                raise ImportError(msg)
+                raise ImportError(msg) from None
 
         return self

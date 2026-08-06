@@ -5,8 +5,6 @@ from __future__ import annotations
 import copy
 from datetime import UTC, datetime
 
-import pytest
-
 from q_guardian.runtime.enums import (
     AgentStatus,
     MemoryOperation,
@@ -28,7 +26,6 @@ from q_guardian.runtime.models import (
     TokenUsage,
     ToolInvocation,
 )
-
 
 # ---------------------------------------------------------------------------
 # Agent

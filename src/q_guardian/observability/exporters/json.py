@@ -2,14 +2,16 @@ from __future__ import annotations
 
 import json as _json
 from datetime import UTC, datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import structlog
 
-from q_guardian.observability.data import Metric
 from q_guardian.observability.enums import ExporterType
 from q_guardian.observability.exceptions import ExporterError
 from q_guardian.utils.uuid_utils import generate_uuid
+
+if TYPE_CHECKING:
+    from q_guardian.observability.data import Metric
 
 logger = structlog.get_logger("observability.exporters.json")
 

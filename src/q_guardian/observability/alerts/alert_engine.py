@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-import json
-import structlog
 import threading
 from datetime import UTC, datetime
 from typing import Any
+
+import structlog
 
 from q_guardian.observability.alerts.escalation import EscalationManager
 from q_guardian.observability.alerts.notifier import (
@@ -15,7 +15,7 @@ from q_guardian.observability.alerts.notifier import (
 )
 from q_guardian.observability.alerts.routing import AlertRouter
 from q_guardian.observability.data import Alert, AlertEvent, AlertRule
-from q_guardian.observability.enums import AlertState, AlertSeverity
+from q_guardian.observability.enums import AlertState
 from q_guardian.observability.exceptions import AlertError
 from q_guardian.utils.uuid_utils import generate_uuid
 
@@ -114,7 +114,8 @@ class AlertEngine:
     def get_active_alerts(self) -> list[Alert]:
         with self._lock:
             return [
-                a for a in self._active_alerts.values()
+                a
+                for a in self._active_alerts.values()
                 if a.state not in (AlertState.RESOLVED, AlertState.SUPPRESSED)
             ]
 
@@ -230,7 +231,10 @@ class AlertEngine:
             state=AlertState.FIRING,
             severity=rule.severity,
             alert_type=rule.alert_type,
-            message=f"Rule '{rule.name}' triggered: {rule.condition} {rule.threshold} (value={metric_value})",
+            message=(
+                f"Rule '{rule.name}' triggered: {rule.condition} {rule.threshold} "
+                f"(value={metric_value})"
+            ),
             labels=rule.labels.copy(),
             evaluation_value=metric_value,
         )
@@ -272,9 +276,11 @@ class AlertEngine:
             if metric is None:
                 return None
             if hasattr(metric, "latest_value"):
-                return metric.latest_value()
+                latest: float | None = metric.latest_value()
+                return latest
             if hasattr(metric, "points") and metric.points:
-                return metric.points[-1].value
+                last_point: float | None = metric.points[-1].value
+                return last_point
             return None
         except Exception as e:
             logger.error(

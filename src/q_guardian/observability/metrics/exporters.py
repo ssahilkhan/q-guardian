@@ -6,13 +6,15 @@ import csv
 import io
 import json
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import structlog
 
-from q_guardian.observability.data import Metric
 from q_guardian.observability.enums import ExporterType
 from q_guardian.utils.datetime_utils import get_utc_now
+
+if TYPE_CHECKING:
+    from q_guardian.observability.data import Metric
 
 logger = structlog.get_logger("observability.metrics.exporters")
 
@@ -49,7 +51,9 @@ class JsonMetricExporter(MetricExporter):
     def export(self, metrics: list[Metric]) -> None:
         payload = self._build_payload(metrics)
         self._last_output = json.dumps(payload, indent=2, default=str)
-        logger.debug("json_export_completed", metric_count=len(metrics), size=len(self._last_output))
+        logger.debug(
+            "json_export_completed", metric_count=len(metrics), size=len(self._last_output)
+        )
 
     def _build_payload(self, metrics: list[Metric]) -> dict[str, Any]:
         return {
@@ -99,26 +103,30 @@ class CsvMetricExporter(MetricExporter):
     def export(self, metrics: list[Metric]) -> None:
         output = io.StringIO()
         writer = csv.writer(output)
-        writer.writerow([
-            "metric_id",
-            "name",
-            "metric_type",
-            "unit",
-            "timestamp",
-            "value",
-            "labels",
-        ])
+        writer.writerow(
+            [
+                "metric_id",
+                "name",
+                "metric_type",
+                "unit",
+                "timestamp",
+                "value",
+                "labels",
+            ]
+        )
         for metric in metrics:
             for point in metric.points:
-                writer.writerow([
-                    metric.metric_id,
-                    metric.name,
-                    metric.metric_type.value,
-                    metric.unit.value,
-                    point.timestamp.isoformat(),
-                    point.value,
-                    json.dumps(point.labels, default=str),
-                ])
+                writer.writerow(
+                    [
+                        metric.metric_id,
+                        metric.name,
+                        metric.metric_type.value,
+                        metric.unit.value,
+                        point.timestamp.isoformat(),
+                        point.value,
+                        json.dumps(point.labels, default=str),
+                    ]
+                )
         self._last_output = output.getvalue()
         logger.debug("csv_export_completed", metric_count=len(metrics), size=len(self._last_output))
 

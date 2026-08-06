@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from q_guardian.quantum.data import BackendInfo, CircuitResult
+if TYPE_CHECKING:
+    from q_guardian.quantum.data import BackendInfo, CircuitResult
 
 
 class QuantumBackend(ABC):

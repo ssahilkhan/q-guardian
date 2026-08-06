@@ -3,18 +3,19 @@
 from __future__ import annotations
 
 import time
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import structlog
 
 from q_guardian.ml.base import BaseThreatModel
 from q_guardian.ml.config import MLConfig
-from q_guardian.ml.enums import ModelBackend, ModelStatus, ModelType
-from q_guardian.ml.data import InferenceResult, ModelMetadata
-from q_guardian.security.enums import PromptCategory, PromptSeverity
+from q_guardian.ml.data import ModelMetadata
+from q_guardian.ml.enums import ModelBackend, ModelType
+from q_guardian.security.enums import PromptSeverity
 from q_guardian.security.extensibility import DetectionResult, PromptDetector
-from q_guardian.security.models import PromptFeatures, PromptFinding
-from q_guardian.utils.uuid_utils import generate_uuid
+
+if TYPE_CHECKING:
+    from q_guardian.security.models import PromptFeatures, PromptFinding
 
 logger = structlog.get_logger("ml.ensemble")
 
@@ -66,9 +67,7 @@ class EnsembleDetector(PromptDetector, BaseThreatModel):
     def detector_count(self) -> int:
         return len(self._detectors)
 
-    def add_detector(
-        self, detector: PromptDetector, weight: float = 1.0
-    ) -> None:
+    def add_detector(self, detector: PromptDetector, weight: float = 1.0) -> None:
         """Add a detector to the ensemble.
 
         Args:
@@ -135,11 +134,7 @@ class EnsembleDetector(PromptDetector, BaseThreatModel):
         elapsed_ms = (time.monotonic() - start) * 1000
 
         # Weighted average risk score
-        combined_risk = (
-            sum(weighted_scores) / max(total_weight, 1e-10)
-            if total_weight > 0
-            else 0.0
-        )
+        combined_risk = sum(weighted_scores) / max(total_weight, 1e-10) if total_weight > 0 else 0.0
 
         # Deduplicate findings by rule_id
         deduplicated = self._deduplicate_findings(all_findings)
@@ -157,9 +152,7 @@ class EnsembleDetector(PromptDetector, BaseThreatModel):
                 pass
 
         avg_confidence = (
-            sum(confidences) / max(total_weight, 1e-10)
-            if confidences and total_weight > 0
-            else 0.0
+            sum(confidences) / max(total_weight, 1e-10) if confidences and total_weight > 0 else 0.0
         )
 
         return DetectionResult(
@@ -186,16 +179,18 @@ class EnsembleDetector(PromptDetector, BaseThreatModel):
         results: dict[str, Any] = {}
         for det_name, detector in self._detectors.items():
             try:
-                result = await detector.predict(features)  # type: ignore[union-attr]
+                predict_fn = getattr(detector, "predict", None)
+                if predict_fn is None:
+                    results[det_name] = {"error": "detector does not support vector prediction"}
+                    continue
+                result = await predict_fn(features)
                 results[det_name] = result
             except Exception:
                 results[det_name] = {"error": "prediction failed"}
 
         return results
 
-    def _deduplicate_findings(
-        self, findings: list[PromptFinding]
-    ) -> list[PromptFinding]:
+    def _deduplicate_findings(self, findings: list[PromptFinding]) -> list[PromptFinding]:
         """Deduplicate findings by rule_id, keeping highest severity."""
         severity_order = {
             PromptSeverity.INFO: 0,

@@ -7,16 +7,18 @@ Never knows which algorithms produced them.
 from __future__ import annotations
 
 import time
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import structlog
 
+from q_guardian.quantum.exceptions import ConfigurationError, FusionError
 from q_guardian.quantum.fusion.calibrator import ConfidenceCalibrator
 from q_guardian.quantum.fusion.prediction import ThreatPrediction
-from q_guardian.quantum.fusion.providers import PredictionProvider
-from q_guardian.quantum.fusion.strategies.base import FusionStrategy, FusedPrediction
+from q_guardian.quantum.fusion.strategies.base import FusedPrediction, FusionStrategy
 from q_guardian.quantum.fusion.strategies.stacking import StackingFusionStrategy
-from q_guardian.quantum.exceptions import ConfigurationError, FusionError
+
+if TYPE_CHECKING:
+    from q_guardian.quantum.fusion.providers import PredictionProvider
 
 logger = structlog.get_logger("quantum.fusion.engine")
 
@@ -235,13 +237,15 @@ class HybridFusionEngine:
                     provider_id=provider_id,
                     error=str(exc),
                 )
-                predictions.append(ThreatPrediction(
-                    provider_id=provider_id,
-                    predicted_label="unknown",
-                    confidence=0.0,
-                    is_valid=False,
-                    error_message=str(exc),
-                ))
+                predictions.append(
+                    ThreatPrediction(
+                        provider_id=provider_id,
+                        predicted_label="unknown",
+                        confidence=0.0,
+                        is_valid=False,
+                        error_message=str(exc),
+                    )
+                )
 
         return predictions
 
@@ -312,9 +316,7 @@ class HybridFusionEngine:
             "performance": self.get_performance_stats(),
             "calibration": self._calibrator.get_stats(),
             "providers": providers_health,
-            "strategies": {
-                name: s.health() for name, s in self._strategies.items()
-            },
+            "strategies": {name: s.health() for name, s in self._strategies.items()},
         }
 
     def clear_history(self) -> int:

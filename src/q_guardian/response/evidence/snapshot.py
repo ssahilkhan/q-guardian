@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from typing import Any
+from datetime import UTC, datetime
+from typing import TYPE_CHECKING, Any
 
 import structlog
 
 from q_guardian.response.enums import EvidenceType
-from q_guardian.response.evidence.collector import EvidenceCollector
+
+if TYPE_CHECKING:
+    from q_guardian.response.evidence.collector import EvidenceCollector
 
 logger = structlog.get_logger(__name__)
 
@@ -30,7 +32,7 @@ class EvidenceSnapshot:
         snapshot = {
             "name": name,
             "state": state,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "correlation_id": correlation_id,
         }
         self._snapshots.append(snapshot)

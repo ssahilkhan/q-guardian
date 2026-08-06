@@ -24,24 +24,14 @@ class QuantumBackendConfig(BaseModel):
         default=QuantumBackendType.SIMULATOR,
         description="Type of quantum backend",
     )
-    num_qubits: int = Field(
-        default=5, ge=1, le=100, description="Number of qubits"
-    )
-    shots: int = Field(
-        default=1024, ge=1, description="Number of measurement shots"
-    )
+    num_qubits: int = Field(default=5, ge=1, le=100, description="Number of qubits")
+    shots: int = Field(default=1024, ge=1, description="Number of measurement shots")
     optimization_level: int = Field(
         default=1, ge=0, le=3, description="Transpiler optimization level"
     )
-    seed: int | None = Field(
-        default=None, description="Random seed for reproducibility"
-    )
-    timeout_seconds: float = Field(
-        default=30.0, ge=0, description="Execution timeout in seconds"
-    )
-    max_parallel_jobs: int = Field(
-        default=4, ge=1, description="Max parallel circuit executions"
-    )
+    seed: int | None = Field(default=None, description="Random seed for reproducibility")
+    timeout_seconds: float = Field(default=30.0, ge=0, description="Execution timeout in seconds")
+    max_parallel_jobs: int = Field(default=4, ge=1, description="Max parallel circuit executions")
     provider_options: dict[str, Any] = Field(
         default_factory=dict, description="Provider-specific options"
     )
@@ -65,12 +55,8 @@ class QuantumFeatureMapConfig(BaseModel):
     feature_range: tuple[float, float] = Field(
         default=(0.0, 3.14159), description="Range for feature normalization"
     )
-    normalize_features: bool = Field(
-        default=True, description="Normalize features before encoding"
-    )
-    max_features: int = Field(
-        default=32, ge=1, le=100, description="Maximum features to encode"
-    )
+    normalize_features: bool = Field(default=True, description="Normalize features before encoding")
+    max_features: int = Field(default=32, ge=1, le=100, description="Maximum features to encode")
 
 
 class QuantumTrainingConfig(BaseModel):
@@ -81,24 +67,16 @@ class QuantumTrainingConfig(BaseModel):
     optimizer: OptimizerType = Field(
         default=OptimizerType.COBYLA, description="Optimization algorithm"
     )
-    max_iterations: int = Field(
-        default=100, ge=1, description="Maximum optimization iterations"
-    )
-    convergence_threshold: float = Field(
-        default=1e-6, ge=0, description="Convergence threshold"
-    )
+    max_iterations: int = Field(default=100, ge=1, description="Maximum optimization iterations")
+    convergence_threshold: float = Field(default=1e-6, ge=0, description="Convergence threshold")
     learning_rate: float = Field(
         default=0.1, gt=0, description="Learning rate for gradient-based optimizers"
     )
-    batch_size: int = Field(
-        default=32, ge=1, description="Batch size for training"
-    )
+    batch_size: int = Field(default=32, ge=1, description="Batch size for training")
     validation_split: float = Field(
         default=0.2, ge=0.0, le=1.0, description="Validation split ratio"
     )
-    early_stopping_patience: int = Field(
-        default=10, ge=1, description="Early stopping patience"
-    )
+    early_stopping_patience: int = Field(default=10, ge=1, description="Early stopping patience")
     random_state: int = Field(default=42, description="Random seed for reproducibility")
 
 
@@ -141,9 +119,7 @@ class QuantumConfig(BaseModel):
 
     model_config = ConfigDict(extra="allow")
 
-    enabled: bool = Field(
-        default=False, description="Enable quantum analysis"
-    )
+    enabled: bool = Field(default=False, description="Enable quantum analysis")
 
     # Backend
     backend: QuantumBackendConfig = Field(
@@ -177,12 +153,8 @@ class QuantumConfig(BaseModel):
     auto_save: bool = Field(default=True, description="Auto-save models after training")
 
     # Evaluation
-    evaluation_shots: int = Field(
-        default=4096, ge=1, description="Shots for evaluation runs"
-    )
-    benchmark_repetitions: int = Field(
-        default=3, ge=1, description="Repetitions for benchmarking"
-    )
+    evaluation_shots: int = Field(default=4096, ge=1, description="Shots for evaluation runs")
+    benchmark_repetitions: int = Field(default=3, ge=1, description="Repetitions for benchmarking")
 
     # Logging
     log_circuits: bool = Field(default=False, description="Log circuit diagrams")

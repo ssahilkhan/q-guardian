@@ -3,20 +3,22 @@
 from __future__ import annotations
 
 import time
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import structlog
 
-from q_guardian.framework.context import FrameworkContext
 from q_guardian.plugins.base import Plugin
 from q_guardian.risk.actions.action_engine import ActionEngine
 from q_guardian.risk.assessment.risk_engine import RiskAssessmentEngine
 from q_guardian.risk.config import RiskConfig
-from q_guardian.risk.data import NormalizedPrediction, RiskAssessment
 from q_guardian.risk.enums import DecisionOutcome
 from q_guardian.risk.explainability.explanation_engine import ExplanationEngine
 from q_guardian.risk.policy.policy_engine import PolicyEngine
 from q_guardian.risk.storage import RiskStorage
+
+if TYPE_CHECKING:
+    from q_guardian.framework.context import FrameworkContext
+    from q_guardian.risk.data import NormalizedPrediction, RiskAssessment
 
 logger = structlog.get_logger("risk.plugin")
 
@@ -162,15 +164,22 @@ class RiskAnalysisPlugin(Plugin):
 
         from q_guardian.risk.events import RiskAssessmentCompleted, RiskCalculated
 
-        await bus.publish(RiskCalculated(
-            source=source,
-            data={"assessment_id": assessment.assessment_id, "risk_score": assessment.risk_score},
-        ))
+        await bus.publish(
+            RiskCalculated(
+                source=source,
+                data={
+                    "assessment_id": assessment.assessment_id,
+                    "risk_score": assessment.risk_score,
+                },
+            )
+        )
 
-        await bus.publish(RiskAssessmentCompleted(
-            source=source,
-            data={"assessment_id": assessment.assessment_id, "outcome": decision.outcome.value},
-        ))
+        await bus.publish(
+            RiskAssessmentCompleted(
+                source=source,
+                data={"assessment_id": assessment.assessment_id, "outcome": decision.outcome.value},
+            )
+        )
 
     def health(self) -> dict[str, Any]:
         """Return plugin health status."""

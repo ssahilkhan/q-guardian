@@ -6,8 +6,6 @@ failure rates, and configurable adjustment parameters.
 
 from __future__ import annotations
 
-from typing import Any
-
 import structlog
 
 from q_guardian.risk.config import TrustConfig
@@ -83,7 +81,7 @@ class TrustEngine:
         score.trust_level = self._score_to_level(new_trust)
         score.adjustment_history.append(record)
         if len(score.adjustment_history) > self._config.history_window:
-            score.adjustment_history = score.adjustment_history[-self._config.history_window:]
+            score.adjustment_history = score.adjustment_history[-self._config.history_window :]
 
         logger.debug(
             "trust_adjusted",

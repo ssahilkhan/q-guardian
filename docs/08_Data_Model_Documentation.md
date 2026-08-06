@@ -1,6 +1,6 @@
 # 08 - Data Model Documentation
 
-> Module: `src\q_guardian\` — Data contracts for Q-Gaudrail v1.0.0
+> Module: `src\q_guardian\` — Data contracts for Q-Gaudrail v1.1.0
 > Scope: every Pydantic `BaseModel`, `@dataclass`, and domain enum that flows between
 > runtime, security, ML, quantum, policy, risk, response, and observability layers.
 > All models use UTC timestamps and UUID string identifiers (see `src\q_guardian\utils\uuid_utils.py`).

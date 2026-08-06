@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import structlog
 
-from q_guardian.response.data import EvidenceRecord, TimelineEvent
-from q_guardian.response.enums import EvidenceType, TimelineFormat
-from q_guardian.response.exceptions import EvidenceError
+from q_guardian.response.data import EvidenceRecord
+
+if TYPE_CHECKING:
+    from q_guardian.response.enums import EvidenceType
 
 logger = structlog.get_logger(__name__)
 

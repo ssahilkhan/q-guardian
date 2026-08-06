@@ -9,10 +9,12 @@ hard one-vote-per-provider count.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from q_guardian.quantum.fusion.prediction import ThreatPrediction
-from q_guardian.quantum.fusion.strategies.base import FusionStrategy, FusedPrediction
+from q_guardian.quantum.fusion.strategies.base import FusedPrediction, FusionStrategy
+
+if TYPE_CHECKING:
+    from q_guardian.quantum.fusion.prediction import ThreatPrediction
 
 
 class WeightedVotingStrategy(FusionStrategy):
@@ -57,8 +59,8 @@ class WeightedVotingStrategy(FusionStrategy):
                 classes.update(probs.keys())
             else:
                 classes.add(pred.predicted_label)
-        classes = sorted(classes)
-        weighted_prob: dict[str, float] = {c: 0.0 for c in classes}
+        class_names = sorted(classes)
+        weighted_prob: dict[str, float] = dict.fromkeys(class_names, 0.0)
         contributions: dict[str, float] = {}
         total_weight = 0.0
 
@@ -68,7 +70,7 @@ class WeightedVotingStrategy(FusionStrategy):
             contributions[pred.provider_id] = w
             probs = pred.probabilities or {}
             if probs:
-                for c in classes:
+                for c in class_names:
                     weighted_prob[c] += w * float(probs.get(c, 0.0))
             else:
                 # No probability table: place the provider's confidence on

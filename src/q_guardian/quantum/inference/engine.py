@@ -7,18 +7,17 @@ and produces standardized QuantumInferenceResult objects.
 from __future__ import annotations
 
 import time
-from typing import Any, Callable
+from typing import TYPE_CHECKING, Any
 
 import structlog
 
 from q_guardian.quantum.data import QuantumInferenceResult
-from q_guardian.quantum.enums import QuantumModelType
 from q_guardian.quantum.exceptions import (
-    ConfigurationError,
-    ModelNotTrainedError,
     QuantumInferenceError,
 )
-from q_guardian.quantum.models.base import BaseQuantumModel
+
+if TYPE_CHECKING:
+    from q_guardian.quantum.models.base import BaseQuantumModel
 
 logger = structlog.get_logger("quantum.inference_engine")
 
@@ -265,7 +264,9 @@ class QuantumInferenceEngine:
             "average_latency_ms": round(self.average_latency_ms, 3),
             "min_latency_ms": round(min(latencies), 3),
             "max_latency_ms": round(max(latencies), 3),
-            "error_rate": round(self._total_errors / max(self._total_inferences + self._total_errors, 1), 4),
+            "error_rate": round(
+                self._total_errors / max(self._total_inferences + self._total_errors, 1), 4
+            ),
             "model_usage": self._get_model_usage(),
             "history_size": len(self._inference_history),
         }

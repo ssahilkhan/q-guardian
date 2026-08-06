@@ -2,20 +2,20 @@
 
 from __future__ import annotations
 
-import pytest
 import numpy as np
+import pytest
 
+from q_guardian.quantum.backends.simulator import LocalSimulatorBackend
+from q_guardian.quantum.enums import OptimizerType
+from q_guardian.quantum.exceptions import ConfigurationError, TrainingError
+from q_guardian.quantum.feature_maps.angle_encoding import AngleEncodingMap
+from q_guardian.quantum.kernels.quantum_kernel import QuantumKernelEstimator
 from q_guardian.quantum.training.kernel_trainer import (
     KernelCandidate,
     KernelHyperparams,
     KernelSearchResult,
     QuantumKernelTrainer,
 )
-from q_guardian.quantum.feature_maps.angle_encoding import AngleEncodingMap
-from q_guardian.quantum.kernels.quantum_kernel import QuantumKernelEstimator
-from q_guardian.quantum.backends.simulator import LocalSimulatorBackend
-from q_guardian.quantum.enums import OptimizerType
-from q_guardian.quantum.exceptions import ConfigurationError, TrainingError
 
 
 @pytest.fixture
@@ -41,9 +41,9 @@ def trainer(kernel: QuantumKernelEstimator, feature_map: AngleEncodingMap) -> Qu
 @pytest.fixture
 def sample_data() -> tuple[list[list[float]], list[int]]:
     rng = np.random.default_rng(42)
-    X = rng.uniform(-np.pi, np.pi, size=(20, 4)).tolist()
+    x = rng.uniform(-np.pi, np.pi, size=(20, 4)).tolist()
     y = [0 if i < 10 else 1 for i in range(20)]
-    return X, y
+    return x, y
 
 
 class TestKernelHyperparams:
@@ -149,7 +149,9 @@ class TestQuantumKernelTrainerConstruction:
     def test_kernel_property(self, trainer: QuantumKernelTrainer, kernel: QuantumKernelEstimator):
         assert trainer.kernel is kernel
 
-    def test_feature_map_property(self, trainer: QuantumKernelTrainer, feature_map: AngleEncodingMap):
+    def test_feature_map_property(
+        self, trainer: QuantumKernelTrainer, feature_map: AngleEncodingMap
+    ):
         assert trainer.feature_map is feature_map
 
     def test_history_empty_initially(self, trainer: QuantumKernelTrainer):
@@ -162,73 +164,75 @@ class TestQuantumKernelTrainerConstruction:
 
 class TestKernelTrainerGridSearch:
     def test_grid_search_basic(self, trainer: QuantumKernelTrainer, sample_data: tuple):
-        X, y = sample_data
+        x, y = sample_data
         param_grid = {"num_qubits": [2, 4]}
-        result = trainer.search_grid(X, y, param_grid, cv_folds=2)
+        result = trainer.search_grid(x, y, param_grid, cv_folds=2)
         assert isinstance(result, KernelSearchResult)
         assert result.total_evaluations == 2
 
     def test_grid_search_empty_grid_raises(self, trainer: QuantumKernelTrainer, sample_data: tuple):
-        X, y = sample_data
+        x, y = sample_data
         with pytest.raises(ConfigurationError):
-            trainer.search_grid(X, y, {}, cv_folds=2)
+            trainer.search_grid(x, y, {}, cv_folds=2)
 
     def test_grid_search_too_few_samples_raises(self, trainer: QuantumKernelTrainer):
         with pytest.raises(TrainingError):
             trainer.search_grid([[1.0, 2.0, 3.0, 4.0]], [0], {"num_qubits": [2]}, cv_folds=2)
 
     def test_grid_search_records_history(self, trainer: QuantumKernelTrainer, sample_data: tuple):
-        X, y = sample_data
-        trainer.search_grid(X, y, {"num_qubits": [2]}, cv_folds=2)
+        x, y = sample_data
+        trainer.search_grid(x, y, {"num_qubits": [2]}, cv_folds=2)
         assert len(trainer.history) == 1
 
-    def test_grid_search_returns_candidates(self, trainer: QuantumKernelTrainer, sample_data: tuple):
-        X, y = sample_data
-        result = trainer.search_grid(X, y, {"num_qubits": [2, 4]}, cv_folds=2)
+    def test_grid_search_returns_candidates(
+        self, trainer: QuantumKernelTrainer, sample_data: tuple
+    ):
+        x, y = sample_data
+        result = trainer.search_grid(x, y, {"num_qubits": [2, 4]}, cv_folds=2)
         assert len(result.all_candidates) == 2
 
 
 class TestKernelTrainerRandomSearch:
     def test_random_search_basic(self, trainer: QuantumKernelTrainer, sample_data: tuple):
-        X, y = sample_data
+        x, y = sample_data
         param_distributions = {"num_qubits": [2, 4, 6]}
-        result = trainer.search_random(X, y, param_distributions, n_iter=3, cv_folds=2)
+        result = trainer.search_random(x, y, param_distributions, n_iter=3, cv_folds=2)
         assert isinstance(result, KernelSearchResult)
         assert result.total_evaluations == 3
 
     def test_random_search_empty_raises(self, trainer: QuantumKernelTrainer, sample_data: tuple):
-        X, y = sample_data
+        x, y = sample_data
         with pytest.raises(ConfigurationError):
-            trainer.search_random(X, y, {}, n_iter=3, cv_folds=2)
+            trainer.search_random(x, y, {}, n_iter=3, cv_folds=2)
 
     def test_random_search_records_history(self, trainer: QuantumKernelTrainer, sample_data: tuple):
-        X, y = sample_data
-        trainer.search_random(X, y, {"num_qubits": [2]}, n_iter=1, cv_folds=2)
+        x, y = sample_data
+        trainer.search_random(x, y, {"num_qubits": [2]}, n_iter=1, cv_folds=2)
         assert len(trainer.history) == 1
 
 
 class TestKernelTrainerTrainKernel:
     def test_train_kernel_basic(self, trainer: QuantumKernelTrainer, sample_data: tuple):
-        X, y = sample_data
-        result = trainer.train_kernel(X, y)
+        x, y = sample_data
+        result = trainer.train_kernel(x, y)
         assert result.model_name.startswith("kernel-")
-        assert result.training_samples == len(X)
+        assert result.training_samples == len(x)
 
     def test_train_kernel_empty_raises(self, trainer: QuantumKernelTrainer):
         with pytest.raises(TrainingError):
             trainer.train_kernel([])
 
     def test_train_kernel_with_hyperparams(self, trainer: QuantumKernelTrainer, sample_data: tuple):
-        X, y = sample_data
+        x, y = sample_data
         hp = KernelHyperparams(num_qubits=8)
-        result = trainer.train_kernel(X, y, hp)
+        result = trainer.train_kernel(x, y, hp)
         assert "hyperparams" in result.metadata
 
 
 class TestKernelTrainerCrossValidate:
     def test_cross_validate_basic(self, trainer: QuantumKernelTrainer, sample_data: tuple):
-        X, y = sample_data
-        result = trainer.cross_validate(X, y, cv_folds=2)
+        x, y = sample_data
+        result = trainer.cross_validate(x, y, cv_folds=2)
         assert "cv_scores" in result
         assert "cv_score_mean" in result
         assert "cv_score_std" in result
@@ -239,8 +243,8 @@ class TestKernelTrainerCrossValidate:
             trainer.cross_validate([[1.0]], [0], cv_folds=5)
 
     def test_cross_validate_score_range(self, trainer: QuantumKernelTrainer, sample_data: tuple):
-        X, y = sample_data
-        result = trainer.cross_validate(X, y, cv_folds=2)
+        x, y = sample_data
+        result = trainer.cross_validate(x, y, cv_folds=2)
         for score in result["cv_scores"]:
             assert 0.0 <= score <= 1.0
 
@@ -255,7 +259,7 @@ class TestKernelTrainerInfo:
         assert "circuit_depth" in info
 
     def test_get_kernel_info_after_search(self, trainer: QuantumKernelTrainer, sample_data: tuple):
-        X, y = sample_data
-        trainer.search_grid(X, y, {"num_qubits": [2]}, cv_folds=2)
+        x, y = sample_data
+        trainer.search_grid(x, y, {"num_qubits": [2]}, cv_folds=2)
         info = trainer.get_kernel_info()
         assert info["history_length"] == 1

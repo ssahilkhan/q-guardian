@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import structlog
 
 from q_guardian.risk.data import AuditRecord, PolicyDecision, RiskAssessment
-from q_guardian.risk.enums import AuditStatus, DecisionOutcome, PolicyAction, Severity
+from q_guardian.risk.enums import AuditStatus, DecisionOutcome, Severity
+
+if TYPE_CHECKING:
+    from datetime import datetime
 
 logger = structlog.get_logger("risk.audit")
 

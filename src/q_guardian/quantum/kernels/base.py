@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from q_guardian.quantum.data import QuantumCircuitInfo
+if TYPE_CHECKING:
+    from q_guardian.quantum.data import QuantumCircuitInfo
 
 
 class QuantumKernel(ABC):
@@ -33,14 +34,14 @@ class QuantumKernel(ABC):
     @abstractmethod
     def compute_kernel_matrix(
         self,
-        X1: list[list[float]],
-        X2: list[list[float]] | None = None,
+        x1: list[list[float]],
+        x2: list[list[float]] | None = None,
     ) -> list[list[float]]:
         """Compute the kernel matrix between two sets of data points.
 
         Args:
-            X1: First set of feature vectors.
-            X2: Second set of feature vectors. If None, computes X1 vs X1.
+            x1: First set of feature vectors.
+            x2: Second set of feature vectors. If None, computes x1 vs x1.
 
         Returns:
             Kernel matrix as nested list.

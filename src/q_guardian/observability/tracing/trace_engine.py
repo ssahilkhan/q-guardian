@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import threading
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import structlog
 
@@ -9,8 +9,10 @@ from q_guardian.observability.data import Span, SpanStatus, Trace
 from q_guardian.observability.enums import SpanKind, TraceStatus
 from q_guardian.observability.exceptions import TraceError
 from q_guardian.observability.tracing.correlation import CorrelationManager
-from q_guardian.observability.tracing.exporters import TraceExporter
 from q_guardian.observability.tracing.span import SpanManager
+
+if TYPE_CHECKING:
+    from q_guardian.observability.tracing.exporters import TraceExporter
 
 logger = structlog.get_logger()
 
@@ -86,9 +88,7 @@ class TraceEngine:
         with self._lock:
             return self._traces.get(trace_id)
 
-    def finish_trace(
-        self, trace_id: str, status: TraceStatus | None = None
-    ) -> Trace | None:
+    def finish_trace(self, trace_id: str, status: TraceStatus | None = None) -> Trace | None:
         with self._lock:
             trace = self._traces.get(trace_id)
             if trace is None:
@@ -145,9 +145,7 @@ class TraceEngine:
         )
         return span
 
-    def finish_span(
-        self, trace_id: str, span_id: str, status: SpanStatus | None = None
-    ) -> bool:
+    def finish_span(self, trace_id: str, span_id: str, status: SpanStatus | None = None) -> bool:
         with self._lock:
             trace = self._traces.get(trace_id)
             if trace is None:
@@ -155,9 +153,7 @@ class TraceEngine:
 
         span = trace.get_span(span_id)
         if span is None:
-            self._logger.warning(
-                "span_not_found", trace_id=trace_id, span_id=span_id
-            )
+            self._logger.warning("span_not_found", trace_id=trace_id, span_id=span_id)
             return False
 
         self._span_manager.finish_span(span, status=status)
@@ -182,9 +178,7 @@ class TraceEngine:
         self._span_manager.add_event(span, name=event_name, attributes=attributes)
         return True
 
-    def set_span_attribute(
-        self, trace_id: str, span_id: str, key: str, value: Any
-    ) -> bool:
+    def set_span_attribute(self, trace_id: str, span_id: str, key: str, value: Any) -> bool:
         with self._lock:
             trace = self._traces.get(trace_id)
             if trace is None:
@@ -205,15 +199,9 @@ class TraceEngine:
         return traces
 
     def get_traces_by_correlation(self, correlation_id: str) -> list[Trace]:
-        trace_ids = self._correlation_manager.get_traces_for_correlation(
-            correlation_id
-        )
+        trace_ids = self._correlation_manager.get_traces_for_correlation(correlation_id)
         with self._lock:
-            return [
-                self._traces[tid]
-                for tid in trace_ids
-                if tid in self._traces
-            ]
+            return [self._traces[tid] for tid in trace_ids if tid in self._traces]
 
     def cleanup_expired_traces(self) -> int:
         with self._lock:

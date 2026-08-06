@@ -2,14 +2,16 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING
 
 import structlog
 
-from q_guardian.risk.data import ActionResult, Explanation, PolicyDecision, RiskAssessment
 from q_guardian.risk.enums import ExplanationFormat
 from q_guardian.risk.explainability.reasoning_graph import ReasoningGraphBuilder
 from q_guardian.risk.explainability.report_generator import ReportGenerator
+
+if TYPE_CHECKING:
+    from q_guardian.risk.data import ActionResult, Explanation, PolicyDecision, RiskAssessment
 
 logger = structlog.get_logger("risk.explanation_engine")
 
@@ -35,7 +37,7 @@ class ExplanationEngine:
         assessment: RiskAssessment,
         decision: PolicyDecision,
         action_result: ActionResult | None = None,
-        format: ExplanationFormat = ExplanationFormat.STRUCTURED,
+        explanation_format: ExplanationFormat = ExplanationFormat.STRUCTURED,
     ) -> Explanation:
         """Generate a complete explanation for a risk decision.
 
@@ -43,7 +45,7 @@ class ExplanationEngine:
             assessment: The risk assessment.
             decision: The policy decision.
             action_result: Optional action execution result.
-            format: Output format.
+            explanation_format: Output format.
 
         Returns:
             Complete Explanation.
@@ -57,14 +59,14 @@ class ExplanationEngine:
             decision=decision,
             action_result=action_result,
             reasoning_graph=graph,
-            format=format,
+            explanation_format=explanation_format,
         )
 
         logger.info(
             "explanation_generated",
             explanation_id=explanation.explanation_id,
             assessment_id=assessment.assessment_id,
-            format=format.value,
+            format=explanation_format.value,
         )
 
         return explanation
@@ -73,10 +75,10 @@ class ExplanationEngine:
         self,
         assessments: list[RiskAssessment],
         decisions: list[PolicyDecision],
-        format: ExplanationFormat = ExplanationFormat.STRUCTURED,
+        explanation_format: ExplanationFormat = ExplanationFormat.STRUCTURED,
     ) -> list[Explanation]:
         """Generate explanations for a batch of assessments and decisions."""
         return [
-            self.explain(a, d, format=format)
-            for a, d in zip(assessments, decisions)
+            self.explain(a, d, explanation_format=explanation_format)
+            for a, d in zip(assessments, decisions, strict=False)
         ]

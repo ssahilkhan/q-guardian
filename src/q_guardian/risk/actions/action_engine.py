@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import time
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import structlog
 
@@ -18,8 +18,11 @@ from q_guardian.risk.actions.responders import (
     NotifyAdminResponder,
     WebhookResponder,
 )
-from q_guardian.risk.data import ActionResult, AuditRecord, PolicyDecision, RiskAssessment
 from q_guardian.risk.enums import PolicyAction
+from q_guardian.risk.exceptions import ActionError
+
+if TYPE_CHECKING:
+    from q_guardian.risk.data import ActionResult, PolicyDecision, RiskAssessment
 
 logger = structlog.get_logger("risk.action_engine")
 
@@ -92,6 +95,8 @@ class ActionEngine:
         responder = self._responders.get(decision.action)
         if responder is None:
             responder = self._responders.get(PolicyAction.ALLOW)
+        if responder is None:
+            raise ActionError(f"No responder registered for action: {decision.action}")
 
         result = responder.execute(decision, context)
 

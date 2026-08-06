@@ -2,21 +2,16 @@
 
 from __future__ import annotations
 
-import pytest
-
 from q_guardian.runtime.context import RuntimeContext
-from q_guardian.runtime.enums import ThreatSeverity, ThreatType
+from q_guardian.runtime.enums import MemoryOperation, MemoryType, ThreatSeverity, ThreatType
 from q_guardian.runtime.models import (
     Agent,
     AgentRequest,
-    AgentResponse,
     AgentSession,
     MemoryAccess,
-    SecurityContext,
     ThreatContext,
     ToolInvocation,
 )
-from q_guardian.runtime.enums import MemoryOperation, MemoryType
 
 
 class TestRuntimeContext:

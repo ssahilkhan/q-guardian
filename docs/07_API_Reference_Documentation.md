@@ -19,7 +19,7 @@ Returns basic application info. Status `200`.
 ```json
 {
   "application": "Q-Guardian",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "docs": "/docs",
   "redoc": "/redoc",
   "health": "/api/v1/health"
@@ -34,7 +34,7 @@ Also available at `/api/v1/health/`. Response model: `HealthResponseSchema`.
 |---|---|---|
 | `status` | string | `"healthy"` if DB healthy, else `"degraded"` |
 | `application` | string | App name (`Q-Guardian`) |
-| `version` | string | `1.0.0` |
+| `version` | string | `1.1.0` |
 | `environment` | string | e.g. `development` |
 | `timestamp` | datetime | UTC check time |
 | `database` | dict | `{status: "healthy"/"unhealthy", database: "mongodb", message}` |
@@ -51,7 +51,7 @@ Response model: `ResponseSchema[VersionResponseSchema]`.
   "message": "Version information retrieved successfully",
   "data": {
     "application": "Q-Guardian",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "environment": "development",
     "python_version": "3.12.x",
     "timestamp": "..."

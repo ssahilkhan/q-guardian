@@ -34,18 +34,10 @@ class FrameworkContext(BaseModel):
     plugin_registry: Any = Field(description="Plugin registry instance")
     hook_manager: Any = Field(description="Hook manager instance")
     database: Any = Field(default=None, description="Database connection (optional)")
-    session_id: str = Field(
-        default_factory=generate_uuid, description="Current session identifier"
-    )
-    current_request: dict[str, Any] | None = Field(
-        default=None, description="Current request data"
-    )
-    current_agent: dict[str, Any] | None = Field(
-        default=None, description="Current agent data"
-    )
-    extra: dict[str, Any] = Field(
-        default_factory=dict, description="Additional context data"
-    )
+    session_id: str = Field(default_factory=generate_uuid, description="Current session identifier")
+    current_request: dict[str, Any] | None = Field(default=None, description="Current request data")
+    current_agent: dict[str, Any] | None = Field(default=None, description="Current agent data")
+    extra: dict[str, Any] = Field(default_factory=dict, description="Additional context data")
 
     def create_child_context(self, **overrides: Any) -> FrameworkContext:
         """Create a child context with overridden fields.

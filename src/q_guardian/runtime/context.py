@@ -20,7 +20,6 @@ from q_guardian.runtime.models import (
     MemoryAccess,
     SecurityContext,
     ThreatContext,
-    TokenUsage,
     ToolInvocation,
 )
 
@@ -68,9 +67,7 @@ class RuntimeContext(BaseModel):
     security: SecurityContext = Field(
         default_factory=SecurityContext, description="Runtime security state"
     )
-    threats: list[ThreatContext] = Field(
-        default_factory=list, description="Detected threats"
-    )
+    threats: list[ThreatContext] = Field(default_factory=list, description="Detected threats")
     risk: Any = Field(default=None, description="Risk context (populated by risk plugins)")
     framework_context: Any = Field(default=None, description="Underlying FrameworkContext")
     extra: dict[str, Any] = Field(default_factory=dict, description="Additional context data")

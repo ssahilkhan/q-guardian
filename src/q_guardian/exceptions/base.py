@@ -9,7 +9,7 @@ from __future__ import annotations
 from typing import Any
 
 
-class ApplicationException(Exception):
+class ApplicationError(Exception):
     """Base exception for all Q-Guardian application errors.
 
     Attributes:
@@ -43,7 +43,7 @@ class ApplicationException(Exception):
         }
 
 
-class ValidationException(ApplicationException):
+class ValidationError(ApplicationError):
     """Raised when input validation fails."""
 
     def __init__(
@@ -59,7 +59,7 @@ class ValidationException(ApplicationException):
         )
 
 
-class DatabaseException(ApplicationException):
+class DatabaseError(ApplicationError):
     """Raised when a database operation fails."""
 
     def __init__(
@@ -75,7 +75,7 @@ class DatabaseException(ApplicationException):
         )
 
 
-class SecurityException(ApplicationException):
+class SecurityError(ApplicationError):
     """Raised when a security constraint is violated."""
 
     def __init__(
@@ -91,7 +91,7 @@ class SecurityException(ApplicationException):
         )
 
 
-class ExternalServiceException(ApplicationException):
+class ExternalServiceError(ApplicationError):
     """Raised when an external service call fails."""
 
     def __init__(
@@ -109,7 +109,7 @@ class ExternalServiceException(ApplicationException):
         )
 
 
-class NotFoundException(ApplicationException):
+class NotFoundError(ApplicationError):
     """Raised when a requested resource is not found."""
 
     def __init__(
@@ -129,7 +129,7 @@ class NotFoundException(ApplicationException):
         )
 
 
-class AuthenticationException(ApplicationException):
+class AuthenticationError(ApplicationError):
     """Raised when authentication fails."""
 
     def __init__(
@@ -145,7 +145,7 @@ class AuthenticationException(ApplicationException):
         )
 
 
-class RateLimitException(ApplicationException):
+class RateLimitError(ApplicationError):
     """Raised when rate limit is exceeded."""
 
     def __init__(

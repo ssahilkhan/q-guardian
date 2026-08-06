@@ -1,12 +1,11 @@
 import pytest
-from datetime import UTC, datetime
 
-from q_guardian.observability.integrations.grafana import GrafanaIntegration
-from q_guardian.observability.integrations.datadog import DatadogIntegration
-from q_guardian.observability.integrations.azure_monitor import AzureMonitorIntegration
-from q_guardian.observability.integrations.cloudwatch import CloudWatchIntegration
-from q_guardian.observability.integrations.prometheus import PrometheusIntegration
-from q_guardian.observability.data import Alert, HealthReport, HealthStatusModel, Metric, MetricPoint
+from q_guardian.observability.data import (
+    Alert,
+    HealthReport,
+    HealthStatusModel,
+    Metric,
+)
 from q_guardian.observability.enums import (
     AlertSeverity,
     AlertState,
@@ -16,6 +15,11 @@ from q_guardian.observability.enums import (
     MetricUnit,
 )
 from q_guardian.observability.exceptions import ExporterError
+from q_guardian.observability.integrations.azure_monitor import AzureMonitorIntegration
+from q_guardian.observability.integrations.cloudwatch import CloudWatchIntegration
+from q_guardian.observability.integrations.datadog import DatadogIntegration
+from q_guardian.observability.integrations.grafana import GrafanaIntegration
+from q_guardian.observability.integrations.prometheus import PrometheusIntegration
 
 
 def _make_metric(
@@ -31,7 +35,7 @@ def _make_metric(
         description=f"Test metric {name}",
         labels=labels or {},
     )
-    for v in (values or [75.0]):
+    for v in values or [75.0]:
         m.add_point(v)
     return m
 
@@ -171,7 +175,9 @@ class TestDatadogIntegration:
 
     def test_create_event_payload(self):
         d = DatadogIntegration()
-        result = d.create_event_payload("Test Event", "Something happened", alert_type="warning", tags=["env:test"])
+        result = d.create_event_payload(
+            "Test Event", "Something happened", alert_type="warning", tags=["env:test"]
+        )
         assert isinstance(result, dict)
         assert result["title"] == "Test Event"
         assert result["alert_type"] == "warning"
@@ -334,7 +340,7 @@ class TestPrometheusIntegration:
         p = PrometheusIntegration()
         result = p.create_prometheus_rule(
             "high_cpu",
-            'qguardian_cpu_usage > 90',
+            "qguardian_cpu_usage > 90",
             severity="critical",
             for_duration="5m",
         )

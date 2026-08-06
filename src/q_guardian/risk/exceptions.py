@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from typing import Any
 
-from q_guardian.exceptions.base import ApplicationException
+from q_guardian.exceptions.base import ApplicationError
 
 
-class RiskError(ApplicationException):
+class RiskError(ApplicationError):
     """Base exception for risk module errors."""
 
     def __init__(

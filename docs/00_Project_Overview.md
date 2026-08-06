@@ -20,10 +20,10 @@ The project is a "guardian" layer that sits between an autonomous agent and its 
 | Field | Value |
 |---|---|
 | Package name | `q_guardian` |
-| Version | `1.0.0` (declared in `pyproject.toml`) |
+| Version | `1.1.0` (declared in `pyproject.toml`) |
 | Python requirement | `>=3.12` |
 | License | MIT (see `LICENSE`) |
-| Status | public release (v1.0.0), maintained on `main` branch |
+| Status | public release (v1.1.0), maintained on `main` branch |
 
 ## 3. Repository Location
 
@@ -80,12 +80,12 @@ counts per the test audit in `18_Tests_Scripts_Examples_Documentation.md`.
 
 | Area | Files (non-`.pyc`) | Lines |
 |---|---|---|
-| `src/q_guardian/` (Python source) | 300 | 30,472 |
-| `tests/` (Python tests) | 112 | 16,261 |
+| `src/q_guardian/` (Python source) | 326 | 30,472 |
+| `tests/` (Python tests) | 131 | 16,261 |
 | `scripts/` | 29 (23 `.py`, 6 `.json`) | 3,996 |
 | `examples/` | 13 | 2,382 |
 | `docs/` (pre-existing user guides) | 17 | 5,710 |
-| **Test functions** (per `agent_tests` audit) | — | 2,339 across 107 test files |
+| **Test functions** (per `agent_tests` audit) | — | 2,650 across 123 test files |
 
 ## 7. Feature Highlights
 
@@ -138,8 +138,8 @@ The currently exposed HTTP surface is minimal: `GET /health` (liveness + DB heal
 
 ## 10. Testing Snapshot
 
-- 107 test files, 2,339 test functions (authoritative count per the test audit),
-- Directories: `tests/unit` (70 files), `tests/observability` (25), `tests/response` (10), `tests/integration` (3), plus `tests/fixtures` and `conftest.py`,
+- 123 test files, 2,650 test functions (authoritative count per the current test run),
+- Directories: `tests/unit` (88 files), `tests/observability` (24), `tests/response` (9), `tests/integration` (2), plus `tests/fixtures` and `conftest.py`,
 - Root `conftest.py` applies `asyncio.WindowsSelectorEventLoopPolicy()` on Windows and an autouse `_set_test_environment` fixture,
 - `pytest` is the test runner; coverage and lint targets exist in `Makefile`.
 
@@ -165,3 +165,5 @@ The currently exposed HTTP surface is minimal: `GET /health` (liveness + DB heal
 | `16_Response_Recovery_Documentation.md` | response / recovery engines |
 | `17_Observability_Operations_Documentation.md` | observability subsystem |
 | `18_Tests_Scripts_Examples_Documentation.md` | tests, scripts, examples |
+| `19_Benchmark_Platform_Documentation.md` | V2.0 benchmark platform (M1a) |
+| `20_Embedding_Pipeline.md` | V2.0 semantic embedding pipeline (M3) |

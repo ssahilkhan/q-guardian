@@ -7,12 +7,12 @@ layers must implement. Supports both MongoDB and future data stores.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, Generic, TypeVar
+from typing import Any, TypeVar
 
 T = TypeVar("T")
 
 
-class BaseRepository(ABC, Generic[T]):
+class BaseRepository[T](ABC):
     """Abstract base repository defining CRUD operations.
 
     All repository implementations must inherit from this class
@@ -23,11 +23,11 @@ class BaseRepository(ABC, Generic[T]):
     """
 
     @abstractmethod
-    async def find_by_id(self, id: str) -> T | None:
+    async def find_by_id(self, entity_id: str) -> T | None:
         """Find a single entity by its ID.
 
         Args:
-            id: The entity identifier.
+            entity_id: The entity identifier.
 
         Returns:
             The entity if found, None otherwise.
@@ -65,11 +65,11 @@ class BaseRepository(ABC, Generic[T]):
         """
 
     @abstractmethod
-    async def update(self, id: str, data: dict[str, Any]) -> T | None:
+    async def update(self, entity_id: str, data: dict[str, Any]) -> T | None:
         """Update an existing entity.
 
         Args:
-            id: The entity identifier.
+            entity_id: The entity identifier.
             data: Fields to update.
 
         Returns:
@@ -77,11 +77,11 @@ class BaseRepository(ABC, Generic[T]):
         """
 
     @abstractmethod
-    async def delete(self, id: str) -> bool:
+    async def delete(self, entity_id: str) -> bool:
         """Delete an entity by ID.
 
         Args:
-            id: The entity identifier.
+            entity_id: The entity identifier.
 
         Returns:
             True if deleted, False if not found.
@@ -99,11 +99,11 @@ class BaseRepository(ABC, Generic[T]):
         """
 
     @abstractmethod
-    async def exists(self, id: str) -> bool:
+    async def exists(self, entity_id: str) -> bool:
         """Check if an entity exists by ID.
 
         Args:
-            id: The entity identifier.
+            entity_id: The entity identifier.
 
         Returns:
             True if the entity exists.

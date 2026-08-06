@@ -1,15 +1,19 @@
 """Tests for ThreatScorer, TrustEngine, ConfidenceEngine, SeverityEngine."""
 
 import pytest
-from q_guardian.risk.assessment.threat_scorer import ThreatScorer
-from q_guardian.risk.assessment.trust_engine import TrustEngine
+
 from q_guardian.risk.assessment.confidence_engine import ConfidenceEngine
 from q_guardian.risk.assessment.severity_engine import SeverityEngine
-from q_guardian.risk.config import ScoringWeights, TrustConfig, ConfidenceConfig, SeverityMapping
+from q_guardian.risk.assessment.threat_scorer import ThreatScorer
+from q_guardian.risk.assessment.trust_engine import TrustEngine
+from q_guardian.risk.config import ConfidenceConfig, ScoringWeights, SeverityMapping, TrustConfig
 from q_guardian.risk.data import NormalizedPrediction
 from q_guardian.risk.enums import (
-    ThreatLevel, TrustLevel, ConfidenceMethod, Severity,
+    ConfidenceMethod,
+    Severity,
+    ThreatLevel,
     TrustAdjustmentReason,
+    TrustLevel,
 )
 
 
@@ -40,14 +44,25 @@ class TestThreatScorer:
     def test_score_zero(self):
         s = ThreatScorer()
         p = _make_prediction(risk_score=0.0, confidence=0.0)
-        ts = s.score(p, provider_reliability=0.0, model_agreement=0.0, provider_diversity=0.0, severity_value=0.0)
+        ts = s.score(
+            p,
+            provider_reliability=0.0,
+            model_agreement=0.0,
+            provider_diversity=0.0,
+            severity_value=0.0,
+        )
         assert ts.threat_score == 0.0
 
     def test_score_clamped(self):
         s = ThreatScorer()
         p = _make_prediction(risk_score=1.0, confidence=1.0)
-        ts = s.score(p, provider_reliability=1.0, model_agreement=1.0,
-                     provider_diversity=1.0, severity_value=1.0)
+        ts = s.score(
+            p,
+            provider_reliability=1.0,
+            model_agreement=1.0,
+            provider_diversity=1.0,
+            severity_value=1.0,
+        )
         assert 0.0 <= ts.threat_score <= 1.0
 
     def test_score_components(self):
@@ -92,8 +107,14 @@ class TestThreatScorer:
         assert all(ts.agreement_component > 0 for ts in scores)
 
     def test_custom_weights(self):
-        w = ScoringWeights(probability=1.0, confidence=0.0, reliability=0.0,
-                           agreement=0.0, diversity=0.0, severity=0.0)
+        w = ScoringWeights(
+            probability=1.0,
+            confidence=0.0,
+            reliability=0.0,
+            agreement=0.0,
+            diversity=0.0,
+            severity=0.0,
+        )
         s = ThreatScorer(weights=w)
         p = _make_prediction(risk_score=0.8, confidence=0.0)
         ts = s.score(p)
@@ -216,7 +237,9 @@ class TestConfidenceEngine:
         assert cs.method == ConfidenceMethod.NONE
 
     def test_normalize_temperature(self):
-        ce = ConfidenceEngine(ConfidenceConfig(method=ConfidenceMethod.TEMPERATURE, temperature=0.5))
+        ce = ConfidenceEngine(
+            ConfidenceConfig(method=ConfidenceMethod.TEMPERATURE, temperature=0.5)
+        )
         cs = ce.normalize(0.9)
         assert cs.normalized_confidence != 0.9
 

@@ -6,16 +6,16 @@ state transitions and preventing illegal operations.
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 
 import structlog
 
-from q_guardian.exceptions.base import ApplicationException
+from q_guardian.exceptions.base import ApplicationError
 
 logger = structlog.get_logger("framework.state")
 
 
-class FrameworkState(str, Enum):
+class FrameworkState(StrEnum):
     """Enumeration of possible framework lifecycle states."""
 
     INITIALIZING = "initializing"
@@ -26,7 +26,7 @@ class FrameworkState(str, Enum):
     ERROR = "error"
 
 
-class StateTransitionError(ApplicationException):
+class StateTransitionError(ApplicationError):
     """Raised when an invalid state transition is attempted."""
 
     def __init__(
@@ -34,10 +34,7 @@ class StateTransitionError(ApplicationException):
         current_state: FrameworkState,
         target_state: FrameworkState,
     ) -> None:
-        message = (
-            f"Cannot transition from '{current_state.value}' "
-            f"to '{target_state.value}'"
-        )
+        message = f"Cannot transition from '{current_state.value}' to '{target_state.value}'"
         super().__init__(
             message=message,
             code="INVALID_STATE_TRANSITION",

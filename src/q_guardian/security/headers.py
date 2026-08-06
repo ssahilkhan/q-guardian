@@ -5,9 +5,13 @@ Adds standard security headers to all HTTP responses.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING, ClassVar
+
 from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.requests import Request
-from starlette.responses import Response
+
+if TYPE_CHECKING:
+    from starlette.requests import Request
+    from starlette.responses import Response
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
@@ -17,7 +21,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     X-Frame-Options, X-XSS-Protection, and others.
     """
 
-    SECURITY_HEADERS: dict[str, str] = {
+    SECURITY_HEADERS: ClassVar[dict[str, str]] = {
         "X-Content-Type-Options": "nosniff",
         "X-Frame-Options": "DENY",
         "X-XSS-Protection": "1; mode=block",

@@ -3,14 +3,13 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import structlog
 
-from q_guardian.ml.enums import ModelBackend, ModelStatus, ModelType
-from q_guardian.ml.data import ModelMetadata
-from q_guardian.security.extensibility import DetectionResult
-from q_guardian.security.models import PromptFeatures
+if TYPE_CHECKING:
+    from q_guardian.ml.data import ModelMetadata
+    from q_guardian.ml.enums import ModelBackend, ModelType
 
 logger = structlog.get_logger("ml.base")
 
@@ -28,6 +27,24 @@ class BaseThreatModel(ABC):
     @abstractmethod
     def metadata(self) -> ModelMetadata:
         """Return model metadata."""
+
+    @property
+    def model(self) -> Any:
+        """Return the underlying trained estimator, if available.
+
+        Returns:
+            The scikit-learn compatible estimator, or None when untrained.
+        """
+        return None
+
+    def train(self, x: list[list[float]], y: list[int] | None = None) -> None:
+        """Train the model on feature vectors.
+
+        Args:
+            x: Feature vectors.
+            y: Optional class labels; required for supervised models.
+        """
+        raise NotImplementedError
 
     @abstractmethod
     async def predict(self, features: list[float]) -> dict[str, Any]:

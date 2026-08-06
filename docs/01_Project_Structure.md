@@ -151,6 +151,15 @@ Q_Gaudrail/
 │       │           ├── __init__.py
 │       │           ├── health.py
 │       │           └── system.py
+│       ├── benchmark/
+│       │   ├── __init__.py
+│       │   ├── download.py
+│       │   ├── metrics.py
+│       │   ├── preprocessing.py
+│       │   ├── registry.py
+│       │   ├── report.py
+│       │   ├── run.py
+│       │   └── validate.py
 │       ├── config/
 │       │   ├── __init__.py
 │       │   └── settings.py
@@ -165,11 +174,32 @@ Q_Gaudrail/
 │       ├── dependencies/
 │       │   ├── __init__.py
 │       │   └── container.py
+│       ├── embeddings/
+│       │   ├── __init__.py
+│       │   ├── base.py
+│       │   ├── benchmark.py
+│       │   ├── errors.py
+│       │   ├── explain.py
+│       │   ├── fusion.py
+│       │   ├── integration.py
+│       │   ├── manager.py
+│       │   └── providers/
+│       │       ├── __init__.py
+│       │       ├── cloud.py
+│       │       ├── hasher.py
+│       │       └── sentence_transformers.py
 │       ├── events/
 │       │   ├── __init__.py
 │       │   ├── base.py
 │       │   ├── bus.py
 │       │   └── standard.py
+│       ├── evaluation/
+│       │   ├── __init__.py
+│       │   ├── benchmark.py
+│       │   ├── dataset.py
+│       │   ├── metrics.py
+│       │   ├── pipeline.py
+│       │   └── report.py
 │       ├── exceptions/
 │       │   ├── __init__.py
 │       │   ├── base.py
@@ -527,10 +557,13 @@ The package is organized into 12 top-level capability domains plus infrastructur
 |---|---|---|
 | Adapters | `src/q_guardian/adapters/` | Integrations for agent frameworks (AutoGen, CrewAI, LangGraph, Google ADK, OpenAI Agents, Semantic Kernel, generic) |
 | API | `src/q_guardian/api/` | FastAPI application, v1 router, endpoints |
+| Benchmark | `src/q_guardian/benchmark/` | Third-party benchmark platform (registry, download, validation, preprocessing, runner, reports) |
 | Config | `src/q_guardian/config/` | Settings (pydantic-settings) |
 | Core | `src/q_guardian/core/` | Constants + framework state |
 | Database | `src/q_guardian/database/` | MongoDB client + health |
+| Embeddings | `src/q_guardian/embeddings/` | Embedding providers, caching manager, mode fusion, explainability |
 | Events | `src/q_guardian/events/` | Event bus, base/standard events |
+| Evaluation | `src/q_guardian/evaluation/` | Detection evaluation harness (datasets, metrics, hybrid evaluator, K-fold benchmark, reporting) |
 | Exceptions | `src/q_guardian/exceptions/` | Exception hierarchy + handlers |
 | Framework | `src/q_guardian/framework/` | Framework config + context |
 | Hooks / Plugins | `src/q_guardian/hooks/`, `plugins/` | Hook manager, plugin base + registry |
@@ -551,20 +584,20 @@ The package is organized into 12 top-level capability domains plus infrastructur
 
 | Directory | Non-`.pyc` files |
 |---|---|
-| `src/q_guardian/` | 300 Python files |
-| `tests/` | 112 files (110 `.py` + 2 conftest) |
+| `src/q_guardian/` | 326 Python files (306 pre-existing + 8 `benchmark/` + 12 `embeddings/` files) |
+| `tests/` | 131 files (123 `test_*.py` + 6 `__init__.py` + 2 conftest) |
 | `scripts/` | 29 files (23 `.py` + 6 `.json`) |
 | `examples/` | 13 files |
-| `docs/` | 17 files (pre-existing guides) |
+| `docs/` | 38 `.md` files (17 pre-existing guides + 00-20 numbered docs, incl. `19_Benchmark_Platform_Documentation.md` + `20_Embedding_Pipeline.md`) |
 | root files | 14 |
 | `.github/workflows/` | 3 |
 | `docker/` | 1 |
 | `logs/` | 1 (effectively empty) |
-| **Total (canonical inventory)** | **490** (excluding `.pytest_cache/`) |
+| **Total (canonical inventory)** | **544** (excluding `.pytest_cache/`) |
 
 ## 5. File Inventory Notes
 
-- The canonical inventory file used to validate "every project file documented exactly once" contains **495 entries**; the extra 5 are the `.pytest_cache/` artifacts (`v/cache/*`, `CACHEDIR.TAG`, etc.) which are test-runner caches and are excluded from per-file documentation.
+- The canonical inventory file used to validate "every project file documented exactly once" contains **541 entries**; the extra 5 are the `.pytest_cache/` artifacts (`v/cache/*`, `CACHEDIR.TAG`, etc.) which are test-runner caches and are excluded from per-file documentation.
 - `models/ml/` appears in tree generation only if present; it contains no files.
 - `src/__init__.py` exists as a marker for the src-layout root.
 - `policy/adapters/`, `policy/composition/`, `policy/rbac/`, `policy/storage/`, `quantum/base/`, `sdk/`, `schemas/` contain their primary logic in single modules or `__init__.py` files (see `03_Source_File_Documentation.md`).

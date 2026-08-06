@@ -1,5 +1,3 @@
-import pytest
-
 from q_guardian.observability.config import (
     AlertConfig,
     AnalyticsConfig,

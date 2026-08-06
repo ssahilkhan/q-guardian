@@ -2,17 +2,18 @@
 
 from __future__ import annotations
 
-import time
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import structlog
 
-from q_guardian.framework.context import FrameworkContext
 from q_guardian.plugins.base import Plugin
 from q_guardian.quantum.backends.manager import BackendManager
 from q_guardian.quantum.config import QuantumConfig
 from q_guardian.quantum.execution.executor import CircuitExecutor
-from q_guardian.quantum.models.base import BaseQuantumModel
+
+if TYPE_CHECKING:
+    from q_guardian.framework.context import FrameworkContext
+    from q_guardian.quantum.models.base import BaseQuantumModel
 
 logger = structlog.get_logger("quantum.plugin")
 

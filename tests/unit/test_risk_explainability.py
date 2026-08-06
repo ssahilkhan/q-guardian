@@ -1,15 +1,22 @@
 """Tests for ExplanationEngine, ReasoningGraphBuilder, ReportGenerator."""
 
-import pytest
+from q_guardian.risk.data import (
+    ActionResult,
+    Explanation,
+    PolicyDecision,
+    ReasoningGraph,
+    RiskAssessment,
+    TrustScore,
+)
+from q_guardian.risk.enums import (
+    DecisionOutcome,
+    ExplanationFormat,
+    PolicyAction,
+    RiskLevel,
+)
 from q_guardian.risk.explainability.explanation_engine import ExplanationEngine
 from q_guardian.risk.explainability.reasoning_graph import ReasoningGraphBuilder
 from q_guardian.risk.explainability.report_generator import ReportGenerator
-from q_guardian.risk.data import (
-    RiskAssessment, PolicyDecision, ActionResult, Explanation, ReasoningGraph, TrustScore,
-)
-from q_guardian.risk.enums import (
-    ExplanationFormat, RiskLevel, DecisionOutcome, PolicyAction,
-)
 
 
 def _make_assessment(**kwargs) -> RiskAssessment:
@@ -96,7 +103,7 @@ class TestReportGenerator:
         gen = ReportGenerator()
         a = _make_assessment()
         d = _make_decision()
-        e = gen.generate(a, d, format=ExplanationFormat.STRUCTURED)
+        e = gen.generate(a, d, explanation_format=ExplanationFormat.STRUCTURED)
         assert isinstance(e, Explanation)
         assert e.summary
         assert e.why
@@ -106,14 +113,14 @@ class TestReportGenerator:
         gen = ReportGenerator()
         a = _make_assessment()
         d = _make_decision()
-        e = gen.generate(a, d, format=ExplanationFormat.JSON)
+        e = gen.generate(a, d, explanation_format=ExplanationFormat.JSON)
         assert "json" in e.export_data
 
     def test_generate_markdown(self):
         gen = ReportGenerator()
         a = _make_assessment()
         d = _make_decision()
-        e = gen.generate(a, d, format=ExplanationFormat.MARKDOWN)
+        e = gen.generate(a, d, explanation_format=ExplanationFormat.MARKDOWN)
         assert "markdown" in e.export_data
         assert "# Risk Assessment Report" in e.export_data["markdown"]
 
@@ -121,7 +128,7 @@ class TestReportGenerator:
         gen = ReportGenerator()
         a = _make_assessment()
         d = _make_decision()
-        e = gen.generate(a, d, format=ExplanationFormat.TEXT)
+        e = gen.generate(a, d, explanation_format=ExplanationFormat.TEXT)
         assert "text" in e.export_data
         assert "Risk Assessment Report" in e.export_data["text"]
 
@@ -179,7 +186,7 @@ class TestExplanationEngine:
         engine = ExplanationEngine()
         a = _make_assessment()
         d = _make_decision()
-        e = engine.explain(a, d, format=ExplanationFormat.JSON)
+        e = engine.explain(a, d, explanation_format=ExplanationFormat.JSON)
         assert e.format == ExplanationFormat.JSON
 
     def test_explain_batch(self):

@@ -38,9 +38,7 @@ class CorrelationManager:
                 self._correlation_traces[correlation_id] = []
             if trace_id not in self._correlation_traces[correlation_id]:
                 self._correlation_traces[correlation_id].append(trace_id)
-        self._logger.debug(
-            "trace_linked", correlation_id=correlation_id, trace_id=trace_id
-        )
+        self._logger.debug("trace_linked", correlation_id=correlation_id, trace_id=trace_id)
 
     def get_traces_for_correlation(self, correlation_id: str) -> list[str]:
         with self._lock:

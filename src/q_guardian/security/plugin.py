@@ -6,11 +6,10 @@ Receives RuntimeContext, publishes events, updates SecurityContext.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import structlog
 
-from q_guardian.framework.context import FrameworkContext
 from q_guardian.plugins.base import Plugin
 from q_guardian.security.config import PromptSecurityConfig
 from q_guardian.security.decision import SecurityDecisionEngine
@@ -22,7 +21,9 @@ from q_guardian.security.pipeline import (
     PromptValidator,
     RuleEngine,
 )
-from q_guardian.utils.uuid_utils import generate_uuid
+
+if TYPE_CHECKING:
+    from q_guardian.framework.context import FrameworkContext
 
 logger = structlog.get_logger("security.prompt_scanner")
 
@@ -128,9 +129,7 @@ class PromptScannerPlugin(Plugin):
             blocked=self._block_count,
         )
 
-    async def scan_prompt(
-        self, prompt: str, **kwargs: Any
-    ) -> dict[str, Any]:
+    async def scan_prompt(self, prompt: str, **kwargs: Any) -> dict[str, Any]:
         """Scan a prompt through the full security pipeline.
 
         This is the main entry point called by Guardian.scan_prompt().
@@ -208,8 +207,8 @@ class PromptScannerPlugin(Plugin):
         source = f"plugin:{self.name}"
 
         from q_guardian.security.events import (
-            PromptAnalysisCompleted,
             PromptAllowed,
+            PromptAnalysisCompleted,
             PromptBlocked,
             PromptFeaturesExtracted,
             PromptNormalized,
@@ -217,54 +216,68 @@ class PromptScannerPlugin(Plugin):
             PromptValidated,
         )
 
-        await bus.publish(PromptNormalized(
-            source=source,
-            data={"analysis_id": analysis.analysis_id},
-        ))
+        await bus.publish(
+            PromptNormalized(
+                source=source,
+                data={"analysis_id": analysis.analysis_id},
+            )
+        )
 
-        await bus.publish(PromptValidated(
-            source=source,
-            data={
-                "analysis_id": analysis.analysis_id,
-                "status": analysis.validation_status.value,
-            },
-        ))
-
-        await bus.publish(PromptFeaturesExtracted(
-            source=source,
-            data={
-                "analysis_id": analysis.analysis_id,
-                "features": analysis.features.model_dump(),
-            },
-        ))
-
-        for finding in analysis.findings:
-            await bus.publish(PromptRuleMatched(
+        await bus.publish(
+            PromptValidated(
                 source=source,
                 data={
                     "analysis_id": analysis.analysis_id,
-                    "finding_id": finding.finding_id,
-                    "rule_id": finding.rule_id,
-                    "category": finding.category.value,
-                    "severity": finding.severity.value,
+                    "status": analysis.validation_status.value,
                 },
-            ))
+            )
+        )
 
-        await bus.publish(PromptAnalysisCompleted(
-            source=source,
-            data=analysis.to_security_dict(),
-        ))
+        await bus.publish(
+            PromptFeaturesExtracted(
+                source=source,
+                data={
+                    "analysis_id": analysis.analysis_id,
+                    "features": analysis.features.model_dump(),
+                },
+            )
+        )
+
+        for finding in analysis.findings:
+            await bus.publish(
+                PromptRuleMatched(
+                    source=source,
+                    data={
+                        "analysis_id": analysis.analysis_id,
+                        "finding_id": finding.finding_id,
+                        "rule_id": finding.rule_id,
+                        "category": finding.category.value,
+                        "severity": finding.severity.value,
+                    },
+                )
+            )
+
+        await bus.publish(
+            PromptAnalysisCompleted(
+                source=source,
+                data=analysis.to_security_dict(),
+            )
+        )
 
         if analysis.decision == PromptDecision.BLOCK:
-            await bus.publish(PromptBlocked(
-                source=source,
-                data=analysis.to_security_dict(),
-            ))
+            await bus.publish(
+                PromptBlocked(
+                    source=source,
+                    data=analysis.to_security_dict(),
+                )
+            )
         else:
-            await bus.publish(PromptAllowed(
-                source=source,
-                data=analysis.to_security_dict(),
-            ))
+            await bus.publish(
+                PromptAllowed(
+                    source=source,
+                    data=analysis.to_security_dict(),
+                )
+            )
 
     def health(self) -> dict[str, Any]:
         """Return plugin health status.

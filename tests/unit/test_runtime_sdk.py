@@ -5,12 +5,6 @@ from __future__ import annotations
 import pytest
 
 from q_guardian.runtime.enums import AgentStatus, SessionStatus
-from q_guardian.runtime.events import (
-    AgentActivated,
-    AgentDeactivated,
-    SessionEnded,
-    SessionStarted,
-)
 from q_guardian.runtime.models import Agent
 from q_guardian.sdk.guardian import Guardian
 

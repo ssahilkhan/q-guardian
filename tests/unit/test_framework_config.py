@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from q_guardian.framework.config import (
     DashboardConfig,
     FrameworkConfig,
@@ -98,9 +96,7 @@ class TestFrameworkConfig:
 
     def test_get_plugin_config(self) -> None:
         """Verify plugin-specific config retrieval."""
-        config = FrameworkConfig(
-            plugin_configs={"my-plugin": {"sensitivity": "high"}}
-        )
+        config = FrameworkConfig(plugin_configs={"my-plugin": {"sensitivity": "high"}})
         assert config.get_plugin_config("my-plugin") == {"sensitivity": "high"}
 
     def test_from_settings(self) -> None:

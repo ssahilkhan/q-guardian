@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, Any
 
 import structlog
 
-from q_guardian.exceptions.base import ValidationException
+from q_guardian.exceptions.base import ValidationError
 from q_guardian.plugins.base import Plugin, PluginMetadata, PluginStatus
 
 if TYPE_CHECKING:
@@ -46,11 +46,11 @@ class PluginRegistry:
             plugin: The plugin instance to register.
 
         Raises:
-            ValidationException: If a plugin with the same name is registered.
+            ValidationError: If a plugin with the same name is registered.
         """
         meta = plugin.metadata()
         if meta.name in self._plugins:
-            raise ValidationException(
+            raise ValidationError(
                 message=f"Plugin '{meta.name}' is already registered",
                 details={"plugin_name": meta.name},
             )
@@ -110,15 +110,9 @@ class PluginRegistry:
         Returns:
             List of plugins implementing the interface.
         """
-        return [
-            plugin
-            for plugin in self._plugins.values()
-            if interface in plugin.interfaces
-        ]
+        return [plugin for plugin in self._plugins.values() if interface in plugin.interfaces]
 
-    def list_plugins(
-        self, status: PluginStatus | None = None
-    ) -> list[PluginMetadata]:
+    def list_plugins(self, status: PluginStatus | None = None) -> list[PluginMetadata]:
         """List registered plugins, optionally filtered by status.
 
         Args:

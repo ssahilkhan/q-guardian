@@ -2,14 +2,19 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import structlog
 
 from q_guardian.plugins.base import Plugin
 
-if True:  # TYPE_CHECKING
+if TYPE_CHECKING:
     from q_guardian.framework.context import FrameworkContext
+    from q_guardian.observability.alerts.alert_engine import AlertEngine
+    from q_guardian.observability.analytics.analytics_engine import AnalyticsEngine
+    from q_guardian.observability.health.health_engine import HealthEngine
+    from q_guardian.observability.metrics.metrics_engine import MetricsEngine
+    from q_guardian.observability.tracing.trace_engine import TraceEngine
 
 logger = structlog.get_logger("observability.plugin")
 
@@ -25,11 +30,11 @@ class ObservabilityPlugin(Plugin):
         self._config = config or {}
         self._context: FrameworkContext | None = None
         self._started = False
-        self._metrics_engine = None
-        self._health_engine = None
-        self._trace_engine = None
-        self._analytics_engine = None
-        self._alert_engine = None
+        self._metrics_engine: MetricsEngine | None = None
+        self._health_engine: HealthEngine | None = None
+        self._trace_engine: TraceEngine | None = None
+        self._analytics_engine: AnalyticsEngine | None = None
+        self._alert_engine: AlertEngine | None = None
 
     @property
     def name(self) -> str:
@@ -71,9 +76,9 @@ class ObservabilityPlugin(Plugin):
     async def stop(self) -> None:
         self._started = False
         if self._trace_engine is not None:
-            await self._trace_engine.shutdown()
+            self._trace_engine.shutdown()
         if self._alert_engine is not None:
-            await self._alert_engine.shutdown()
+            self._alert_engine.shutdown()
         logger.info("observability_plugin_stopped")
 
     def health(self) -> dict[str, Any]:
@@ -93,31 +98,31 @@ class ObservabilityPlugin(Plugin):
         return self._config
 
     @property
-    def metrics_engine(self):
+    def metrics_engine(self) -> MetricsEngine | None:
         return self._metrics_engine
 
     @property
-    def health_engine(self):
+    def health_engine(self) -> HealthEngine | None:
         return self._health_engine
 
     @property
-    def trace_engine(self):
+    def trace_engine(self) -> TraceEngine | None:
         return self._trace_engine
 
     @property
-    def analytics_engine(self):
+    def analytics_engine(self) -> AnalyticsEngine | None:
         return self._analytics_engine
 
     @property
-    def alert_engine(self):
+    def alert_engine(self) -> AlertEngine | None:
         return self._alert_engine
 
     async def _setup_engines(self) -> None:
-        from q_guardian.observability.metrics.metrics_engine import MetricsEngine
-        from q_guardian.observability.health.health_engine import HealthEngine
-        from q_guardian.observability.tracing.trace_engine import TraceEngine
-        from q_guardian.observability.analytics.analytics_engine import AnalyticsEngine
         from q_guardian.observability.alerts.alert_engine import AlertEngine
+        from q_guardian.observability.analytics.analytics_engine import AnalyticsEngine
+        from q_guardian.observability.health.health_engine import HealthEngine
+        from q_guardian.observability.metrics.metrics_engine import MetricsEngine
+        from q_guardian.observability.tracing.trace_engine import TraceEngine
 
         self._metrics_engine = MetricsEngine(config=self._config.get("metrics", {}))
         self._health_engine = HealthEngine(config=self._config.get("health", {}))

@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from enum import Enum, auto
+from enum import StrEnum
 
 
-class ComparisonOperator(str, Enum):
+class ComparisonOperator(StrEnum):
     """Comparison operators for condition expressions."""
 
     EQ = "=="
@@ -23,7 +23,7 @@ class ComparisonOperator(str, Enum):
     ENDS_WITH = "ends_with"
 
 
-class LogicalOperator(str, Enum):
+class LogicalOperator(StrEnum):
     """Logical operators for compound conditions."""
 
     AND = "and"
@@ -31,7 +31,7 @@ class LogicalOperator(str, Enum):
     NOT = "not"
 
 
-class ConditionType(str, Enum):
+class ConditionType(StrEnum):
     """Types of conditions."""
 
     COMPARISON = "comparison"
@@ -41,7 +41,7 @@ class ConditionType(str, Enum):
     EXISTS = "exists"
 
 
-class PolicyStatus(str, Enum):
+class PolicyStatus(StrEnum):
     """Lifecycle status of a policy."""
 
     DRAFT = "draft"
@@ -51,7 +51,7 @@ class PolicyStatus(str, Enum):
     DELETED = "deleted"
 
 
-class ConflictType(str, Enum):
+class ConflictType(StrEnum):
     """Types of policy conflicts."""
 
     OVERLAPPING = "overlapping"
@@ -60,7 +60,7 @@ class ConflictType(str, Enum):
     REDUNDANT = "redundant"
 
 
-class ConflictResolution(str, Enum):
+class ConflictResolution(StrEnum):
     """Strategies for resolving policy conflicts."""
 
     PRIORITY = "priority"  # higher priority wins
@@ -70,7 +70,7 @@ class ConflictResolution(str, Enum):
     MANUAL = "manual"
 
 
-class DSLFormat(str, Enum):
+class DSLFormat(StrEnum):
     """Supported external DSL formats."""
 
     REGO = "rego"
@@ -80,7 +80,7 @@ class DSLFormat(str, Enum):
     CUSTOM = "custom"
 
 
-class Permission(str, Enum):
+class Permission(StrEnum):
     """RBAC permissions for policy operations."""
 
     POLICY_CREATE = "policy_create"

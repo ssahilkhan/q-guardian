@@ -1,14 +1,16 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import structlog
 
-from q_guardian.observability.data import Metric
 from q_guardian.observability.enums import ExporterType
 from q_guardian.observability.exceptions import ExporterError
 from q_guardian.utils.uuid_utils import generate_uuid
+
+if TYPE_CHECKING:
+    from q_guardian.observability.data import Metric
 
 logger = structlog.get_logger("observability.exporters.opentelemetry")
 
@@ -49,12 +51,14 @@ class OpenTelemetryExporter:
                             labels=metric.labels or None,
                         )
                         point["timeUnixNano"] = str(now_ns)
-                        metric_data.append(self._create_metric(
-                            metric.name,
-                            metric.description,
-                            metric.metric_type.value,
-                            [point],
-                        ))
+                        metric_data.append(
+                            self._create_metric(
+                                metric.name,
+                                metric.description,
+                                metric.metric_type.value,
+                                [point],
+                            )
+                        )
                 else:
                     otlp_points = []
                     for p in points:
@@ -65,16 +69,16 @@ class OpenTelemetryExporter:
                             metric_type=metric.metric_type.value,
                             labels=merged or None,
                         )
-                        pt["timeUnixNano"] = str(
-                            int(p.timestamp.timestamp() * 1e9)
-                        )
+                        pt["timeUnixNano"] = str(int(p.timestamp.timestamp() * 1e9))
                         otlp_points.append(pt)
-                    metric_data.append(self._create_metric(
-                        metric.name,
-                        metric.description,
-                        metric.metric_type.value,
-                        otlp_points,
-                    ))
+                    metric_data.append(
+                        self._create_metric(
+                            metric.name,
+                            metric.description,
+                            metric.metric_type.value,
+                            otlp_points,
+                        )
+                    )
             payload: dict[str, Any] = {
                 "resourceMetrics": [
                     {
@@ -133,40 +137,33 @@ class OpenTelemetryExporter:
                         "code": span_data.get("status", {}).get("code", 1),
                         "message": span_data.get("status", {}).get("message", ""),
                     },
-                    "attributes": self._flatten_attributes(
-                        span_data.get("attributes", {})
-                    ),
+                    "attributes": self._flatten_attributes(span_data.get("attributes", {})),
                     "events": [],
                 }
                 if span_data.get("end_time"):
                     otlp_span["endTimeUnixNano"] = str(
-                        int(
-                            datetime.fromisoformat(span_data["end_time"]).timestamp()
-                            * 1e9
-                        )
+                        int(datetime.fromisoformat(span_data["end_time"]).timestamp() * 1e9)
                     )
                 if span_data.get("parent_span_id"):
-                    otlp_span["parentSpanId"] = span_data["parent_span_id"].replace(
-                        "-", ""
-                    )
+                    otlp_span["parentSpanId"] = span_data["parent_span_id"].replace("-", "")
                 for event in span_data.get("events", []):
-                    otlp_span["events"].append({
-                        "name": event.get("name", ""),
-                        "timeUnixNano": str(
-                            int(
-                                datetime.fromisoformat(
-                                    event.get(
-                                        "timestamp",
-                                        datetime.now(UTC).isoformat(),
-                                    )
-                                ).timestamp()
-                                * 1e9
-                            )
-                        ),
-                        "attributes": self._flatten_attributes(
-                            event.get("attributes", {})
-                        ),
-                    })
+                    otlp_span["events"].append(
+                        {
+                            "name": event.get("name", ""),
+                            "timeUnixNano": str(
+                                int(
+                                    datetime.fromisoformat(
+                                        event.get(
+                                            "timestamp",
+                                            datetime.now(UTC).isoformat(),
+                                        )
+                                    ).timestamp()
+                                    * 1e9
+                                )
+                            ),
+                            "attributes": self._flatten_attributes(event.get("attributes", {})),
+                        }
+                    )
                 otlp_spans.append(otlp_span)
             payload: dict[str, Any] = {
                 "resourceSpans": [
@@ -215,35 +212,46 @@ class OpenTelemetryExporter:
                 "high": 13,
                 "critical": 21,
             }
-            severity_number = severity_map.get(
-                alert.get("severity", "medium"), 10
-            )
+            severity_number = severity_map.get(alert.get("severity", "medium"), 10)
             event: dict[str, Any] = {
                 "name": f"alert.{alert.get('state', 'unknown')}",
                 "timeUnixNano": now_ns,
                 "attributes": [
                     {"key": "alert.alert_id", "value": {"stringValue": alert_id}},
                     {"key": "alert.rule_id", "value": {"stringValue": alert.get("rule_id", "")}},
-                    {"key": "alert.rule_name", "value": {"stringValue": alert.get("rule_name", "")}},
+                    {
+                        "key": "alert.rule_name",
+                        "value": {"stringValue": alert.get("rule_name", "")},
+                    },
                     {"key": "alert.state", "value": {"stringValue": alert.get("state", "unknown")}},
-                    {"key": "alert.severity", "value": {"stringValue": alert.get("severity", "medium")}},
+                    {
+                        "key": "alert.severity",
+                        "value": {"stringValue": alert.get("severity", "medium")},
+                    },
                     {"key": "alert.severity_number", "value": {"intValue": str(severity_number)}},
                     {"key": "alert.message", "value": {"stringValue": alert.get("message", "")}},
-                    {"key": "alert.alert_type", "value": {"stringValue": alert.get("alert_type", "threshold")}},
+                    {
+                        "key": "alert.alert_type",
+                        "value": {"stringValue": alert.get("alert_type", "threshold")},
+                    },
                 ],
             }
             if alert.get("labels"):
                 for k, v in alert["labels"].items():
-                    event["attributes"].append({
-                        "key": f"alert.label.{k}",
-                        "value": {"stringValue": v},
-                    })
+                    event["attributes"].append(
+                        {
+                            "key": f"alert.label.{k}",
+                            "value": {"stringValue": v},
+                        }
+                    )
             if alert.get("annotations"):
                 for k, v in alert["annotations"].items():
-                    event["attributes"].append({
-                        "key": f"alert.annotation.{k}",
-                        "value": {"stringValue": v},
-                    })
+                    event["attributes"].append(
+                        {
+                            "key": f"alert.annotation.{k}",
+                            "value": {"stringValue": v},
+                        }
+                    )
             payload: dict[str, Any] = {
                 "resourceLogs": [
                     {
@@ -309,9 +317,7 @@ class OpenTelemetryExporter:
                 },
                 {
                     "key": "export.timestamp",
-                    "value": {
-                        "stringValue": datetime.now(UTC).isoformat()
-                    },
+                    "value": {"stringValue": datetime.now(UTC).isoformat()},
                 },
             ]
         }
@@ -328,26 +334,24 @@ class OpenTelemetryExporter:
         ]
         if labels:
             for k, v in labels.items():
-                otlp_labels.append({
-                    "key": k,
-                    "value": {"stringValue": v},
-                })
+                otlp_labels.append(
+                    {
+                        "key": k,
+                        "value": {"stringValue": v},
+                    }
+                )
         point: dict[str, Any] = {}
         if metric_type == "counter":
             point = {
                 "attributes": otlp_labels,
                 "asDouble": value,
-                "startTimeUnixNano": str(
-                    int(datetime.now(UTC).timestamp() * 1e9)
-                ),
+                "startTimeUnixNano": str(int(datetime.now(UTC).timestamp() * 1e9)),
             }
         elif metric_type == "gauge":
             point = {
                 "attributes": otlp_labels,
                 "asDouble": value,
-                "timeUnixNano": str(
-                    int(datetime.now(UTC).timestamp() * 1e9)
-                ),
+                "timeUnixNano": str(int(datetime.now(UTC).timestamp() * 1e9)),
             }
         elif metric_type == "histogram":
             point = {
@@ -356,17 +360,13 @@ class OpenTelemetryExporter:
                 "sum": value,
                 "bucketCounts": ["0", "1"],
                 "explicitBounds": [value],
-                "timeUnixNano": str(
-                    int(datetime.now(UTC).timestamp() * 1e9)
-                ),
+                "timeUnixNano": str(int(datetime.now(UTC).timestamp() * 1e9)),
             }
         else:
             point = {
                 "attributes": otlp_labels,
                 "asDouble": value,
-                "timeUnixNano": str(
-                    int(datetime.now(UTC).timestamp() * 1e9)
-                ),
+                "timeUnixNano": str(int(datetime.now(UTC).timestamp() * 1e9)),
             }
         return point
 
@@ -415,9 +415,7 @@ class OpenTelemetryExporter:
         }
         return kind_map.get(kind.lower(), 0)
 
-    def _flatten_attributes(
-        self, attrs: dict[str, Any]
-    ) -> list[dict[str, Any]]:
+    def _flatten_attributes(self, attrs: dict[str, Any]) -> list[dict[str, Any]]:
         result: list[dict[str, Any]] = []
         for k, v in attrs.items():
             if isinstance(v, str):

@@ -12,14 +12,11 @@ Module 6 (Quantum Analysis) will implement:
   - ThreatClassifier: Quantum-enhanced threat classification
 """
 
-from __future__ import annotations
-
 from abc import ABC, abstractmethod
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from q_guardian.security.enums import PromptDecision, PromptSeverity
 from q_guardian.security.models import PromptFeatures, PromptFinding
 
 
@@ -87,9 +84,7 @@ class PromptClassifier(ABC):
         """Return the classifier name."""
 
     @abstractmethod
-    async def classify(
-        self, prompt: str, features: PromptFeatures
-    ) -> dict[str, float]:
+    async def classify(self, prompt: str, features: PromptFeatures) -> dict[str, float]:
         """Classify a prompt into threat categories with probabilities.
 
         Args:
@@ -114,9 +109,7 @@ class FeatureProvider(ABC):
         """Return the feature provider name."""
 
     @abstractmethod
-    async def extract_features(
-        self, prompt: str, base_features: PromptFeatures
-    ) -> dict[str, Any]:
+    async def extract_features(self, prompt: str, base_features: PromptFeatures) -> dict[str, Any]:
         """Extract additional features for ML models.
 
         Args:
@@ -142,9 +135,7 @@ class ThreatClassifier(ABC):
         """Return the classifier name."""
 
     @abstractmethod
-    async def classify_quantum(
-        self, prompt: str, features: PromptFeatures
-    ) -> DetectionResult:
+    async def classify_quantum(self, prompt: str, features: PromptFeatures) -> DetectionResult:
         """Classify threats using quantum analysis.
 
         Args:

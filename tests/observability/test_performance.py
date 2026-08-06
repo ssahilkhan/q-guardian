@@ -1,14 +1,13 @@
-import pytest
 import threading
 import time
 
-from q_guardian.observability.metrics.metrics_engine import MetricsEngine
-from q_guardian.observability.health.health_engine import HealthEngine
-from q_guardian.observability.tracing.trace_engine import TraceEngine
-from q_guardian.observability.analytics.analytics_engine import AnalyticsEngine
 from q_guardian.observability.alerts.alert_engine import AlertEngine
+from q_guardian.observability.analytics.analytics_engine import AnalyticsEngine
 from q_guardian.observability.data import AlertRule
-from q_guardian.observability.enums import AlertSeverity, AlertType, AggregationType, MetricType
+from q_guardian.observability.enums import AggregationType, AlertSeverity, AlertType, MetricType
+from q_guardian.observability.health.health_engine import HealthEngine
+from q_guardian.observability.metrics.metrics_engine import MetricsEngine
+from q_guardian.observability.tracing.trace_engine import TraceEngine
 
 
 def _init_metrics_engine() -> MetricsEngine:
@@ -143,7 +142,7 @@ class TestThreadSafety:
 
         def worker(thread_id):
             try:
-                for i in range(100):
+                for _i in range(100):
                     engine.record_counter(
                         "threaded_counter",
                         value=1.0,
@@ -195,10 +194,10 @@ class TestThreadSafety:
 
 class TestStorageConcurrency:
     def test_concurrent_storage_writes(self):
-        from q_guardian.observability.storage import ObservabilityStorage
-        from q_guardian.observability.data import Metric
         import tempfile
-        import os
+
+        from q_guardian.observability.data import Metric
+        from q_guardian.observability.storage import ObservabilityStorage
 
         tmpdir = tempfile.mkdtemp()
         storage = ObservabilityStorage(storage_root=tmpdir)

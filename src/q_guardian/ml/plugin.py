@@ -3,18 +3,16 @@
 from __future__ import annotations
 
 import time
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import structlog
 
-from q_guardian.framework.context import FrameworkContext
 from q_guardian.ml.config import MLConfig
 from q_guardian.ml.inference.engine import InferenceEngine
 from q_guardian.ml.models.model_manager import ModelManager
 from q_guardian.plugins.base import Plugin
 from q_guardian.security.decision import SecurityDecisionEngine
 from q_guardian.security.enums import PromptDecision
-from q_guardian.security.extensibility import PromptDetector, PromptClassifier
 from q_guardian.security.models import PromptAnalysis
 from q_guardian.security.pipeline import (
     PromptFeatureExtractor,
@@ -22,6 +20,10 @@ from q_guardian.security.pipeline import (
     PromptValidator,
     RuleEngine,
 )
+
+if TYPE_CHECKING:
+    from q_guardian.framework.context import FrameworkContext
+    from q_guardian.security.extensibility import PromptClassifier, PromptDetector
 
 logger = structlog.get_logger("ml.threat_analysis")
 
@@ -179,7 +181,10 @@ class ThreatAnalysisPlugin(Plugin):
 
         # Step 5: ML inference (if enabled)
         ml_findings_count = 0
-        if self._ml_config.enabled and self._inference_engine.detector_count + self._inference_engine.classifier_count > 0:
+        if (
+            self._ml_config.enabled
+            and self._inference_engine.detector_count + self._inference_engine.classifier_count > 0
+        ):
             try:
                 ml_result = await self._inference_engine.run(normalized, features)
                 analysis.findings.extend(ml_result.findings)
@@ -219,26 +224,32 @@ class ThreatAnalysisPlugin(Plugin):
         source = f"plugin:{self.name}"
 
         from q_guardian.security.events import (
-            PromptAnalysisCompleted,
             PromptAllowed,
+            PromptAnalysisCompleted,
             PromptBlocked,
         )
 
-        await bus.publish(PromptAnalysisCompleted(
-            source=source,
-            data=analysis.to_security_dict(),
-        ))
+        await bus.publish(
+            PromptAnalysisCompleted(
+                source=source,
+                data=analysis.to_security_dict(),
+            )
+        )
 
         if analysis.decision == PromptDecision.BLOCK:
-            await bus.publish(PromptBlocked(
-                source=source,
-                data=analysis.to_security_dict(),
-            ))
+            await bus.publish(
+                PromptBlocked(
+                    source=source,
+                    data=analysis.to_security_dict(),
+                )
+            )
         else:
-            await bus.publish(PromptAllowed(
-                source=source,
-                data=analysis.to_security_dict(),
-            ))
+            await bus.publish(
+                PromptAllowed(
+                    source=source,
+                    data=analysis.to_security_dict(),
+                )
+            )
 
     def health(self) -> dict[str, Any]:
         """Return plugin health status."""

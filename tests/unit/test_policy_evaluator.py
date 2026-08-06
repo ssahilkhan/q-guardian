@@ -1,9 +1,12 @@
 """Tests for the Policy Evaluator."""
 
-import pytest
-
 from q_guardian.policy.core.evaluator import PolicyEvaluator
-from q_guardian.policy.data import AdvancedPolicyDefinition, AdvancedRule, Condition, CompoundCondition
+from q_guardian.policy.data import (
+    AdvancedPolicyDefinition,
+    AdvancedRule,
+    CompoundCondition,
+    Condition,
+)
 from q_guardian.policy.enums import ComparisonOperator, LogicalOperator
 
 

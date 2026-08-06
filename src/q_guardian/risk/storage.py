@@ -7,14 +7,15 @@ and explanations. Uses JSON file-based storage.
 from __future__ import annotations
 
 import json
-import os
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import structlog
 
-from q_guardian.risk.data import AuditRecord, Explanation, RiskAssessment
 from q_guardian.risk.exceptions import RiskError
+
+if TYPE_CHECKING:
+    from q_guardian.risk.data import AuditRecord, Explanation, RiskAssessment
 
 logger = structlog.get_logger("risk.storage")
 
@@ -55,8 +56,9 @@ class RiskStorage:
         path = self._root / "assessments" / f"{assessment_id}.json"
         if not path.exists():
             raise RiskError(f"Assessment not found: {assessment_id}")
-        with open(path, "r", encoding="utf-8") as f:
-            return json.load(f)
+        with open(path, encoding="utf-8") as f:
+            assessment: dict[str, Any] = json.load(f)
+            return assessment
 
     def save_audit_record(self, record: AuditRecord) -> Path:
         """Save an audit record to disk."""
@@ -98,11 +100,7 @@ class RiskStorage:
         audit_count = len(list((self._root / "audit").glob("*.json")))
         explanation_count = len(list((self._root / "explanations").glob("*.json")))
 
-        total_size = sum(
-            f.stat().st_size
-            for f in self._root.rglob("*.json")
-            if f.is_file()
-        )
+        total_size = sum(f.stat().st_size for f in self._root.rglob("*.json") if f.is_file())
 
         return {
             "storage_root": str(self._root),

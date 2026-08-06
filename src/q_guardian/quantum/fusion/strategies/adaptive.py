@@ -8,13 +8,15 @@ accurate recently get higher weight.
 from __future__ import annotations
 
 from collections import deque
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import structlog
 
-from q_guardian.quantum.fusion.prediction import ThreatPrediction
-from q_guardian.quantum.fusion.strategies.base import FusionStrategy, FusedPrediction
+from q_guardian.quantum.fusion.strategies.base import FusedPrediction, FusionStrategy
+
+if TYPE_CHECKING:
+    from q_guardian.quantum.fusion.prediction import ThreatPrediction
 
 logger = structlog.get_logger("quantum.fusion.adaptive")
 
@@ -95,15 +97,13 @@ class AdaptiveFusionStrategy(FusionStrategy):
             num_providers=len(valid),
             num_failed=len(predictions) - len(valid),
             reasoning_summary=(
-                f"Adaptive: {best_label} = {confidence:.3f} "
-                f"(window={self._window_size})"
+                f"Adaptive: {best_label} = {confidence:.3f} (window={self._window_size})"
             ),
             metadata={
                 "window_size": self._window_size,
                 "decay": self._decay,
                 "provider_accuracies": {
-                    pid: self._get_accuracy(pid)
-                    for pid in self._provider_history
+                    pid: self._get_accuracy(pid) for pid in self._provider_history
                 },
             },
         )

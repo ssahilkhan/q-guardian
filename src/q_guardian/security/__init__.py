@@ -47,31 +47,31 @@ from q_guardian.security.pipeline import (
 from q_guardian.security.plugin import PromptScannerPlugin
 
 __all__ = [
-    # Enums
-    "PromptCategory",
-    "PromptDecision",
-    "PromptSeverity",
-    "ValidationStatus",
+    # Extensibility
+    "DetectionResult",
+    "FeatureProvider",
     # Models
     "PromptAnalysis",
+    # Enums
+    "PromptCategory",
+    "PromptClassifier",
+    "PromptDecision",
+    "PromptDetector",
+    "PromptFeatureExtractor",
     "PromptFeatures",
     "PromptFinding",
-    "PromptRule",
     # Pipeline
     "PromptNormalizer",
-    "PromptValidator",
-    "PromptFeatureExtractor",
-    "RuleEngine",
-    # Decision
-    "SecurityDecisionEngine",
+    "PromptRule",
     # Plugin
     "PromptScannerPlugin",
     # Config
     "PromptSecurityConfig",
-    # Extensibility
-    "DetectionResult",
-    "FeatureProvider",
-    "PromptClassifier",
-    "PromptDetector",
+    "PromptSeverity",
+    "PromptValidator",
+    "RuleEngine",
+    # Decision
+    "SecurityDecisionEngine",
     "ThreatClassifier",
+    "ValidationStatus",
 ]

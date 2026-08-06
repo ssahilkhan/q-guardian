@@ -2,14 +2,16 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import structlog
 
 from q_guardian.response.data import Timeline, TimelineEvent
 from q_guardian.response.enums import TimelineFormat
 from q_guardian.response.exceptions import EvidenceError
+
+if TYPE_CHECKING:
+    from datetime import datetime
 
 logger = structlog.get_logger(__name__)
 
@@ -110,15 +112,18 @@ class EvidenceTimeline:
     @staticmethod
     def _export_json(timeline: Timeline) -> str:
         import json
+
         events_data = []
         for e in sorted(timeline.events, key=lambda x: x.timestamp):
-            events_data.append({
-                "timestamp": e.timestamp.isoformat(),
-                "event_type": e.event_type,
-                "source": e.source,
-                "severity": e.severity,
-                "data": e.data,
-            })
+            events_data.append(
+                {
+                    "timestamp": e.timestamp.isoformat(),
+                    "event_type": e.event_type,
+                    "source": e.source,
+                    "severity": e.severity,
+                    "data": e.data,
+                }
+            )
         return json.dumps({"timeline_id": timeline.timeline_id, "events": events_data}, indent=2)
 
     @staticmethod
@@ -126,8 +131,7 @@ class EvidenceTimeline:
         lines: list[str] = []
         for e in sorted(timeline.events, key=lambda x: x.timestamp):
             lines.append(
-                f"[{e.timestamp.isoformat()}] [{e.severity.upper()}] "
-                f"{e.event_type} | {e.source}"
+                f"[{e.timestamp.isoformat()}] [{e.severity.upper()}] {e.event_type} | {e.source}"
             )
         return "\n".join(lines)
 
@@ -135,7 +139,5 @@ class EvidenceTimeline:
     def _export_csv(timeline: Timeline) -> str:
         lines = ["timestamp,event_type,source,severity"]
         for e in sorted(timeline.events, key=lambda x: x.timestamp):
-            lines.append(
-                f"{e.timestamp.isoformat()},{e.event_type},{e.source},{e.severity}"
-            )
+            lines.append(f"{e.timestamp.isoformat()},{e.event_type},{e.source},{e.severity}")
         return "\n".join(lines)

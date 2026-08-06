@@ -6,13 +6,12 @@ from typing import Any
 
 import pytest
 
-from q_guardian.quantum.models.base import BaseQuantumModel
-from q_guardian.quantum.data import QuantumModelMetadata, QuantumInferenceResult
-from q_guardian.quantum.enums import QuantumModelType, QuantumBackendType
-from q_guardian.quantum.training.trainer import QuantumTrainer
-from q_guardian.quantum.evaluation.metrics import QuantumEvaluator
 from q_guardian.quantum.config import QuantumTrainingConfig
-from q_guardian.quantum.exceptions import ModelNotTrainedError
+from q_guardian.quantum.data import QuantumInferenceResult, QuantumModelMetadata
+from q_guardian.quantum.enums import QuantumBackendType, QuantumModelType
+from q_guardian.quantum.evaluation.metrics import QuantumEvaluator
+from q_guardian.quantum.models.base import BaseQuantumModel
+from q_guardian.quantum.training.trainer import QuantumTrainer
 
 
 class SimpleQuantumModel(BaseQuantumModel):
@@ -30,6 +29,7 @@ class SimpleQuantumModel(BaseQuantumModel):
     @property
     def metadata(self) -> Any:
         from q_guardian.ml.data import ModelMetadata
+
         return ModelMetadata(name=self._name, model_type="classification", backend="custom")
 
     @property
@@ -45,16 +45,23 @@ class SimpleQuantumModel(BaseQuantumModel):
     def is_trained(self) -> bool:
         return self._trained
 
-    def train(self, X: list[list[float]], y: list[int] | None = None) -> None:
+    def train(self, x: list[list[float]], y: list[int] | None = None) -> None:
         self._trained = True
-        if X:
-            self._weights = [sum(x) / len(x) for x in zip(*X)]
+        if x:
+            self._weights = [sum(row) / len(row) for row in zip(*x, strict=False)]
 
     async def predict(self, features: list[float]) -> dict[str, Any]:
         if not self._trained:
             return {"predicted_class": "unknown", "confidence": 0.0}
-        score = sum(f * w for f, w in zip(features, self._weights)) if self._weights else 0.0
-        return {"predicted_class": "benign" if score > 0 else "injection", "confidence": min(abs(score), 1.0)}
+        score = (
+            sum(f * w for f, w in zip(features, self._weights, strict=False))
+            if self._weights
+            else 0.0
+        )
+        return {
+            "predicted_class": "benign" if score > 0 else "injection",
+            "confidence": min(abs(score), 1.0),
+        }
 
     async def predict_quantum(self, features: list[float]) -> QuantumInferenceResult:
         result = await self.predict(features)
@@ -67,6 +74,7 @@ class SimpleQuantumModel(BaseQuantumModel):
 
     async def classify_quantum(self, prompt: str, features: Any) -> Any:
         from q_guardian.security.extensibility import DetectionResult
+
         return DetectionResult(detector_name=self._name)
 
 
@@ -135,26 +143,26 @@ class TestQuantumTrainer:
 
     def test_train_supervised(self) -> None:
         model = SimpleQuantumModel()
-        X = [[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]]
+        x = [[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]]
         y = [0, 1, 1]
-        result = self.trainer.train(model, X, y)
+        result = self.trainer.train(model, x, y)
         assert result.status == "completed"
         assert model.is_trained is True
 
     def test_train_with_validation(self) -> None:
         model = SimpleQuantumModel()
-        X_train = [[1.0, 2.0], [3.0, 4.0]]
+        x_train = [[1.0, 2.0], [3.0, 4.0]]
         y_train = [0, 1]
-        X_val = [[1.0, 2.0], [3.0, 4.0]]
+        x_val = [[1.0, 2.0], [3.0, 4.0]]
         y_val = [0, 1]
-        result = self.trainer.train(model, X_train, y_train, X_val, y_val)
+        result = self.trainer.train(model, x_train, y_train, x_val, y_val)
         assert result.status == "completed"
 
     def test_cross_validate(self) -> None:
         model = SimpleQuantumModel()
-        X = [[float(i), float(i + 1)] for i in range(10)]
+        x = [[float(i), float(i + 1)] for i in range(10)]
         y = [0, 1] * 5
-        result = self.trainer.cross_validate(model, X, y, n_folds=3)
+        result = self.trainer.cross_validate(model, x, y, n_folds=3)
         assert result.status == "completed"
         assert len(result.cv_scores) > 0
         assert result.cv_mean >= 0.0
@@ -172,9 +180,9 @@ class TestQuantumEvaluator:
     def test_evaluate(self) -> None:
         model = SimpleQuantumModel()
         model.train([[1.0, 2.0], [3.0, 4.0]], [0, 1])
-        X_test = [[1.0, 2.0], [3.0, 4.0]]
+        x_test = [[1.0, 2.0], [3.0, 4.0]]
         y_test = [0, 1]
-        metrics = self.evaluator.evaluate(model, X_test, y_test)
+        metrics = self.evaluator.evaluate(model, x_test, y_test)
         assert 0.0 <= metrics.accuracy <= 1.0
         assert metrics.circuit_width == 4
 
@@ -183,9 +191,9 @@ class TestQuantumEvaluator:
         m2 = SimpleQuantumModel("model-b")
         m1.train([[1.0, 2.0], [3.0, 4.0]], [0, 1])
         m2.train([[1.0, 2.0], [3.0, 4.0]], [0, 1])
-        X_test = [[1.0, 2.0]]
+        x_test = [[1.0, 2.0]]
         y_test = [0]
-        results = self.evaluator.compare_models([m1, m2], X_test, y_test)
+        results = self.evaluator.compare_models([m1, m2], x_test, y_test)
         assert "model-a" in results
         assert "model-b" in results
 

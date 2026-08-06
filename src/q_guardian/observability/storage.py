@@ -4,12 +4,14 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import structlog
 
-from q_guardian.observability.data import Alert, AlertEvent, Metric, Trace
 from q_guardian.observability.exceptions import StorageError
+
+if TYPE_CHECKING:
+    from q_guardian.observability.data import Alert, AlertEvent, Metric, Trace
 
 logger = structlog.get_logger("observability.storage")
 
@@ -50,8 +52,9 @@ class ObservabilityStorage:
         path = self._root / "metrics" / f"{metric_id}.json"
         if not path.exists():
             raise StorageError(f"Metric not found: {metric_id}")
-        with open(path, "r", encoding="utf-8") as f:
-            return json.load(f)
+        with open(path, encoding="utf-8") as f:
+            metric: dict[str, Any] = json.load(f)
+            return metric
 
     def list_metrics(self) -> list[str]:
         return [f.stem for f in (self._root / "metrics").glob("*.json")]
@@ -67,8 +70,9 @@ class ObservabilityStorage:
         path = self._root / "traces" / f"{trace_id}.json"
         if not path.exists():
             raise StorageError(f"Trace not found: {trace_id}")
-        with open(path, "r", encoding="utf-8") as f:
-            return json.load(f)
+        with open(path, encoding="utf-8") as f:
+            trace: dict[str, Any] = json.load(f)
+            return trace
 
     def list_traces(self) -> list[str]:
         return [f.stem for f in (self._root / "traces").glob("*.json")]
@@ -84,8 +88,9 @@ class ObservabilityStorage:
         path = self._root / "alerts" / f"{alert_id}.json"
         if not path.exists():
             raise StorageError(f"Alert not found: {alert_id}")
-        with open(path, "r", encoding="utf-8") as f:
-            return json.load(f)
+        with open(path, encoding="utf-8") as f:
+            alert: dict[str, Any] = json.load(f)
+            return alert
 
     def list_alerts(self) -> list[str]:
         return [f.stem for f in (self._root / "alerts").glob("*.json")]
@@ -139,9 +144,7 @@ class ObservabilityStorage:
         counts = {}
         for subdir in ("metrics", "traces", "alerts", "alert_events", "health", "analytics"):
             counts[subdir] = len(list((self._root / subdir).glob("*.json")))
-        total_size = sum(
-            f.stat().st_size for f in self._root.rglob("*.json") if f.is_file()
-        )
+        total_size = sum(f.stat().st_size for f in self._root.rglob("*.json") if f.is_file())
         return {
             "storage_root": str(self._root),
             "counts": counts,

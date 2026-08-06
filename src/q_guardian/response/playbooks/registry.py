@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import structlog
 
-from q_guardian.response.data import PlaybookDefinition
 from q_guardian.response.exceptions import PlaybookError
+
+if TYPE_CHECKING:
+    from q_guardian.response.data import PlaybookDefinition
 
 logger = structlog.get_logger(__name__)
 

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from q_guardian.events.base import Event
 from q_guardian.runtime.events import (
     AgentActivated,
     AgentDeactivated,
@@ -15,7 +16,6 @@ from q_guardian.runtime.events import (
     ToolExecutionCompleted,
     ToolExecutionStarted,
 )
-from q_guardian.events.base import Event
 
 
 class TestRuntimeEvents:

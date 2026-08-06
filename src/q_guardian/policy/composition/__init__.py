@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import structlog
 
-from q_guardian.policy.data import AdvancedPolicyDefinition, AdvancedRule
 from q_guardian.policy.exceptions import PolicyCompositionError
+
+if TYPE_CHECKING:
+    from q_guardian.policy.data import AdvancedPolicyDefinition
 
 logger = structlog.get_logger(__name__)
 
@@ -40,9 +42,7 @@ class PolicyComposer:
         # Check inheritance depth
         depth = self._calc_inheritance_depth(parent)
         if depth >= self._max_depth:
-            raise PolicyCompositionError(
-                f"Maximum inheritance depth ({self._max_depth}) exceeded"
-            )
+            raise PolicyCompositionError(f"Maximum inheritance depth ({self._max_depth}) exceeded")
 
         child = parent.model_copy(deep=True)
         child.policy_id = ""  # will be regenerated
@@ -179,11 +179,11 @@ class PolicyComposer:
 
         for i, rule in enumerate(policy.rules):
             matched = False
-            if match_by == "name" and rule.name == match_value:
-                matched = True
-            elif match_by == "index" and i == int(match_value):
-                matched = True
-            elif match_by == "action" and rule.action == match_value:
+            if (
+                (match_by == "name" and rule.name == match_value)
+                or (match_by == "index" and i == int(match_value))
+                or (match_by == "action" and rule.action == match_value)
+            ):
                 matched = True
 
             if matched:

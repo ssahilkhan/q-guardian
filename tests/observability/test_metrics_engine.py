@@ -340,7 +340,7 @@ class TestMetricsEngineMaxPoints:
     def test_max_points_trimming(self):
         engine = MetricsEngine({"max_series_per_metric": 5})
         engine.initialize()
-        for i in range(10):
+        for _i in range(10):
             engine.record_counter("requests", 1.0)
         metric = engine.get_metric("requests")
         assert len(metric.points) <= 5
@@ -349,6 +349,7 @@ class TestMetricsEngineMaxPoints:
 class TestMetricsEngineThreadSafety:
     def test_thread_safety(self):
         import threading
+
         engine = MetricsEngine()
         engine.initialize()
         errors = []

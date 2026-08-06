@@ -1,13 +1,15 @@
 from __future__ import annotations
 
-import math
-from datetime import UTC, datetime
+from typing import TYPE_CHECKING
 
 import structlog
 
+from q_guardian.observability.analytics.statistics import StatisticsEngine
 from q_guardian.observability.data import TimeWindow, TrendData
 from q_guardian.observability.enums import TrendDirection
-from q_guardian.observability.analytics.statistics import StatisticsEngine
+
+if TYPE_CHECKING:
+    from datetime import datetime
 
 logger = structlog.get_logger("observability.analytics.trend")
 
@@ -41,7 +43,7 @@ class TrendAnalyzer:
         std_val = self._stats.std_dev(values)
         min_val = self._stats.min_val(values) or 0.0
         max_val = self._stats.max_val(values) or 0.0
-        x_values = list(range(len(values)))
+        x_values = [float(i) for i in range(len(values))]
         slope, _, r_squared = self._stats.linear_regression(x_values, values)
         direction = self.classify_direction(slope, std_val)
         period = None
@@ -75,7 +77,11 @@ class TrendAnalyzer:
         normalized_slope = abs(slope) / std_dev if std_dev > 0 else abs(slope)
         if normalized_slope < 0.05:
             if std_dev > 0 and (self._stats.mean([abs(slope), std_dev]) > 0):
-                coefficient_of_variation = std_dev / self._stats.mean([abs(slope), std_dev]) if self._stats.mean([abs(slope), std_dev]) > 0 else 0
+                coefficient_of_variation = (
+                    std_dev / self._stats.mean([abs(slope), std_dev])
+                    if self._stats.mean([abs(slope), std_dev]) > 0
+                    else 0
+                )
                 if coefficient_of_variation > 1.0:
                     return TrendDirection.VOLATILE
             return TrendDirection.STABLE
@@ -85,9 +91,7 @@ class TrendAnalyzer:
             return TrendDirection.INCREASING
         return TrendDirection.DECREASING
 
-    def detect_anomalies(
-        self, values: list[float], threshold: float = 2.0
-    ) -> list[int]:
+    def detect_anomalies(self, values: list[float], threshold: float = 2.0) -> list[int]:
         if len(values) < 3:
             return []
         mean_val = self._stats.mean(values)
@@ -101,9 +105,7 @@ class TrendAnalyzer:
                 anomaly_indices.append(i)
         return anomaly_indices
 
-    def compute_moving_trend(
-        self, values: list[float], window: int = 10
-    ) -> list[TrendDirection]:
+    def compute_moving_trend(self, values: list[float], window: int = 10) -> list[TrendDirection]:
         if not values or window <= 0:
             return []
         directions: list[TrendDirection] = []
@@ -113,8 +115,8 @@ class TrendAnalyzer:
             if len(subset) < 2:
                 directions.append(TrendDirection.STABLE)
                 continue
-            x_vals = list(range(len(subset)))
-            slope, _, r_squared = self._stats.linear_regression(x_vals, subset)
+            x_vals = [float(i) for i in range(len(subset))]
+            slope, _, _r_squared = self._stats.linear_regression(x_vals, subset)
             std_val = self._stats.std_dev(subset)
             directions.append(self.classify_direction(slope, std_val))
         return directions

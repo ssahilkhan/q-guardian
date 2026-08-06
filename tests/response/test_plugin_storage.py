@@ -1,10 +1,11 @@
 """Tests for Plugin and Storage."""
 
-import pytest
 from pathlib import Path
 
+import pytest
+
 from q_guardian.response.enums import ResponseAction, ResponseStatus
-from q_guardian.response.plugin import ResponsePlugin, PluginRegistry
+from q_guardian.response.plugin import PluginRegistry, ResponsePlugin
 from q_guardian.response.storage import ResponseStorage
 
 
@@ -63,15 +64,18 @@ class TestPluginRegistry:
 
     def test_list_plugins(self) -> None:
         reg = PluginRegistry()
-        p1 = ResponsePlugin(); p1.name = "p1"
-        p2 = ResponsePlugin(); p2.name = "p2"
+        p1 = ResponsePlugin()
+        p1.name = "p1"
+        p2 = ResponsePlugin()
+        p2.name = "p2"
         reg.register(p1)
         reg.register(p2)
         assert reg.count() == 2
 
     def test_shutdown_all(self) -> None:
         reg = PluginRegistry()
-        p = ResponsePlugin(); p.name = "p1"
+        p = ResponsePlugin()
+        p.name = "p1"
         reg.register(p)
         reg.shutdown_all()
         assert reg.count() == 0
@@ -81,6 +85,7 @@ class TestResponseStorage:
     def test_save_and_load_response(self, tmp_path: Path) -> None:
         storage = ResponseStorage(str(tmp_path / "store"))
         from q_guardian.response.data import ResponseResult
+
         result = ResponseResult(
             status=ResponseStatus.COMPLETED,
         )
@@ -95,6 +100,7 @@ class TestResponseStorage:
     def test_list_responses(self, tmp_path: Path) -> None:
         storage = ResponseStorage(str(tmp_path / "store"))
         from q_guardian.response.data import ResponseResult
+
         r = ResponseResult(status=ResponseStatus.COMPLETED)
         storage.save_response(r)
         assert len(storage.list_responses()) == 1
@@ -102,7 +108,8 @@ class TestResponseStorage:
     def test_save_and_load_quarantine(self, tmp_path: Path) -> None:
         storage = ResponseStorage(str(tmp_path / "store"))
         from q_guardian.response.data import QuarantineRecord
-        from q_guardian.response.enums import QuarantineType, QuarantineStatus
+        from q_guardian.response.enums import QuarantineStatus, QuarantineType
+
         rec = QuarantineRecord(
             target_type=QuarantineType.AGENT,
             target_id="a-1",
@@ -115,6 +122,7 @@ class TestResponseStorage:
     def test_delete(self, tmp_path: Path) -> None:
         storage = ResponseStorage(str(tmp_path / "store"))
         from q_guardian.response.data import ResponseResult
+
         r = ResponseResult(status=ResponseStatus.COMPLETED)
         storage.save_response(r)
         assert storage.delete("response", r.result_id) is True
@@ -127,6 +135,7 @@ class TestResponseStorage:
     def test_save_playbook_execution(self, tmp_path: Path) -> None:
         storage = ResponseStorage(str(tmp_path / "store"))
         from q_guardian.response.data import PlaybookExecution
+
         ex = PlaybookExecution(playbook_name="test")
         storage.save_playbook_execution(ex)
         assert len(storage.list_playbook_executions()) == 1
@@ -134,11 +143,13 @@ class TestResponseStorage:
     def test_save_rollback(self, tmp_path: Path) -> None:
         storage = ResponseStorage(str(tmp_path / "store"))
         from q_guardian.response.data import RollbackResult
+
         r = RollbackResult(success=True)
         storage.save_rollback(r)
 
     def test_save_recovery(self, tmp_path: Path) -> None:
         storage = ResponseStorage(str(tmp_path / "store"))
         from q_guardian.response.data import RecoveryResult
+
         r = RecoveryResult(success=True)
         storage.save_recovery(r)

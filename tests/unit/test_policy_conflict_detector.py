@@ -1,13 +1,13 @@
 """Tests for the Conflict Detector."""
 
-import pytest
-
 from q_guardian.policy.core.conflict_detector import ConflictDetector
 from q_guardian.policy.data import AdvancedPolicyDefinition, AdvancedRule, Condition
-from q_guardian.policy.enums import ComparisonOperator, ConflictType, ConflictResolution
+from q_guardian.policy.enums import ComparisonOperator, ConflictResolution, ConflictType
 
 
-def _rule(name: str, field: str, op: ComparisonOperator, value, action: str, priority: int = 0) -> AdvancedRule:
+def _rule(
+    name: str, field: str, op: ComparisonOperator, value, action: str, priority: int = 0
+) -> AdvancedRule:
     return AdvancedRule(
         name=name,
         condition=Condition(field=field, operator=op, value=value),
@@ -71,10 +71,13 @@ class TestConflictDetector:
 
     def test_internal_conflicts(self):
         detector = ConflictDetector()
-        p = _policy("p", [
-            _rule("r1", "score", ComparisonOperator.GT, 0.5, "block"),
-            _rule("r2", "score", ComparisonOperator.GT, 0.5, "allow"),
-        ])
+        p = _policy(
+            "p",
+            [
+                _rule("r1", "score", ComparisonOperator.GT, 0.5, "block"),
+                _rule("r2", "score", ComparisonOperator.GT, 0.5, "allow"),
+            ],
+        )
         conflicts = detector.detect_internal_conflicts(p)
         assert len(conflicts) >= 1
 

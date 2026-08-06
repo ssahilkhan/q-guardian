@@ -2,19 +2,18 @@
 
 from __future__ import annotations
 
-import pytest
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock
 
-from q_guardian.quantum.fusion.engine import HybridFusionEngine
+import pytest
+
+from q_guardian.quantum.exceptions import ConfigurationError, FusionError
 from q_guardian.quantum.fusion.calibrator import ConfidenceCalibrator
+from q_guardian.quantum.fusion.engine import HybridFusionEngine
 from q_guardian.quantum.fusion.prediction import ThreatPrediction
 from q_guardian.quantum.fusion.providers import PredictionProvider
 from q_guardian.quantum.fusion.strategies.base import FusedPrediction
-from q_guardian.quantum.fusion.strategies.weighted_voting import WeightedVotingStrategy
 from q_guardian.quantum.fusion.strategies.confidence import ConfidenceFusionStrategy
-from q_guardian.quantum.fusion.strategies.stacking import StackingFusionStrategy
-from q_guardian.quantum.exceptions import ConfigurationError, FusionError
+from q_guardian.quantum.fusion.strategies.weighted_voting import WeightedVotingStrategy
 
 
 class SimpleProvider(PredictionProvider):
@@ -31,7 +30,9 @@ class SimpleProvider(PredictionProvider):
     def provider_type(self) -> str:
         return "test"
 
-    async def predict(self, prompt: str, features: dict[str, Any] | None = None) -> ThreatPrediction:
+    async def predict(
+        self, prompt: str, features: dict[str, Any] | None = None
+    ) -> ThreatPrediction:
         return ThreatPrediction(
             provider_id=self._pid,
             predicted_label=self._label,
@@ -48,7 +49,9 @@ class FailingProvider(PredictionProvider):
     def provider_type(self) -> str:
         return "test"
 
-    async def predict(self, prompt: str, features: dict[str, Any] | None = None) -> ThreatPrediction:
+    async def predict(
+        self, prompt: str, features: dict[str, Any] | None = None
+    ) -> ThreatPrediction:
         raise RuntimeError("Provider crashed")
 
 

@@ -7,11 +7,13 @@ averaging, posterior updates) is deferred to a future phase.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from q_guardian.quantum.fusion.prediction import ThreatPrediction
-from q_guardian.quantum.fusion.strategies.base import FusionStrategy, FusedPrediction
 from q_guardian.quantum.exceptions import FusionError
+from q_guardian.quantum.fusion.strategies.base import FusedPrediction, FusionStrategy
+
+if TYPE_CHECKING:
+    from q_guardian.quantum.fusion.prediction import ThreatPrediction
 
 
 class BayesianFusionStrategy(FusionStrategy):

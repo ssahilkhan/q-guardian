@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -11,8 +11,8 @@ from pydantic import BaseModel, Field
 from q_guardian.policy.enums import (
     ComparisonOperator,
     ConditionType,
-    ConflictType,
     ConflictResolution,
+    ConflictType,
     DSLFormat,
     LogicalOperator,
     Permission,
@@ -21,7 +21,7 @@ from q_guardian.policy.enums import (
 
 
 def _utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def _uuid() -> str:
@@ -31,6 +31,7 @@ def _uuid() -> str:
 # ---------------------------------------------------------------------------
 # Condition models
 # ---------------------------------------------------------------------------
+
 
 class Condition(BaseModel):
     """A single comparison condition: ``field operator value``."""
@@ -70,9 +71,11 @@ class Condition(BaseModel):
             return float(actual) <= float(expected)
         if op == ComparisonOperator.MATCHES:
             import re
+
             return bool(re.search(str(expected), str(actual)))
         if op == ComparisonOperator.NOT_MATCHES:
             import re
+
             return not bool(re.search(str(expected), str(actual)))
         if op == ComparisonOperator.IN:
             return str(actual) in [str(v) for v in expected]
@@ -120,17 +123,13 @@ class CompoundCondition(BaseModel):
 
         if self.operator == LogicalOperator.AND:
             return all(
-                c.evaluate(context)
-                if isinstance(c, (Condition, CompoundCondition))
-                else bool(c)
+                c.evaluate(context) if isinstance(c, (Condition, CompoundCondition)) else bool(c)
                 for c in self.conditions
             )
 
         if self.operator == LogicalOperator.OR:
             return any(
-                c.evaluate(context)
-                if isinstance(c, (Condition, CompoundCondition))
-                else bool(c)
+                c.evaluate(context) if isinstance(c, (Condition, CompoundCondition)) else bool(c)
                 for c in self.conditions
             )
 
@@ -140,6 +139,7 @@ class CompoundCondition(BaseModel):
 # ---------------------------------------------------------------------------
 # Rule & Policy models
 # ---------------------------------------------------------------------------
+
 
 class AdvancedRule(BaseModel):
     """An advanced policy rule with rich conditions and action parameters."""
@@ -165,9 +165,7 @@ class AdvancedRule(BaseModel):
         now = _utcnow()
         if self.valid_from and now < self.valid_from:
             return False
-        if self.valid_until and now > self.valid_until:
-            return False
-        return True
+        return not (self.valid_until and now > self.valid_until)
 
     def evaluate(self, context: dict[str, Any]) -> bool:
         if not self.enabled:
@@ -215,6 +213,7 @@ class PolicyVersion(BaseModel):
 # ---------------------------------------------------------------------------
 # Conflict & Simulation models
 # ---------------------------------------------------------------------------
+
 
 class ConflictResult(BaseModel):
     """Result of conflict detection between two rules or policies."""
@@ -272,6 +271,7 @@ class PolicyEvaluationResult(BaseModel):
 # RBAC models
 # ---------------------------------------------------------------------------
 
+
 class RBACPermission(BaseModel):
     """A role-based access control permission entry."""
 
@@ -285,6 +285,7 @@ class RBACPermission(BaseModel):
 # ---------------------------------------------------------------------------
 # DSL adapter models
 # ---------------------------------------------------------------------------
+
 
 class DSLAdapterResult(BaseModel):
     """Result of converting a policy to/from an external DSL format."""

@@ -2,7 +2,7 @@
 
 > **Document index:** this is document 05 of the Q-Gaudrail technical documentation set.
 >
-> **Coverage:** every test file under `tests/` (112 files: 105 `test_*.py` + 2 `conftest.py` + 5 `__init__.py`), one entry each. **2,339 test functions** in total (2,120 synchronous, 219 async).
+> **Coverage:** every test file under `tests/` (123 `test_*.py` + `conftest.py`/`__init__.py`), one entry each. **2,650 test functions** in total (per the current CI test run).
 
 ## 1. Suite Overview
 
@@ -11,8 +11,8 @@
 | `tests/integration/` | 2 | 12 | FastAPI app endpoints, Guardian lifecycle |
 | `tests/observability/` | 24 | ~390 | alerts, metrics, tracing, health, analytics, dashboard, exporters, integrations |
 | `tests/response/` | 9 | ~168 | response engines, evidence, playbooks, quarantine, notifications, integrations |
-| `tests/unit/` | 70 | ~1,760 | policy, quantum, risk, ml, fusion, runtime, sdk, security, core |
-| **Total** | **105 + 2 conftest** | **2,339** | |
+| `tests/unit/` | 88 | ~2,080 | policy, quantum, risk, ml, fusion, runtime, sdk, security, core, benchmark, embeddings |
+| **Total** | **123 `test_*.py`** | **2,650** | |
 
 Global conventions (see §5 below): class-based `TestXxx` grouping, module-level `_`-prefixed helper factories, local module-scope fixtures, explicit `@pytest.mark.asyncio`, seeded RNG (`np.random.default_rng(42)`), tempfile isolation, no `@pytest.mark.parametrize`.
 
@@ -88,7 +88,7 @@ Package-local duplicate of the root conftest fixtures (same semantics).
 | `test_tracing_helpers.py` | tracing helpers | 18 | TraceContext (defaults/span/parent), CorrelationManager (generate/lookup/link/root), SpanManager (start/end/child/tags/logs/active/clear), events, metrics, health, async |
 | `test_trend_forecast.py` | `observability.trend_forecast` | 16 | TrendAnalyzer (direction/slope/flat/noise/window/events/metrics/health); ForecastEngine (linear/polynomial/confidence/horizon/errors/seasonal/insufficient/health) |
 
-## 6. `tests/unit/` (70 files)
+## 6. `tests/unit/` (75 files)
 
 ### 6.1 Core framework
 | File | Subject | Count | Coverage |
@@ -187,6 +187,38 @@ Package-local duplicate of the root conftest fixtures (same semantics).
 | `test_fusion_prediction.py` | `fusion.prediction` | ~12 | `ThreatPrediction`/`ReasoningTrace`: fields, defaults, threat-level evaluation, reasoning, serialization |
 | `test_fusion_strategies.py` | `fusion.strategies` | ~24 | `WeightedVoting`, `ConfidenceWeighted`, `Adaptive`, `Stacking`, `Bayesian`: tie-breaking, empty/single-provider, weight normalization |
 
+### 6.8 Benchmark (`tests/unit/test_benchmark_*.py`, 5 files)
+| File | Subject | Count | Coverage |
+|---|---|---|---|
+| `test_benchmark_registry.py` | `benchmark.registry` | 6 | `DatasetSpec` (defaults, `to_dict`), `DatasetRegistry` (builtin/get/all sorted/public/gated/public_ids, unknown → `KeyError`) |
+| `test_benchmark_download.py` | `benchmark.download` | 9 | `httpx.MockTransport` HF rows pagination, gated-without-token → `DatasetError` (mentions `gated`), gated-with-token `Authorization` header, HTTP error → `DatasetError`, local jsonl/csv/json passthrough, `max_samples` cap, cache filename sanitization |
+| `test_benchmark_validate.py` | `benchmark.validate` | 6 | `DatasetValidator`: row schema (JSON object), non-empty text, resolvable 0/1 label, category, `valid` flag, per-issue detail |
+| `test_benchmark_preprocessing.py` | `benchmark.preprocessing` | 6 | `extract_text`/`resolve_label`/`extract_category`, string `label_map`, split-derived labels+categories, `default_label` (benign corpus), bad-row skipping, empty → `ValueError` |
+| `test_benchmark_runner.py` | `benchmark.run` | 8 | End-to-end local dataset run (`k=2`, `{"quantum": False, "n_estimators": 20}`) → `BenchmarkReport` (validation + provider metrics + ranking), `run_all` over public IDs, unknown dataset → `KeyError` |
+
+### 6.9 Embeddings (`tests/unit/test_embeddings_*.py`, 10 files)
+| File | Subject | Count | Coverage |
+|---|---|---|---|
+| `test_embeddings_errors.py` | `embeddings.errors` | 7 | Exception hierarchy: `EmbeddingError` base + `NotLoaded`/`NotAvailable`/`ProviderError` subclasses, catchable-as-base, message preservation |
+| `test_embeddings_hasher.py` | `embeddings.providers.hasher` | 22 | `hash_vector` (deterministic, dimension, L2-normalized, seed changes vector, whitespace-insensitive, empty text, cap); `HashEmbeddingProvider` lifecycle/embed/batch/metadata |
+| `test_embeddings_base.py` | `embeddings.base` | 18 | `EmbeddingProvider` ABC: abstract enforcement, load-guard on `embed`/`embed_batch`, idempotent load/unload, rolling latency window, `metadata` record |
+| `test_embeddings_providers.py` | `embeddings.providers` | 27 | `SentenceTransformersProvider` via fake model factory (dimension probe, batch, unload, missing-library → `EmbeddingNotAvailableError`), `_as_floats`, cloud placeholders (identity/env/dimension, load guard, unimplemented `embed`, metadata `implemented=False`) |
+| `test_embeddings_cache.py` | `embeddings.manager.EmbeddingCache` | 12 | JSON disk cache: save/load roundtrip, corrupted file → empty, float coercion, `contains`, per-provider/global `clear`, `snapshot`, overwrite |
+| `test_embeddings_manager.py` | `embeddings.manager` | 52 | Registration (duplicates → `EmbeddingError`, aliases, default selection, `unregister`), lazy load, embed + `embed_with_meta` (cache flags, latency), LRU eviction, stats, batching + chunking, fallback (single + batch, event/error records), disk-cache persistence across instances, `EmbeddingManager.default`, `build_manager` |
+| `test_embeddings_explain.py` | `embeddings.explain` | 16 | `EmbeddingMeta` (frozen, `to_dict`/`from_dict`, `is_cache_hit`), `EmbeddingTrace` (records, unique providers/models, latency stats ignoring cached, p95, `to_dict`, clear) |
+| `test_embeddings_fusion.py` | `embeddings.fusion` | 35 | `FeatureMode` (StrEnum, coercion), `ModeFeatureExtractor` (43/16/59-dim vectors, feature names, per-call mode override, handcrafted parity vs `HybridEvaluator`), `EmbeddingFeatureProvider.extract_features` per mode, `ModeHybridEvaluator` parity |
+| `test_embeddings_integration.py` | `embeddings.integration` | 9 | `ModeTrainingAdapter` (matrix/names built, trainer kwargs forwarded, anomaly path), `ModeQuantumAdapter` (vector forwarding, optional labels) with injected fake trainers |
+| `test_embeddings_benchmark.py` | `embeddings.benchmark` | 28 | `ModeDetectionBenchmark` (report shape per mode, evaluator kwargs, ablation, out-of-fold scores), comparison helpers (`_build_comparison`, `_recommendation`, `_fmean_or_zero`, `_stdev_or_zero`), `ModeComparisonReport` (winner/`as_dict`/`as_benchmark_reports`), `ModeComparisonRunner` end-to-end on a local dataset |
+
+### 6.10 Evaluation (`tests/unit/test_evaluation_*.py`, 4 files)
+
+| File | Module under test | Tests | Coverage |
+|---|---|---|---|
+| `test_evaluation_dataset.py` | `evaluation.dataset` | 10 | `PromptBenchmarkDataset` construction, columns, serialization |
+| `test_evaluation_metrics.py` | `evaluation.metrics` | 21 | Probability-based detection metrics (AUC, precision/recall, thresholds, aggregates) |
+| `test_evaluation_benchmark.py` | `evaluation.benchmark` | 6 | Cross-validation benchmark and report rendering |
+| `test_evaluation_pipeline.py` | `evaluation.pipeline` | 5 | Hybrid pipeline evaluator (classical path) |
+
 ## 7. Shared Test Infrastructure
 
 ### 7.1 Module-level helper factories (`_`-prefixed)
@@ -202,9 +234,9 @@ Defined in `test_quantum_inference_engine.py` (`backend`, `feature_map`, `kernel
 
 | Metric | Count |
 |---|---|
-| Total test functions | **2,339** |
-| — synchronous (`def test_`) | 2,120 |
-| — asynchronous (`async def test_`) | 219 |
+| Total test functions | **2,650** |
+| — synchronous (`def test_`) | 2,415 |
+| — asynchronous (`async def test_`) | 235 |
 | `@pytest.mark.asyncio` | 160 |
 | `@pytest.fixture` definitions (incl. conftest) | 53 |
 | `@pytest_asyncio.fixture` definitions | 3 |

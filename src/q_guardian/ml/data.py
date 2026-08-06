@@ -1,14 +1,12 @@
 """Domain models for the ML Security module."""
 
-from __future__ import annotations
-
 from datetime import UTC, datetime
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from q_guardian.ml.enums import ModelBackend, ModelStatus, ModelType, TrainingStatus
-from q_guardian.security.enums import PromptCategory, PromptDecision, PromptSeverity
+from q_guardian.security.enums import PromptCategory, PromptSeverity
 from q_guardian.security.models import PromptFinding
 from q_guardian.utils.uuid_utils import generate_uuid
 
@@ -24,9 +22,7 @@ class ModelMetadata(BaseModel):
     backend: ModelBackend = Field(description="ML framework backend")
     version: str = Field(default="1.0.0", description="Model version (semver)")
     description: str = Field(default="", description="Human-readable description")
-    status: ModelStatus = Field(
-        default=ModelStatus.UNLOADED, description="Lifecycle status"
-    )
+    status: ModelStatus = Field(default=ModelStatus.UNLOADED, description="Lifecycle status")
     created_at: datetime = Field(
         default_factory=lambda: datetime.now(UTC), description="Creation timestamp"
     )
@@ -48,12 +44,8 @@ class InferenceResult(BaseModel):
     result_id: str = Field(default_factory=generate_uuid, description="Unique result ID")
     model_name: str = Field(description="Name of the model that produced this result")
     is_anomaly: bool = Field(default=False, description="Whether anomaly was detected")
-    anomaly_score: float = Field(
-        default=0.0, ge=-1.0, le=1.0, description="Raw anomaly score"
-    )
-    predictions: dict[str, float] = Field(
-        default_factory=dict, description="Class probabilities"
-    )
+    anomaly_score: float = Field(default=0.0, ge=-1.0, le=1.0, description="Raw anomaly score")
+    predictions: dict[str, float] = Field(default_factory=dict, description="Class probabilities")
     predicted_class: str = Field(default="", description="Top predicted class")
     confidence: float = Field(default=0.0, ge=0.0, le=1.0, description="Prediction confidence")
     risk_score: float = Field(default=0.0, ge=0.0, le=1.0, description="Derived risk score")

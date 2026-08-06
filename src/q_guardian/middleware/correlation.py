@@ -7,13 +7,16 @@ If the client provides one, it is preserved; otherwise a new one is generated.
 from __future__ import annotations
 
 import uuid
+from typing import TYPE_CHECKING
 
 import structlog
 from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.requests import Request
-from starlette.responses import Response
 
 from q_guardian.core.constants import CORRELATION_ID_HEADER
+
+if TYPE_CHECKING:
+    from starlette.requests import Request
+    from starlette.responses import Response
 
 logger = structlog.get_logger("middleware.correlation")
 

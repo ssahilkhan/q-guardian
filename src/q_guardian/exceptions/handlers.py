@@ -6,19 +6,19 @@ into structured JSON API responses.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
-from q_guardian.exceptions.base import ApplicationException, ValidationException
+from q_guardian.exceptions.base import ApplicationError, ValidationError
+
+if TYPE_CHECKING:
+    from fastapi import FastAPI, Request
 
 
-async def application_exception_handler(
-    request: Request, exc: ApplicationException
-) -> JSONResponse:
-    """Handle ApplicationException and return structured JSON response.
+async def application_exception_handler(request: Request, exc: ApplicationError) -> JSONResponse:
+    """Handle ApplicationError and return structured JSON response.
 
     Args:
         request: The incoming HTTP request.
@@ -47,7 +47,7 @@ async def validation_exception_handler(
     """
     errors = exc.errors()
     details: dict[str, Any] = {"validation_errors": errors}
-    exception = ValidationException(
+    exception = ValidationError(
         message="Request validation failed",
         details=details,
     )
@@ -67,7 +67,7 @@ async def general_exception_handler(request: Request, exc: Exception) -> JSONRes
     Returns:
         JSONResponse with generic error details.
     """
-    exception = ApplicationException(
+    exception = ApplicationError(
         message="Internal server error",
         code="INTERNAL_ERROR",
         status_code=500,
@@ -86,9 +86,11 @@ def register_exception_handlers(app: FastAPI) -> None:
         app: The FastAPI application instance.
     """
     app.add_exception_handler(
-        ApplicationException, application_exception_handler  # type: ignore[arg-type]
+        ApplicationError,
+        application_exception_handler,  # type: ignore[arg-type]
     )
     app.add_exception_handler(
-        RequestValidationError, validation_exception_handler  # type: ignore[arg-type]
+        RequestValidationError,
+        validation_exception_handler,  # type: ignore[arg-type]
     )
     app.add_exception_handler(Exception, general_exception_handler)

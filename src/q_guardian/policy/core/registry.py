@@ -3,9 +3,8 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
 
 import structlog
 
@@ -64,7 +63,7 @@ class PolicyRegistry:
         return self.list_by_status(PolicyStatus.ACTIVE)
 
     def update(self, policy: AdvancedPolicyDefinition) -> None:
-        policy.updated_at = datetime.now(timezone.utc)
+        policy.updated_at = datetime.now(UTC)
         self._policies[policy.policy_id] = policy
         logger.info("policy_updated", policy_id=policy.policy_id, name=policy.name)
         self._persist()
@@ -72,14 +71,14 @@ class PolicyRegistry:
     def activate(self, policy_id: str) -> None:
         policy = self.get(policy_id)
         policy.status = PolicyStatus.ACTIVE
-        policy.updated_at = datetime.now(timezone.utc)
+        policy.updated_at = datetime.now(UTC)
         logger.info("policy_activated", policy_id=policy_id)
         self._persist()
 
     def deactivate(self, policy_id: str) -> None:
         policy = self.get(policy_id)
         policy.status = PolicyStatus.SUSPENDED
-        policy.updated_at = datetime.now(timezone.utc)
+        policy.updated_at = datetime.now(UTC)
         logger.info("policy_deactivated", policy_id=policy_id)
         self._persist()
 
@@ -94,10 +93,7 @@ class PolicyRegistry:
         if not self._storage_path:
             return
         try:
-            data = {
-                pid: p.model_dump(mode="json")
-                for pid, p in self._policies.items()
-            }
+            data = {pid: p.model_dump(mode="json") for pid, p in self._policies.items()}
             Path(self._storage_path).parent.mkdir(parents=True, exist_ok=True)
             Path(self._storage_path).write_text(json.dumps(data, indent=2, default=str))
         except Exception as e:

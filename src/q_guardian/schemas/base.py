@@ -3,15 +3,12 @@
 Provides common schema patterns with validation and serialization.
 """
 
-from __future__ import annotations
-
 from datetime import datetime
-from typing import Any, Generic, TypeVar
+from typing import Any, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from q_guardian.utils.datetime_utils import get_utc_now
-from q_guardian.utils.uuid_utils import generate_uuid
 
 T = TypeVar("T")
 
@@ -27,7 +24,7 @@ class BaseSchema(BaseModel):
     )
 
 
-class ResponseSchema(BaseSchema, Generic[T]):
+class ResponseSchema[T](BaseSchema):
     """Standard API response envelope.
 
     All API responses should follow this structure for consistency.
@@ -36,15 +33,11 @@ class ResponseSchema(BaseSchema, Generic[T]):
     success: bool = Field(default=True, description="Whether the request succeeded")
     message: str = Field(default="Success", description="Response message")
     data: T | None = Field(default=None, description="Response payload")
-    timestamp: datetime = Field(
-        default_factory=get_utc_now, description="Response timestamp"
-    )
-    correlation_id: str | None = Field(
-        default=None, description="Request correlation ID"
-    )
+    timestamp: datetime = Field(default_factory=get_utc_now, description="Response timestamp")
+    correlation_id: str | None = Field(default=None, description="Request correlation ID")
 
 
-class PaginatedResponseSchema(BaseSchema, Generic[T]):
+class PaginatedResponseSchema[T](BaseSchema):
     """Paginated list response schema."""
 
     success: bool = Field(default=True)
@@ -65,9 +58,7 @@ class HealthResponseSchema(BaseSchema):
     version: str = Field(description="Application version")
     environment: str = Field(description="Current environment")
     timestamp: datetime = Field(description="Check timestamp")
-    database: dict[str, Any] | None = Field(
-        default=None, description="Database health status"
-    )
+    database: dict[str, Any] | None = Field(default=None, description="Database health status")
 
 
 class ErrorResponseSchema(BaseSchema):

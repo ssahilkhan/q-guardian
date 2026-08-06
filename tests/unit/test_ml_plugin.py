@@ -13,10 +13,11 @@ from q_guardian.security.enums import PromptDecision
 
 def _make_training_data(n: int = 60) -> tuple[list[list[float]], list[int]]:
     import random
+
     random.seed(42)
-    X = [[random.uniform(0, 100) for _ in range(12)] for _ in range(n)]
+    x = [[random.uniform(0, 100) for _ in range(12)] for _ in range(n)]
     y = [random.choice([0, 1, 2]) for _ in range(n)]
-    return X, y
+    return x, y
 
 
 class TestThreatAnalysisPlugin:
@@ -79,11 +80,11 @@ class TestThreatAnalysisPlugin:
         config = MLConfig(enabled=True)
         plugin = ThreatAnalysisPlugin(config=config)
 
-        X, y = _make_training_data(60)
+        x, y = _make_training_data(60)
         detector = IsolationForestDetector()
         classifier = RandomForestThreatClassifier()
-        detector.train(X)
-        classifier.train(X, y)
+        detector.train(x)
+        classifier.train(x, y)
 
         plugin.register_ml_detector(detector)
         plugin.register_ml_classifier(classifier)

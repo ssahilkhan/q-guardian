@@ -7,17 +7,15 @@ to manage plugins, events, hooks, and adapters.
 
 from __future__ import annotations
 
-import structlog
-from typing import Any, Callable
+from typing import TYPE_CHECKING, Any, cast
 
-from q_guardian.adapters.base import Adapter
+import structlog
+
 from q_guardian.core.framework_state import FrameworkState, FrameworkStateMachine
-from q_guardian.events.base import Event, EventHandler
 from q_guardian.events.bus import EventBus
 from q_guardian.framework.config import FrameworkConfig
 from q_guardian.framework.context import FrameworkContext
 from q_guardian.hooks.manager import HookManager
-from q_guardian.plugins.base import Plugin, PluginMetadata
 from q_guardian.plugins.registry import PluginRegistry
 from q_guardian.runtime.context import RuntimeContext
 from q_guardian.runtime.managers import (
@@ -26,8 +24,15 @@ from q_guardian.runtime.managers import (
     SessionManager,
     ToolExecutionTracker,
 )
-from q_guardian.runtime.models import Agent, AgentSession
 from q_guardian.utils.uuid_utils import generate_uuid
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from q_guardian.adapters.base import Adapter
+    from q_guardian.events.base import Event, EventHandler
+    from q_guardian.plugins.base import Plugin, PluginMetadata
+    from q_guardian.runtime.models import Agent, AgentSession
 
 logger = structlog.get_logger("sdk.guardian")
 
@@ -225,9 +230,7 @@ class Guardian:
 
         from q_guardian.events.standard import FrameworkStopped
 
-        await self._event_bus.publish(
-            FrameworkStopped(source="guardian", data={})
-        )
+        await self._event_bus.publish(FrameworkStopped(source="guardian", data={}))
 
         await self._plugin_registry.stop_all()
         await self._event_bus.clear()
@@ -451,7 +454,7 @@ class Guardian:
             )
         )
 
-        return context.get("results", results)
+        return cast("dict[str, Any]", context.get("results", results))
 
     async def monitor(self, event_data: dict[str, Any]) -> dict[str, Any]:
         """Monitor runtime activity through registered monitors.

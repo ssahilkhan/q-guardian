@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 import structlog
 
 from q_guardian.policy.data import RBACPermission
@@ -70,9 +68,7 @@ class RBACManager:
     def require_permission(self, user_id: str, permission: Permission) -> None:
         if not self.check_permission(user_id, permission):
             role = self.get_role(user_id)
-            raise RBACError(
-                f"User '{user_id}' (role={role}) lacks permission: {permission.value}"
-            )
+            raise RBACError(f"User '{user_id}' (role={role}) lacks permission: {permission.value}")
 
     def create_role(
         self,

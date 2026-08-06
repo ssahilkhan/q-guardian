@@ -1,16 +1,18 @@
 """Tests for Rollback, Recovery, and Approval Engines."""
 
 import pytest
+
 from q_guardian.response.data import RecoveryPlan
-from q_guardian.response.enums import (
-    RollbackTarget,
-    RecoveryAction,
-    ApprovalType,
-    ApprovalStatus,
-)
-from q_guardian.response.engine.rollback_engine import RollbackEngine
-from q_guardian.response.engine.recovery_engine import RecoveryEngine
 from q_guardian.response.engine.approval_engine import ApprovalEngine
+from q_guardian.response.engine.recovery_engine import RecoveryEngine
+from q_guardian.response.engine.rollback_engine import RollbackEngine
+from q_guardian.response.enums import (
+    ApprovalStatus,
+    ApprovalType,
+    RecoveryAction,
+    RollbackTarget,
+)
+from q_guardian.response.exceptions import ApprovalError
 
 
 class TestRollbackEngine:
@@ -188,7 +190,7 @@ class TestApprovalEngine:
 
     def test_approve_nonexistent(self) -> None:
         eng = ApprovalEngine()
-        with pytest.raises(Exception):
+        with pytest.raises(ApprovalError):
             eng.approve("nope", approver="admin")
 
     def test_auto_approve(self) -> None:

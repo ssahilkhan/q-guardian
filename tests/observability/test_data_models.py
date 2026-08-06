@@ -27,7 +27,6 @@ from q_guardian.observability.data import (
 from q_guardian.observability.enums import (
     AlertSeverity,
     AlertState,
-    AlertType,
     HealthLevel,
     HealthStatus,
     MetricType,

@@ -2,16 +2,17 @@
 
 from __future__ import annotations
 
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
-from q_guardian.quantum.inference.engine import QuantumInferenceEngine
-from q_guardian.quantum.models.qsvm import QSVMModel
-from q_guardian.quantum.feature_maps.angle_encoding import AngleEncodingMap
-from q_guardian.quantum.kernels.quantum_kernel import QuantumKernelEstimator
+import pytest
+
 from q_guardian.quantum.backends.simulator import LocalSimulatorBackend
 from q_guardian.quantum.data import QuantumInferenceResult
 from q_guardian.quantum.exceptions import QuantumInferenceError
+from q_guardian.quantum.feature_maps.angle_encoding import AngleEncodingMap
+from q_guardian.quantum.inference.engine import QuantumInferenceEngine
+from q_guardian.quantum.kernels.quantum_kernel import QuantumKernelEstimator
+from q_guardian.quantum.models.qsvm import QSVMModel
 
 
 @pytest.fixture
@@ -37,22 +38,24 @@ def engine() -> QuantumInferenceEngine:
 @pytest.fixture
 def trained_qsvm(kernel: QuantumKernelEstimator, feature_map: AngleEncodingMap) -> QSVMModel:
     import numpy as np
+
     rng = np.random.default_rng(42)
-    X = rng.uniform(-np.pi, np.pi, size=(20, 4)).tolist()
+    x = rng.uniform(-np.pi, np.pi, size=(20, 4)).tolist()
     y = [0 if i < 10 else 1 for i in range(20)]
     qsvm = QSVMModel(kernel=kernel, feature_map=feature_map)
-    qsvm.train(X, y)
+    qsvm.train(x, y)
     return qsvm
 
 
 @pytest.fixture
 def trained_qsvm2(kernel: QuantumKernelEstimator, feature_map: AngleEncodingMap) -> QSVMModel:
     import numpy as np
+
     rng = np.random.default_rng(99)
-    X = rng.uniform(-np.pi, np.pi, size=(20, 4)).tolist()
+    x = rng.uniform(-np.pi, np.pi, size=(20, 4)).tolist()
     y = [0 if i < 10 else 1 for i in range(20)]
     qsvm = QSVMModel(kernel=kernel, feature_map=feature_map, name="qsvm-secondary")
-    qsvm.train(X, y)
+    qsvm.train(x, y)
     return qsvm
 
 
@@ -86,7 +89,9 @@ class TestEngineRegistration:
         engine.register_model(trained_qsvm, fallback_priority=0)
         assert engine.fallback_order == ["qsvm"]
 
-    def test_register_multiple(self, engine: QuantumInferenceEngine, trained_qsvm: QSVMModel, trained_qsvm2: QSVMModel):
+    def test_register_multiple(
+        self, engine: QuantumInferenceEngine, trained_qsvm: QSVMModel, trained_qsvm2: QSVMModel
+    ):
         engine.register_model(trained_qsvm, fallback_priority=0)
         engine.register_model(trained_qsvm2, fallback_priority=1)
         assert engine.model_count == 2
@@ -123,7 +128,9 @@ class TestEngineModelSelection:
         model = engine.select_model()
         assert model is None
 
-    def test_select_by_fallback_priority(self, engine: QuantumInferenceEngine, trained_qsvm: QSVMModel, trained_qsvm2: QSVMModel):
+    def test_select_by_fallback_priority(
+        self, engine: QuantumInferenceEngine, trained_qsvm: QSVMModel, trained_qsvm2: QSVMModel
+    ):
         engine.register_model(trained_qsvm2, fallback_priority=0)
         engine.register_model(trained_qsvm, fallback_priority=1)
         model = engine.select_model()
@@ -141,12 +148,16 @@ class TestEngineInference:
         result = await engine.infer([1.0, 2.0, 3.0, 4.0])
         assert isinstance(result, QuantumInferenceResult)
 
-    async def test_infer_increments_count(self, engine: QuantumInferenceEngine, trained_qsvm: QSVMModel):
+    async def test_infer_increments_count(
+        self, engine: QuantumInferenceEngine, trained_qsvm: QSVMModel
+    ):
         engine.register_model(trained_qsvm)
         await engine.infer([1.0, 2.0, 3.0, 4.0])
         assert engine.total_inferences == 1
 
-    async def test_infer_with_model_name(self, engine: QuantumInferenceEngine, trained_qsvm: QSVMModel):
+    async def test_infer_with_model_name(
+        self, engine: QuantumInferenceEngine, trained_qsvm: QSVMModel
+    ):
         engine.register_model(trained_qsvm)
         result = await engine.infer([1.0, 2.0, 3.0, 4.0], model_name="qsvm")
         assert result.model_name == "qsvm"
@@ -163,10 +174,12 @@ class TestEngineInference:
 class TestEngineBatchInference:
     async def test_batch_infer_basic(self, engine: QuantumInferenceEngine, trained_qsvm: QSVMModel):
         engine.register_model(trained_qsvm)
-        results = await engine.infer_batch([
-            [1.0, 2.0, 3.0, 4.0],
-            [5.0, 6.0, 7.0, 8.0],
-        ])
+        results = await engine.infer_batch(
+            [
+                [1.0, 2.0, 3.0, 4.0],
+                [5.0, 6.0, 7.0, 8.0],
+            ]
+        )
         assert len(results) == 2
         assert all(isinstance(r, QuantumInferenceResult) for r in results)
 
@@ -181,7 +194,9 @@ class TestEngineBatchInference:
 
 
 class TestEngineFallback:
-    async def test_fallback_on_error(self, engine: QuantumInferenceEngine, trained_qsvm: QSVMModel, trained_qsvm2: QSVMModel):
+    async def test_fallback_on_error(
+        self, engine: QuantumInferenceEngine, trained_qsvm: QSVMModel, trained_qsvm2: QSVMModel
+    ):
         engine.register_model(trained_qsvm, fallback_priority=0)
         engine.register_model(trained_qsvm2, fallback_priority=1)
         result = await engine.infer([1.0, 2.0, 3.0, 4.0])
@@ -203,7 +218,9 @@ class TestEnginePerformanceStats:
         stats = engine.get_performance_stats()
         assert stats["total_inferences"] == 0
 
-    async def test_stats_after_inference(self, engine: QuantumInferenceEngine, trained_qsvm: QSVMModel):
+    async def test_stats_after_inference(
+        self, engine: QuantumInferenceEngine, trained_qsvm: QSVMModel
+    ):
         engine.register_model(trained_qsvm)
         await engine.infer([1.0, 2.0, 3.0, 4.0])
         stats = engine.get_performance_stats()

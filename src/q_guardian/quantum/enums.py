@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 
 
-class QuantumBackendType(str, Enum):
+class QuantumBackendType(StrEnum):
     """Supported quantum backend types."""
 
     SIMULATOR = "simulator"
@@ -18,7 +18,7 @@ class QuantumBackendType(str, Enum):
     CUSTOM = "custom"
 
 
-class EncodingType(str, Enum):
+class EncodingType(StrEnum):
     """Quantum feature encoding strategies."""
 
     ANGLE = "angle"
@@ -28,7 +28,7 @@ class EncodingType(str, Enum):
     CUSTOM = "custom"
 
 
-class CircuitType(str, Enum):
+class CircuitType(StrEnum):
     """Types of quantum circuits."""
 
     FEATURE_MAP = "feature_map"
@@ -38,7 +38,7 @@ class CircuitType(str, Enum):
     HYBRID = "hybrid"
 
 
-class MeasurementBasis(str, Enum):
+class MeasurementBasis(StrEnum):
     """Measurement basis for quantum circuits."""
 
     PAULI_Z = "pauli_z"
@@ -47,7 +47,7 @@ class MeasurementBasis(str, Enum):
     COMPUTATIONAL = "computational"
 
 
-class OptimizerType(str, Enum):
+class OptimizerType(StrEnum):
     """Supported quantum optimizers."""
 
     COBYLA = "cobyla"
@@ -59,7 +59,7 @@ class OptimizerType(str, Enum):
     POWELL = "powell"
 
 
-class QuantumModelType(str, Enum):
+class QuantumModelType(StrEnum):
     """Types of quantum ML models."""
 
     QSVM = "qsvm"
@@ -70,7 +70,7 @@ class QuantumModelType(str, Enum):
     CUSTOM = "custom"
 
 
-class ExecutionStatus(str, Enum):
+class ExecutionStatus(StrEnum):
     """Status of a quantum circuit execution."""
 
     PENDING = "pending"
@@ -80,7 +80,7 @@ class ExecutionStatus(str, Enum):
     CANCELLED = "cancelled"
 
 
-class BackendStatus(str, Enum):
+class BackendStatus(StrEnum):
     """Health status of a quantum backend."""
 
     HEALTHY = "healthy"
@@ -90,7 +90,7 @@ class BackendStatus(str, Enum):
     ERROR = "error"
 
 
-class FusionStrategyType(str, Enum):
+class FusionStrategyType(StrEnum):
     """Hybrid fusion strategy types."""
 
     WEIGHTED_VOTING = "weighted_voting"

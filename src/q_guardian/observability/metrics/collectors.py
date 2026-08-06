@@ -159,7 +159,9 @@ class PluginMetricsCollector(MetricCollector):
 
         metrics.extend([requests_metric, errors_metric, latency_metric])
         self._collected.extend(metrics)
-        logger.debug("plugin_metrics_collected", count=len(metrics), plugins=len(self._plugin_metrics))
+        logger.debug(
+            "plugin_metrics_collected", count=len(metrics), plugins=len(self._plugin_metrics)
+        )
         return metrics
 
 

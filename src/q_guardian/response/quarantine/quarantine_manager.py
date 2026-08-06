@@ -1,9 +1,9 @@
-"""Quarantine Manager — manages quarantine lifecycle for agents, sessions, plugins, memory, tools."""
+"""Quarantine Manager — manages quarantine lifecycle for agents, sessions,
+plugins, memory, tools."""
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
-from typing import Any
+from datetime import UTC, datetime, timedelta
 
 import structlog
 
@@ -46,7 +46,7 @@ class QuarantineManager:
             status=QuarantineStatus.ACTIVE,
             reason=reason,
             actions_blocked=actions_blocked or [],
-            expires_at=datetime.now(timezone.utc) + timedelta(seconds=duration),
+            expires_at=datetime.now(UTC) + timedelta(seconds=duration),
         )
         self._quarantines[record.quarantine_id] = record
 
@@ -71,7 +71,7 @@ class QuarantineManager:
                 f"Quarantine {quarantine_id} is not active (status={record.status.value})"
             )
         record.status = QuarantineStatus.MANUALLY_RELEASED
-        record.released_at = datetime.now(timezone.utc)
+        record.released_at = datetime.now(UTC)
         record.released_by = released_by
         logger.info(
             "quarantine_released",
@@ -82,7 +82,7 @@ class QuarantineManager:
 
     def check_expired(self) -> list[QuarantineRecord]:
         """Check and auto-release expired quarantines."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         expired: list[QuarantineRecord] = []
         for record in self._quarantines.values():
             if record.status != QuarantineStatus.ACTIVE:
@@ -117,15 +117,9 @@ class QuarantineManager:
         return self._quarantines.get(quarantine_id)
 
     def get_active(self) -> list[QuarantineRecord]:
-        return [
-            r
-            for r in self._quarantines.values()
-            if r.status == QuarantineStatus.ACTIVE
-        ]
+        return [r for r in self._quarantines.values() if r.status == QuarantineStatus.ACTIVE]
 
-    def get_by_target(
-        self, target_type: QuarantineType, target_id: str
-    ) -> list[QuarantineRecord]:
+    def get_by_target(self, target_type: QuarantineType, target_id: str) -> list[QuarantineRecord]:
         return [
             r
             for r in self._quarantines.values()

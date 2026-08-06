@@ -2,9 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-import numpy as np
-
 from q_guardian.quantum.fusion.calibrator import ConfidenceCalibrator
 from q_guardian.quantum.fusion.prediction import ThreatPrediction
 

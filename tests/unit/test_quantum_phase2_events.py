@@ -2,18 +2,16 @@
 
 from __future__ import annotations
 
-import pytest
-
 from q_guardian.quantum.events import (
-    QuantumModelTrainingStarted,
+    QuantumModelHealthChecked,
+    QuantumModelLoaded,
+    QuantumModelPredictionFailed,
+    QuantumModelPredictionStarted,
+    QuantumModelSaved,
     QuantumModelTrainingCompleted,
     QuantumModelTrainingFailed,
-    QuantumModelPredictionStarted,
-    QuantumModelPredictionFailed,
-    QuantumModelSaved,
-    QuantumModelLoaded,
+    QuantumModelTrainingStarted,
     QuantumModelVersionCreated,
-    QuantumModelHealthChecked,
 )
 
 

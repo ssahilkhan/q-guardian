@@ -59,9 +59,7 @@ class Adapter(ABC):
         """
 
     @abstractmethod
-    async def process_prompt(
-        self, prompt: str, context: dict[str, Any]
-    ) -> dict[str, Any]:
+    async def process_prompt(self, prompt: str, context: dict[str, Any]) -> dict[str, Any]:
         """Process a prompt through the adapter.
 
         Args:
@@ -106,3 +104,4 @@ class Adapter(ABC):
 
     async def shutdown(self) -> None:
         """Shut down the adapter and release resources."""
+        return None

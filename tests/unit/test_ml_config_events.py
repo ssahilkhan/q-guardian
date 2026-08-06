@@ -3,7 +3,14 @@
 from __future__ import annotations
 
 from q_guardian.ml.config import MLConfig
-from q_guardian.ml.enums import ModelBackend, ModelStatus, ModelType, TrainingStatus, DatasetFormat, FeatureType
+from q_guardian.ml.enums import (
+    DatasetFormat,
+    FeatureType,
+    ModelBackend,
+    ModelStatus,
+    ModelType,
+    TrainingStatus,
+)
 from q_guardian.ml.events import (
     AnomalyDetected,
     EnsemblePrediction,

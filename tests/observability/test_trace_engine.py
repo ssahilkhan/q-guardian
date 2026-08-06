@@ -1,8 +1,6 @@
-from datetime import UTC, datetime, timedelta
-
 import pytest
 
-from q_guardian.observability.enums import SpanKind, TraceStatus
+from q_guardian.observability.enums import TraceStatus
 from q_guardian.observability.exceptions import TraceError
 from q_guardian.observability.tracing.exporters import JsonTraceExporter
 from q_guardian.observability.tracing.trace_engine import TraceEngine
@@ -161,8 +159,8 @@ class TestTraceEngineGetAllTraces:
     def test_get_all_traces(self):
         engine = TraceEngine()
         engine.initialize()
-        t1 = engine.start_trace()
-        t2 = engine.start_trace()
+        engine.start_trace()
+        engine.start_trace()
         all_traces = engine.get_all_traces()
         assert len(all_traces) == 2
 
@@ -170,7 +168,7 @@ class TestTraceEngineGetAllTraces:
         engine = TraceEngine()
         engine.initialize()
         t1 = engine.start_trace()
-        t2 = engine.start_trace()
+        engine.start_trace()
         engine.finish_trace(t1.trace_id)
         active = engine.get_all_traces(active_only=True)
         assert len(active) == 1
@@ -180,8 +178,8 @@ class TestTraceEngineGetTracesByCorrelation:
     def test_get_traces_by_correlation(self):
         engine = TraceEngine()
         engine.initialize()
-        t1 = engine.start_trace(correlation_id="corr-1")
-        t2 = engine.start_trace(correlation_id="corr-1")
+        engine.start_trace(correlation_id="corr-1")
+        engine.start_trace(correlation_id="corr-1")
         traces = engine.get_traces_by_correlation("corr-1")
         assert len(traces) == 2
 

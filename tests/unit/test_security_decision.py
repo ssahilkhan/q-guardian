@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from q_guardian.security.decision import SecurityDecisionEngine
 from q_guardian.security.enums import PromptCategory, PromptDecision, PromptSeverity
 from q_guardian.security.models import PromptAnalysis, PromptFinding

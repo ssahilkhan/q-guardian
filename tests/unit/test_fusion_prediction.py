@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-import pytest
 from typing import Any
 
-from q_guardian.quantum.fusion.prediction import ThreatPrediction, ReasoningTrace
+import pytest
+
+from q_guardian.quantum.fusion.prediction import ReasoningTrace, ThreatPrediction
 from q_guardian.quantum.fusion.providers import PredictionProvider
 
 
@@ -131,7 +132,9 @@ class TestPredictionProviderContract:
             def provider_type(self) -> str:
                 return "external"
 
-            async def predict(self, prompt: str, features: dict[str, Any] | None = None) -> ThreatPrediction:
+            async def predict(
+                self, prompt: str, features: dict[str, Any] | None = None
+            ) -> ThreatPrediction:
                 return ThreatPrediction(
                     provider_id="dummy",
                     predicted_label="benign",
@@ -160,7 +163,9 @@ class TestPredictionProviderContract:
             def display_name(self) -> str:
                 return "My Custom Provider"
 
-            async def predict(self, prompt: str, features: dict[str, Any] | None = None) -> ThreatPrediction:
+            async def predict(
+                self, prompt: str, features: dict[str, Any] | None = None
+            ) -> ThreatPrediction:
                 return ThreatPrediction(provider_id="np", predicted_label="x", confidence=0.5)
 
         p = NamedProvider()
@@ -176,9 +181,12 @@ class TestPredictionProviderContract:
             def provider_type(self) -> str:
                 return "external"
 
-            async def predict(self, prompt: str, features: dict[str, Any] | None = None) -> ThreatPrediction:
+            async def predict(
+                self, prompt: str, features: dict[str, Any] | None = None
+            ) -> ThreatPrediction:
                 return ThreatPrediction(provider_id="simple", predicted_label="x", confidence=0.5)
 
         p = SimpleProvider()
         import asyncio
+
         asyncio.run(p.train([{"prompt": "test", "label": "benign"}]))

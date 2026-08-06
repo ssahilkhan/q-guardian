@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import pytest
-import json
-import tempfile
-from pathlib import Path
 
 from q_guardian.quantum.storage import QuantumModelStorage
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 @pytest.fixture
@@ -50,12 +52,16 @@ class TestStorageConstruction:
 
 
 class TestStorageSaveLoad:
-    def test_save_creates_files(self, tmp_storage: QuantumModelStorage, sample_state: dict, sample_metadata: dict):
+    def test_save_creates_files(
+        self, tmp_storage: QuantumModelStorage, sample_state: dict, sample_metadata: dict
+    ):
         tmp_storage.save("test-model", sample_state, sample_metadata)
         assert (tmp_storage.model_dir("test-model") / "model_state.json").exists()
         assert (tmp_storage.model_dir("test-model") / "model_metadata.json").exists()
 
-    def test_save_with_version(self, tmp_storage: QuantumModelStorage, sample_state: dict, sample_metadata: dict):
+    def test_save_with_version(
+        self, tmp_storage: QuantumModelStorage, sample_state: dict, sample_metadata: dict
+    ):
         path = tmp_storage.save("test-model", sample_state, sample_metadata, version="1.0.0")
         assert path.exists()
         versions_dir = tmp_storage.model_dir("test-model") / "versions"
@@ -70,10 +76,13 @@ class TestStorageSaveLoad:
 
     def test_load_nonexistent_raises(self, tmp_storage: QuantumModelStorage):
         from q_guardian.quantum.exceptions import QuantumError
+
         with pytest.raises(QuantumError, match="not found"):
             tmp_storage.load("nonexistent")
 
-    def test_load_version(self, tmp_storage: QuantumModelStorage, sample_state: dict, sample_metadata: dict):
+    def test_load_version(
+        self, tmp_storage: QuantumModelStorage, sample_state: dict, sample_metadata: dict
+    ):
         tmp_storage.save("test-model", sample_state, sample_metadata, version="1.0.0")
         version_data = tmp_storage.load_version("test-model", "1.0.0")
         assert "state" in version_data
@@ -81,10 +90,13 @@ class TestStorageSaveLoad:
 
     def test_load_version_nonexistent(self, tmp_storage: QuantumModelStorage):
         from q_guardian.quantum.exceptions import QuantumError
+
         with pytest.raises(QuantumError, match="not found"):
             tmp_storage.load_version("test-model", "9.9.9")
 
-    def test_load_metadata(self, tmp_storage: QuantumModelStorage, sample_state: dict, sample_metadata: dict):
+    def test_load_metadata(
+        self, tmp_storage: QuantumModelStorage, sample_state: dict, sample_metadata: dict
+    ):
         tmp_storage.save("test-model", sample_state, sample_metadata)
         meta = tmp_storage.load_metadata("test-model")
         assert meta["model_name"] == "test-model"
@@ -109,7 +121,9 @@ class TestStorageListModels:
         models = tmp_storage.list_models()
         assert models == []
 
-    def test_list_one(self, tmp_storage: QuantumModelStorage, sample_state: dict, sample_metadata: dict):
+    def test_list_one(
+        self, tmp_storage: QuantumModelStorage, sample_state: dict, sample_metadata: dict
+    ):
         tmp_storage.save("model-a", sample_state, sample_metadata, version="1.0.0")
         models = tmp_storage.list_models()
         assert len(models) == 1
@@ -138,7 +152,9 @@ class TestStorageDelete:
 
 
 class TestStorageRollback:
-    def test_rollback(self, tmp_storage: QuantumModelStorage, sample_state: dict, sample_metadata: dict):
+    def test_rollback(
+        self, tmp_storage: QuantumModelStorage, sample_state: dict, sample_metadata: dict
+    ):
         tmp_storage.save("test-model", sample_state, sample_metadata, version="1.0.0")
 
         new_state = {**sample_state, "bias": 0.999}
@@ -161,7 +177,9 @@ class TestStorageStats:
         assert stats["total_size_bytes"] == 0
         assert stats["total_versions"] == 0
 
-    def test_stats_with_models(self, tmp_storage: QuantumModelStorage, sample_state: dict, sample_metadata: dict):
+    def test_stats_with_models(
+        self, tmp_storage: QuantumModelStorage, sample_state: dict, sample_metadata: dict
+    ):
         tmp_storage.save("model-a", sample_state, sample_metadata, version="1.0.0")
         tmp_storage.save("model-b", sample_state, sample_metadata, version="1.0.0")
         stats = tmp_storage.get_storage_stats()

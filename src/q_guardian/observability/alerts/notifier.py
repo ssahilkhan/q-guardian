@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, Callable
+from typing import TYPE_CHECKING, Any
 
 import structlog
 
-from q_guardian.observability.data import Alert
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from q_guardian.observability.data import Alert
 
 logger = structlog.get_logger(__name__)
 

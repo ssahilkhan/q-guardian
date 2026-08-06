@@ -9,18 +9,14 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass, field
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import structlog
 
-from q_guardian.quantum.data import QuantumModelMetadata
-from q_guardian.quantum.enums import ExecutionStatus, QuantumModelType
-from q_guardian.quantum.exceptions import (
-    ConfigurationError,
-    ModelNotTrainedError,
-    QuantumError,
-)
-from q_guardian.quantum.models.base import BaseQuantumModel
+if TYPE_CHECKING:
+    from q_guardian.quantum.data import QuantumModelMetadata
+    from q_guardian.quantum.enums import QuantumModelType
+    from q_guardian.quantum.models.base import BaseQuantumModel
 
 logger = structlog.get_logger("quantum.model_manager")
 
@@ -28,6 +24,7 @@ logger = structlog.get_logger("quantum.model_manager")
 @dataclass
 class ModelRegistration:
     """Internal bookkeeping for a registered quantum model."""
+
     model: BaseQuantumModel
     registered_at: float
     last_inference_at: float | None = None
@@ -126,20 +123,21 @@ class QuantumModelManager:
             if trained_only and not reg.model.is_trained:
                 continue
 
-            if tags:
-                if not set(tags).intersection(set(reg.tags)):
-                    continue
+            if tags and not set(tags).intersection(set(reg.tags)):
+                continue
 
-            results.append({
-                "name": name,
-                "model_type": reg.model.quantum_metadata.model_type.value,
-                "is_trained": reg.model.is_trained,
-                "inference_count": reg.inference_count,
-                "error_count": reg.error_count,
-                "tags": list(reg.tags),
-                "registered_at": reg.registered_at,
-                "last_inference_at": reg.last_inference_at,
-            })
+            results.append(
+                {
+                    "name": name,
+                    "model_type": reg.model.quantum_metadata.model_type.value,
+                    "is_trained": reg.model.is_trained,
+                    "inference_count": reg.inference_count,
+                    "error_count": reg.error_count,
+                    "tags": list(reg.tags),
+                    "registered_at": reg.registered_at,
+                    "last_inference_at": reg.last_inference_at,
+                }
+            )
 
         return results
 

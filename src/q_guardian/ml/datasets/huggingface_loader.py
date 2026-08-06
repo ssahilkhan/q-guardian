@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from q_guardian.ml.datasets.base import DatasetLoader
 from q_guardian.ml.data import DatasetEntry
+from q_guardian.ml.datasets.base import DatasetLoader
 from q_guardian.security.enums import PromptCategory, PromptSeverity
 
 
@@ -30,6 +30,7 @@ class HuggingFaceLoader(DatasetLoader):
         self._available = False
         try:
             import datasets  # noqa: F401
+
             self._available = True
         except ImportError:
             pass
@@ -58,7 +59,10 @@ class HuggingFaceLoader(DatasetLoader):
             List of DatasetEntry objects.
         """
         if not self._available:
-            msg = "Hugging Face 'datasets' library is not installed. Install with: pip install q-guardian[datasets]"
+            msg = (
+                "Hugging Face 'datasets' library is not installed. Install with: "
+                "pip install q-guardian[datasets]"
+            )
             raise ImportError(msg)
 
         from datasets import load_dataset
@@ -66,7 +70,7 @@ class HuggingFaceLoader(DatasetLoader):
         split = kwargs.get("split", "train")
         prompt_column = kwargs.get("prompt_column", "text")
         label_column = kwargs.get("label_column", "label")
-        max_samples = kwargs.get("max_samples", None)
+        max_samples = kwargs.get("max_samples")
         streaming = kwargs.get("streaming", False)
 
         dataset = load_dataset(source, split=split, streaming=streaming)
@@ -82,12 +86,14 @@ class HuggingFaceLoader(DatasetLoader):
             except ValueError:
                 label = PromptCategory.UNKNOWN
 
-            entries.append(DatasetEntry(
-                prompt=str(row.get(prompt_column, "")),
-                label=label,
-                severity=PromptSeverity.LOW,
-                is_malicious=label != PromptCategory.UNKNOWN,
-                metadata={"source": source, "split": split},
-            ))
+            entries.append(
+                DatasetEntry(
+                    prompt=str(row.get(prompt_column, "")),
+                    label=label,
+                    severity=PromptSeverity.LOW,
+                    is_malicious=label != PromptCategory.UNKNOWN,
+                    metadata={"source": source, "split": split},
+                )
+            )
 
         return entries

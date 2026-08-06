@@ -8,27 +8,23 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass, field
-from typing import Any, Callable
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import structlog
 
-from q_guardian.quantum.data import QuantumModelMetadata, QuantumTrainingResult
+from q_guardian.quantum.data import QuantumTrainingResult
 from q_guardian.quantum.enums import (
-    BackendStatus,
-    EncodingType,
     OptimizerType,
-    QuantumBackendType,
-    QuantumModelType,
 )
 from q_guardian.quantum.exceptions import (
     ConfigurationError,
-    FeatureMapError,
-    KernelError,
     TrainingError,
 )
-from q_guardian.quantum.feature_maps.base import QuantumFeatureMap
-from q_guardian.quantum.kernels.base import QuantumKernel
+
+if TYPE_CHECKING:
+    from q_guardian.quantum.feature_maps.base import QuantumFeatureMap
+    from q_guardian.quantum.kernels.base import QuantumKernel
 
 logger = structlog.get_logger("quantum.kernel_trainer")
 
@@ -36,6 +32,7 @@ logger = structlog.get_logger("quantum.kernel_trainer")
 @dataclass
 class KernelHyperparams:
     """Hyper-parameters for a quantum kernel."""
+
     num_qubits: int = 4
     feature_map_reps: int = 1
     entanglement: str = "linear"
@@ -83,6 +80,7 @@ class KernelHyperparams:
 @dataclass
 class KernelCandidate:
     """A single kernel candidate from hyper-parameter search."""
+
     hyperparams: KernelHyperparams
     accuracy: float
     training_time_s: float
@@ -98,6 +96,7 @@ class KernelCandidate:
 @dataclass
 class KernelSearchResult:
     """Result of a kernel hyper-parameter search."""
+
     best_candidate: KernelCandidate
     all_candidates: list[KernelCandidate]
     search_time_s: float
@@ -153,7 +152,7 @@ class QuantumKernelTrainer:
 
     def search_grid(
         self,
-        X: list[list[float]],
+        x: list[list[float]],
         y: list[int],
         param_grid: dict[str, list[Any]],
         cv_folds: int = 5,
@@ -162,7 +161,7 @@ class QuantumKernelTrainer:
         if not param_grid:
             msg = "param_grid cannot be empty"
             raise ConfigurationError(msg)
-        if len(X) < 2:
+        if len(x) < 2:
             msg = "Need at least 2 samples for grid search"
             raise TrainingError(msg)
 
@@ -174,14 +173,21 @@ class QuantumKernelTrainer:
         logger.info("kernel_grid_search_started", combinations=len(combinations), cv_folds=cv_folds)
 
         for combo in combinations:
-            hp = KernelHyperparams(**{k: v for k, v in zip(keys, combo)})
-            candidate = self._evaluate_kernel(X, y, hp, cv_folds)
+            hp = KernelHyperparams(**dict(zip(keys, combo, strict=False)))
+            candidate = self._evaluate_kernel(x, y, hp, cv_folds)
             candidates.append(candidate)
 
         candidates.sort(key=lambda c: c.composite_score, reverse=True)
-        best = candidates[0] if candidates else KernelCandidate(
-            hyperparams=KernelHyperparams(), accuracy=0.0, training_time_s=0.0,
-            cv_score_mean=0.0, cv_score_std=1.0,
+        best = (
+            candidates[0]
+            if candidates
+            else KernelCandidate(
+                hyperparams=KernelHyperparams(),
+                accuracy=0.0,
+                training_time_s=0.0,
+                cv_score_mean=0.0,
+                cv_score_std=1.0,
+            )
         )
 
         result = KernelSearchResult(
@@ -195,7 +201,7 @@ class QuantumKernelTrainer:
 
     def search_random(
         self,
-        X: list[list[float]],
+        x: list[list[float]],
         y: list[int],
         param_distributions: dict[str, list[Any] | tuple[Any, Any]],
         n_iter: int = 20,
@@ -212,20 +218,33 @@ class QuantumKernelTrainer:
         for _ in range(n_iter):
             sampled: dict[str, Any] = {}
             for key, values in param_distributions.items():
-                if isinstance(values, (list, tuple)) and len(values) == 2 and not isinstance(values[0], list):
+                if (
+                    isinstance(values, (list, tuple))
+                    and len(values) == 2
+                    and not isinstance(values[0], list)
+                ):
                     lo, hi = values
                     sampled[key] = np.random.uniform(float(lo), float(hi))
                 else:
                     sampled[key] = np.random.choice(list(values))
 
-            hp = KernelHyperparams(**{k: v for k, v in sampled.items() if hasattr(KernelHyperparams, k)})
-            candidate = self._evaluate_kernel(X, y, hp, cv_folds)
+            hp = KernelHyperparams(
+                **{k: v for k, v in sampled.items() if hasattr(KernelHyperparams, k)}
+            )
+            candidate = self._evaluate_kernel(x, y, hp, cv_folds)
             candidates.append(candidate)
 
         candidates.sort(key=lambda c: c.composite_score, reverse=True)
-        best = candidates[0] if candidates else KernelCandidate(
-            hyperparams=KernelHyperparams(), accuracy=0.0, training_time_s=0.0,
-            cv_score_mean=0.0, cv_score_std=1.0,
+        best = (
+            candidates[0]
+            if candidates
+            else KernelCandidate(
+                hyperparams=KernelHyperparams(),
+                accuracy=0.0,
+                training_time_s=0.0,
+                cv_score_mean=0.0,
+                cv_score_std=1.0,
+            )
         )
 
         result = KernelSearchResult(
@@ -239,25 +258,25 @@ class QuantumKernelTrainer:
 
     def train_kernel(
         self,
-        X: list[list[float]],
+        x: list[list[float]],
         y: list[int] | None = None,
         hyperparams: KernelHyperparams | None = None,
     ) -> QuantumTrainingResult:
         """Train the kernel with given or default hyper-parameters."""
-        if not X:
+        if not x:
             msg = "Cannot train kernel with empty data"
             raise TrainingError(msg)
 
         start = time.monotonic()
         hp = hyperparams or KernelHyperparams()
 
-        k_mat = self._kernel.compute_kernel_matrix(X)
+        k_mat = self._kernel.compute_kernel_matrix(x)
 
         elapsed = time.monotonic() - start
 
         return QuantumTrainingResult(
             model_name=f"kernel-{self._kernel.name}",
-            training_samples=len(X),
+            training_samples=len(x),
             loss=0.0,
             convergence_epoch=1,
             training_time_s=elapsed,
@@ -272,13 +291,13 @@ class QuantumKernelTrainer:
 
     def cross_validate(
         self,
-        X: list[list[float]],
+        x: list[list[float]],
         y: list[int],
         cv_folds: int = 5,
         hyperparams: KernelHyperparams | None = None,
     ) -> dict[str, Any]:
         """Perform cross-validation on the kernel."""
-        n = len(X)
+        n = len(x)
         if n < cv_folds:
             msg = f"Cannot perform {cv_folds}-fold CV with {n} samples"
             raise TrainingError(msg)
@@ -294,28 +313,28 @@ class QuantumKernelTrainer:
             test_idx = list(indices[test_start:test_end])
             train_idx = list(indices[:test_start]) + list(indices[test_end:])
 
-            X_train = [X[i] for i in train_idx]
+            x_train = [x[i] for i in train_idx]
             y_train = [y[i] for i in train_idx]
-            X_test = [X[i] for i in test_idx]
+            x_test = [x[i] for i in test_idx]
             y_test = [y[i] for i in test_idx]
 
-            train_km = self._kernel.compute_kernel_matrix(X_train)
-            test_km = self._kernel.compute_kernel_matrix(X_test, X_train)
+            self._kernel.compute_kernel_matrix(x_train)
+            test_km = self._kernel.compute_kernel_matrix(x_test, x_train)
 
             predictions = []
-            for i, test_vec in enumerate(X_test):
+            for i, _test_vec in enumerate(x_test):
                 train_scores = {}
                 for cls in set(y_train):
                     cls_indices = [j for j, label in enumerate(y_train) if label == cls]
                     if cls_indices:
-                        kernel_sim = np.mean([test_km[i][j] for j in cls_indices])
+                        kernel_sim = float(np.mean([test_km[i][j] for j in cls_indices]))
                     else:
                         kernel_sim = 0.0
                     train_scores[cls] = kernel_sim
                 pred = max(train_scores, key=train_scores.get)  # type: ignore[arg-type]
                 predictions.append(pred)
 
-            correct = sum(1 for p, t in zip(predictions, y_test) if p == t)
+            correct = sum(1 for p, t in zip(predictions, y_test, strict=False) if p == t)
             accuracy = correct / len(y_test) if y_test else 0.0
             scores.append(accuracy)
 
@@ -354,7 +373,7 @@ class QuantumKernelTrainer:
 
     def _evaluate_kernel(
         self,
-        X: list[list[float]],
+        x: list[list[float]],
         y: list[int],
         hp: KernelHyperparams,
         cv_folds: int,
@@ -362,7 +381,7 @@ class QuantumKernelTrainer:
         """Evaluate a single kernel configuration via cross-validation."""
         start = time.monotonic()
 
-        cv_result = self.cross_validate(X, y, cv_folds, hp)
+        cv_result = self.cross_validate(x, y, cv_folds, hp)
 
         elapsed = time.monotonic() - start
 
@@ -375,14 +394,14 @@ class QuantumKernelTrainer:
             metadata={"kernel_name": self._kernel.name},
         )
 
-    def _grid_combinations(self, param_grid: dict[str, list[Any]]) -> list[tuple]:
+    def _grid_combinations(self, param_grid: dict[str, list[Any]]) -> list[tuple[Any, ...]]:
         """Generate all combinations from a parameter grid."""
         keys = sorted(param_grid.keys())
         if not keys:
             return [()]
 
         values = [param_grid[k] for k in keys]
-        result: list[tuple] = []
+        result: list[tuple[Any, ...]] = []
         self._recursive_grid(values, 0, (), result)
         return result
 
@@ -390,11 +409,11 @@ class QuantumKernelTrainer:
         self,
         values: list[list[Any]],
         depth: int,
-        current: tuple,
-        result: list[tuple],
+        current: tuple[Any, ...],
+        result: list[tuple[Any, ...]],
     ) -> None:
         if depth == len(values):
             result.append(current)
             return
         for v in values[depth]:
-            self._recursive_grid(values, depth + 1, current + (v,), result)
+            self._recursive_grid(values, depth + 1, (*current, v), result)

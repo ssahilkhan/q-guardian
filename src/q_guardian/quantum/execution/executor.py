@@ -3,16 +3,17 @@
 from __future__ import annotations
 
 import time
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import structlog
 
-from q_guardian.quantum.backends.base import QuantumBackend
 from q_guardian.quantum.backends.manager import BackendManager
 from q_guardian.quantum.config import QuantumBackendConfig
-from q_guardian.quantum.data import CircuitResult
-from q_guardian.quantum.enums import ExecutionStatus
 from q_guardian.quantum.exceptions import CircuitExecutionError
+
+if TYPE_CHECKING:
+    from q_guardian.quantum.backends.base import QuantumBackend
+    from q_guardian.quantum.data import CircuitResult
 
 logger = structlog.get_logger("quantum.executor")
 

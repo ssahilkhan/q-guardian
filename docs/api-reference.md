@@ -28,7 +28,7 @@ Returns basic application information.
 ```json
 {
   "application": "Q-Guardian",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "docs": "/docs",
   "redoc": "/redoc",
   "health": "/api/v1/health"
@@ -45,7 +45,7 @@ Health check endpoint. Used as liveness probe.
 {
   "status": "healthy",
   "application": "Q-Guardian",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "environment": "production",
   "timestamp": "2026-07-19T12:00:00Z",
   "database": {
@@ -69,7 +69,7 @@ Returns version and system information.
   "message": "Version information retrieved successfully",
   "data": {
     "application": "Q-Guardian",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "environment": "production",
     "python_version": "3.12.4",
     "timestamp": "2026-07-19T12:00:00Z"
@@ -422,7 +422,7 @@ settings = get_settings()
 
 # AppSettings
 settings.app.name           # "Q-Guardian"
-settings.app.version        # "1.0.0"
+settings.app.version        # "1.1.0"
 settings.app.environment    # Environment.DEVELOPMENT
 settings.app.debug          # True
 settings.app.host           # "0.0.0.0"

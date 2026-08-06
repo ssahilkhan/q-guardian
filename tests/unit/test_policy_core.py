@@ -1,51 +1,49 @@
 """Tests for Module 8: Policy enums, data models, config, events, exceptions."""
 
-import pytest
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
+from q_guardian.policy.config import PolicyEngineConfig
+from q_guardian.policy.data import (
+    AdvancedPolicyDefinition,
+    AdvancedRule,
+    CompoundCondition,
+    Condition,
+    ConflictResult,
+    DSLAdapterResult,
+    PolicyEvaluationResult,
+    PolicyVersion,
+    RBACPermission,
+    SimulationResult,
+)
 from q_guardian.policy.enums import (
     ComparisonOperator,
-    LogicalOperator,
     ConditionType,
-    PolicyStatus,
-    ConflictType,
     ConflictResolution,
+    ConflictType,
     DSLFormat,
+    LogicalOperator,
     Permission,
+    PolicyStatus,
 )
-from q_guardian.policy.data import (
-    Condition,
-    CompoundCondition,
-    AdvancedRule,
-    AdvancedPolicyDefinition,
-    PolicyVersion,
-    ConflictResult,
-    SimulationResult,
-    PolicyEvaluationResult,
-    RBACPermission,
-    DSLAdapterResult,
-)
-from q_guardian.policy.config import PolicyEngineConfig
 from q_guardian.policy.events import (
-    PolicyEvent,
-    PolicyRegistered,
-    PolicyUpdated,
-    PolicyEvaluated,
-    PolicyConflictDetected,
-    PolicySimulated,
     PolicyActivated,
+    PolicyConflictDetected,
     PolicyDeactivated,
+    PolicyEvaluated,
+    PolicyRegistered,
+    PolicySimulated,
+    PolicyUpdated,
 )
 from q_guardian.policy.exceptions import (
-    PolicyEngineError,
     ConditionParseError,
-    PolicyConflictError,
-    PolicyVersionError,
-    SimulationError,
     DSLAdapterError,
-    RBACError,
-    PolicyNotFoundError,
     PolicyCompositionError,
+    PolicyConflictError,
+    PolicyEngineError,
+    PolicyNotFoundError,
+    PolicyVersionError,
+    RBACError,
+    SimulationError,
 )
 
 
@@ -307,8 +305,8 @@ class TestAdvancedRule:
         rule = AdvancedRule(
             condition=Condition(field="score", operator=ComparisonOperator.GT, value=0.5),
             action="block",
-            valid_from=datetime(2020, 1, 1, tzinfo=timezone.utc),
-            valid_until=datetime(2030, 12, 31, tzinfo=timezone.utc),
+            valid_from=datetime(2020, 1, 1, tzinfo=UTC),
+            valid_until=datetime(2030, 12, 31, tzinfo=UTC),
         )
         assert rule.evaluate({"score": 0.8}) is True
         assert rule.is_temporal() is True
@@ -317,8 +315,8 @@ class TestAdvancedRule:
         rule = AdvancedRule(
             condition=Condition(field="score", operator=ComparisonOperator.GT, value=0.5),
             action="block",
-            valid_from=datetime(2020, 1, 1, tzinfo=timezone.utc),
-            valid_until=datetime(2021, 1, 1, tzinfo=timezone.utc),
+            valid_from=datetime(2020, 1, 1, tzinfo=UTC),
+            valid_until=datetime(2021, 1, 1, tzinfo=UTC),
         )
         assert rule.evaluate({"score": 0.8}) is False
 

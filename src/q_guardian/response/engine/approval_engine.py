@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 import structlog
@@ -70,9 +69,7 @@ class ApprovalEngine:
         """Approve a pending request."""
         req = self._get_request(request_id)
         if req.status != ApprovalStatus.PENDING:
-            raise ApprovalError(
-                f"Request {request_id} is not pending (status={req.status.value})"
-            )
+            raise ApprovalError(f"Request {request_id} is not pending (status={req.status.value})")
 
         if approver not in req.approvers:
             req.approvers.append(approver)
@@ -81,7 +78,7 @@ class ApprovalEngine:
 
         if len(req.approvals_received) >= req.required_approvals:
             req.status = ApprovalStatus.APPROVED
-            req.resolved_at = datetime.now(timezone.utc)
+            req.resolved_at = datetime.now(UTC)
             logger.info(
                 "approval_granted",
                 request_id=request_id,
@@ -108,7 +105,7 @@ class ApprovalEngine:
         """Reject a pending request."""
         req = self._get_request(request_id)
         req.status = ApprovalStatus.REJECTED
-        req.resolved_at = datetime.now(timezone.utc)
+        req.resolved_at = datetime.now(UTC)
         req.metadata["rejection_reason"] = reason
         req.metadata["rejected_by"] = approver
         logger.info(
@@ -123,12 +120,12 @@ class ApprovalEngine:
         """Cancel a pending request."""
         req = self._get_request(request_id)
         req.status = ApprovalStatus.CANCELLED
-        req.resolved_at = datetime.now(timezone.utc)
+        req.resolved_at = datetime.now(UTC)
         return req
 
     def check_timeouts(self) -> list[ApprovalRequest]:
         """Check for timed-out requests and expire them."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         expired: list[ApprovalRequest] = []
         for req in self._requests.values():
             if req.status != ApprovalStatus.PENDING:
@@ -149,11 +146,7 @@ class ApprovalEngine:
         return self._requests.get(request_id)
 
     def list_pending(self) -> list[ApprovalRequest]:
-        return [
-            r
-            for r in self._requests.values()
-            if r.status == ApprovalStatus.PENDING
-        ]
+        return [r for r in self._requests.values() if r.status == ApprovalStatus.PENDING]
 
     def list_all(self) -> list[ApprovalRequest]:
         return list(self._requests.values())
@@ -166,6 +159,6 @@ class ApprovalEngine:
 
     def _auto_approve(self, req: ApprovalRequest) -> None:
         req.status = ApprovalStatus.APPROVED
-        req.resolved_at = datetime.now(timezone.utc)
+        req.resolved_at = datetime.now(UTC)
         req.approvals_received = ["system"]
         logger.info("approval_auto_granted", request_id=req.request_id)

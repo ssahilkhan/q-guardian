@@ -76,7 +76,7 @@ def get_container() -> DependencyContainer:
     Returns:
         The global DependencyContainer instance.
     """
-    global _container  # noqa: PLW0603
+    global _container
     if _container is None:
         _container = DependencyContainer()
     return _container

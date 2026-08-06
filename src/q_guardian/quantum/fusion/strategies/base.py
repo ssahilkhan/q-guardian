@@ -5,8 +5,6 @@ provider) and produces a single FusedPrediction. Strategies are
 interchangeable and registered dynamically through the plugin system.
 """
 
-from __future__ import annotations
-
 from abc import ABC, abstractmethod
 from typing import Any
 
@@ -62,16 +60,17 @@ class FusedPrediction(BaseModel):
                 for p in self.source_predictions
             ],
             "quantum_contribution": sum(
-                w for pid, w in self.provider_contributions.items()
+                w
+                for pid, w in self.provider_contributions.items()
                 if "quantum" in pid.lower() or "qsvm" in pid.lower()
             ),
             "classical_contribution": sum(
-                w for pid, w in self.provider_contributions.items()
+                w
+                for pid, w in self.provider_contributions.items()
                 if "classical" in pid.lower() or "forest" in pid.lower() or "xgboost" in pid.lower()
             ),
             "rule_contribution": sum(
-                w for pid, w in self.provider_contributions.items()
-                if "rule" in pid.lower()
+                w for pid, w in self.provider_contributions.items() if "rule" in pid.lower()
             ),
             "metadata": self.metadata,
         }

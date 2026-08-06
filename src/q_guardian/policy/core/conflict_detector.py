@@ -66,9 +66,7 @@ class ConflictDetector:
                     conflicts.append(conflict)
         return conflicts
 
-    def _check_pair(
-        self, ra: AdvancedRule, rb: AdvancedRule
-    ) -> ConflictResult | None:
+    def _check_pair(self, ra: AdvancedRule, rb: AdvancedRule) -> ConflictResult | None:
         """Check if two rules conflict."""
         a_fields = self._extract_fields(ra)
         b_fields = self._extract_fields(rb)

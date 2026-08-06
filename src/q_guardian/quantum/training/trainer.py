@@ -3,14 +3,15 @@
 from __future__ import annotations
 
 import time
-from typing import Any
+from typing import TYPE_CHECKING
 
 import structlog
 
 from q_guardian.quantum.config import QuantumTrainingConfig
 from q_guardian.quantum.data import QuantumTrainingResult
-from q_guardian.quantum.models.base import BaseQuantumModel
-from q_guardian.quantum.enums import OptimizerType
+
+if TYPE_CHECKING:
+    from q_guardian.quantum.models.base import BaseQuantumModel
 
 logger = structlog.get_logger("quantum.trainer")
 
@@ -32,18 +33,18 @@ class QuantumTrainer:
     def train(
         self,
         model: BaseQuantumModel,
-        X: list[list[float]],
+        x: list[list[float]],
         y: list[int] | None = None,
-        X_val: list[list[float]] | None = None,
+        x_val: list[list[float]] | None = None,
         y_val: list[int] | None = None,
     ) -> QuantumTrainingResult:
         """Train a quantum model.
 
         Args:
             model: The quantum model to train.
-            X: Training feature vectors.
+            x: Training feature vectors.
             y: Training labels (None for unsupervised).
-            X_val: Validation features.
+            x_val: Validation features.
             y_val: Validation labels.
 
         Returns:
@@ -54,17 +55,18 @@ class QuantumTrainer:
         try:
             if hasattr(model, "train"):
                 if y is not None:
-                    model.train(X, y)  # type: ignore[union-attr]
+                    model.train(x, y)
                 else:
-                    model.train(X)  # type: ignore[union-attr]
+                    model.train(x)
 
             elapsed = time.monotonic() - start
 
             accuracy = 0.0
-            if X_val and y_val and hasattr(model, "predict"):
+            if x_val and y_val and hasattr(model, "predict"):
                 correct = 0
-                for xi, yi in zip(X_val, y_val):
+                for xi, yi in zip(x_val, y_val, strict=False):
                     import asyncio
+
                     result = asyncio.run(model.predict(xi))
                     predicted = result.get("predicted_class", "")
                     if str(yi) == str(predicted):
@@ -91,7 +93,7 @@ class QuantumTrainer:
     def cross_validate(
         self,
         model: BaseQuantumModel,
-        X: list[list[float]],
+        x: list[list[float]],
         y: list[int],
         n_folds: int = 5,
     ) -> QuantumTrainingResult:
@@ -99,14 +101,14 @@ class QuantumTrainer:
 
         Args:
             model: The quantum model to evaluate.
-            X: Feature vectors.
+            x: Feature vectors.
             y: Labels.
             n_folds: Number of folds.
 
         Returns:
             QuantumTrainingResult with CV scores.
         """
-        n = len(X)
+        n = len(x)
         fold_size = max(1, n // n_folds)
         scores: list[float] = []
 
@@ -114,19 +116,21 @@ class QuantumTrainer:
             val_start = fold * fold_size
             val_end = min(val_start + fold_size, n)
 
-            X_train = X[:val_start] + X[val_end:]
+            x_train = x[:val_start] + x[val_end:]
             y_train = y[:val_start] + y[val_end:]
-            X_val = X[val_start:val_end]
+            x_val = x[val_start:val_end]
             y_val = y[val_start:val_end]
 
-            if not X_train or not X_val:
+            if not x_train or not x_val:
                 continue
 
-            result = self.train(model, X_train, y_train, X_val, y_val)
+            result = self.train(model, x_train, y_train, x_val, y_val)
             scores.append(result.accuracy)
 
         mean_score = sum(scores) / len(scores) if scores else 0.0
-        std_score = (sum((s - mean_score) ** 2 for s in scores) / len(scores)) ** 0.5 if scores else 0.0
+        std_score = (
+            (sum((s - mean_score) ** 2 for s in scores) / len(scores)) ** 0.5 if scores else 0.0
+        )
 
         return QuantumTrainingResult(
             model_name=model.name,

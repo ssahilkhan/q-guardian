@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 from collections import Counter
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import structlog
 
-from q_guardian.observability.data import AnalyticsReport, TimeWindow
+if TYPE_CHECKING:
+    from q_guardian.observability.data import AnalyticsReport
 
 logger = structlog.get_logger("observability.analytics.reports")
 
@@ -33,9 +34,7 @@ class ReportGenerator:
         logger.debug("summary_generated", total_events=total_events)
         return summary
 
-    def generate_threat_summary(
-        self, threat_data: list[dict[str, Any]]
-    ) -> dict[str, Any]:
+    def generate_threat_summary(self, threat_data: list[dict[str, Any]]) -> dict[str, Any]:
         if not threat_data:
             return {
                 "total_threats": 0,
@@ -65,9 +64,7 @@ class ReportGenerator:
         logger.debug("threat_summary_generated", total_threats=total)
         return result
 
-    def generate_performance_summary(
-        self, perf_data: dict[str, Any]
-    ) -> dict[str, Any]:
+    def generate_performance_summary(self, perf_data: dict[str, Any]) -> dict[str, Any]:
         summary: dict[str, Any] = {}
         latencies = perf_data.get("latencies", [])
         if latencies:
@@ -93,9 +90,7 @@ class ReportGenerator:
         logger.debug("performance_summary_generated")
         return summary
 
-    def generate_health_summary(
-        self, health_data: dict[str, Any]
-    ) -> dict[str, Any]:
+    def generate_health_summary(self, health_data: dict[str, Any]) -> dict[str, Any]:
         summary: dict[str, Any] = {}
         components = health_data.get("components", [])
         summary["total_components"] = len(components)

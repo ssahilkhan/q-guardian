@@ -60,9 +60,7 @@ class ThreatPrediction(BaseModel):
     model_name: str = Field(default="", description="Name of the model")
     model_version: str = Field(default="", description="Model version")
 
-    reasoning: ReasoningTrace | None = Field(
-        default=None, description="Explainability trace"
-    )
+    reasoning: ReasoningTrace | None = Field(default=None, description="Explainability trace")
 
     metadata: dict[str, Any] = Field(
         default_factory=dict, description="Extra source-specific metadata"

@@ -2,16 +2,17 @@
 
 from __future__ import annotations
 
-import json
 from datetime import UTC, datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import structlog
 
-from q_guardian.observability.data import Alert, HealthReport, Metric, TimeWindow
-from q_guardian.observability.enums import AlertSeverity, AlertState, ExporterType, HealthStatus
+from q_guardian.observability.enums import AlertSeverity, AlertState, HealthStatus
 from q_guardian.observability.exceptions import ExporterError
 from q_guardian.utils.uuid_utils import generate_uuid
+
+if TYPE_CHECKING:
+    from q_guardian.observability.data import Alert, HealthReport, Metric
 
 logger = structlog.get_logger("observability.integrations.grafana")
 
@@ -97,7 +98,9 @@ class GrafanaIntegration:
             "labels": labels,
             "annotations": annotations,
             "startsAt": alert.created_at.isoformat(),
-            "endsAt": alert.resolved_at.isoformat() if alert.resolved_at else "0001-01-01T00:00:00Z",
+            "endsAt": alert.resolved_at.isoformat()
+            if alert.resolved_at
+            else "0001-01-01T00:00:00Z",
             "generatorURL": f"{self.api_url}/alerting/list",
             "fingerprint": alert.alert_id[:8],
         }
@@ -199,7 +202,6 @@ class GrafanaIntegration:
             "templating": {"list": []},
             "time": {"from": "now-1h", "to": "now"},
             "timepicker": {},
-            "timezone": "utc",
             "version": 1,
             "panels": all_panels,
         }
@@ -247,9 +249,7 @@ class GrafanaIntegration:
             },
             "time": int(health.timestamp.timestamp() * 1000),
             "timeEnd": int(health.timestamp.timestamp() * 1000) + 1,
-            "title": status_annotation_map.get(
-                health.overall_status, "Q-Guardian Health Update"
-            ),
+            "title": status_annotation_map.get(health.overall_status, "Q-Guardian Health Update"),
             "tags": tags,
             "text": (
                 f"Overall Status: {health.overall_status.value}\n"
@@ -257,8 +257,7 @@ class GrafanaIntegration:
                 f"Uptime: {health.framework_uptime_seconds:.0f}s\n"
                 f"Active Warnings: {health.active_warnings}\n"
                 f"Active Failures: {health.active_failures}\n"
-                f"\nComponents:\n"
-                + "\n".join(component_details)
+                f"\nComponents:\n" + "\n".join(component_details)
             ),
         }
 

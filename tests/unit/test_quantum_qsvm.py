@@ -2,16 +2,16 @@
 
 from __future__ import annotations
 
-import pytest
 import numpy as np
+import pytest
 
-from q_guardian.quantum.models.qsvm import QSVMModel, THREAT_CATEGORIES
+from q_guardian.quantum.backends.simulator import LocalSimulatorBackend
+from q_guardian.quantum.enums import QuantumModelType
+from q_guardian.quantum.exceptions import TrainingError
 from q_guardian.quantum.feature_maps.angle_encoding import AngleEncodingMap
 from q_guardian.quantum.feature_maps.zz_feature_map import ZZFeatureMap
 from q_guardian.quantum.kernels.quantum_kernel import QuantumKernelEstimator
-from q_guardian.quantum.backends.simulator import LocalSimulatorBackend
-from q_guardian.quantum.enums import QuantumModelType, QuantumBackendType
-from q_guardian.quantum.exceptions import TrainingError
+from q_guardian.quantum.models.qsvm import THREAT_CATEGORIES, QSVMModel
 from q_guardian.security.models import PromptFeatures
 
 
@@ -36,7 +36,9 @@ def kernel(feature_map: AngleEncodingMap, backend: LocalSimulatorBackend) -> Qua
 
 
 @pytest.fixture
-def zz_kernel(zz_feature_map: ZZFeatureMap, backend: LocalSimulatorBackend) -> QuantumKernelEstimator:
+def zz_kernel(
+    zz_feature_map: ZZFeatureMap, backend: LocalSimulatorBackend
+) -> QuantumKernelEstimator:
     return QuantumKernelEstimator(feature_map=zz_feature_map, backend=backend)
 
 
@@ -48,17 +50,17 @@ def qsvm(kernel: QuantumKernelEstimator) -> QSVMModel:
 @pytest.fixture
 def sample_data() -> tuple[list[list[float]], list[int]]:
     rng = np.random.default_rng(42)
-    X = rng.uniform(-np.pi, np.pi, size=(20, 4)).tolist()
+    x = rng.uniform(-np.pi, np.pi, size=(20, 4)).tolist()
     y = [0 if i < 10 else 1 for i in range(20)]
-    return X, y
+    return x, y
 
 
 @pytest.fixture
 def multiclass_data() -> tuple[list[list[float]], list[int]]:
     rng = np.random.default_rng(42)
-    X = rng.uniform(-np.pi, np.pi, size=(30, 4)).tolist()
+    x = rng.uniform(-np.pi, np.pi, size=(30, 4)).tolist()
     y = [0] * 10 + [1] * 10 + [2] * 10
-    return X, y
+    return x, y
 
 
 class TestQSVMConstruction:
@@ -100,28 +102,28 @@ class TestQSVMConstruction:
 
 class TestQSVMTraining:
     def test_train_basic(self, qsvm: QSVMModel, sample_data: tuple):
-        X, y = sample_data
-        qsvm.train(X, y)
+        x, y = sample_data
+        qsvm.train(x, y)
         assert qsvm.is_trained is True
 
     def test_train_sets_classes(self, qsvm: QSVMModel, sample_data: tuple):
-        X, y = sample_data
-        qsvm.train(X, y)
+        x, y = sample_data
+        qsvm.train(x, y)
         assert sorted(qsvm.classes) == [0, 1]
 
     def test_train_populates_support_vectors(self, qsvm: QSVMModel, sample_data: tuple):
-        X, y = sample_data
-        qsvm.train(X, y)
-        assert len(qsvm.support_vectors) == len(X)
+        x, y = sample_data
+        qsvm.train(x, y)
+        assert len(qsvm.support_vectors) == len(x)
 
     def test_train_populates_support_labels(self, qsvm: QSVMModel, sample_data: tuple):
-        X, y = sample_data
-        qsvm.train(X, y)
+        x, y = sample_data
+        qsvm.train(x, y)
         assert len(qsvm.support_labels) == len(y)
 
     def test_train_multiclass(self, qsvm: QSVMModel, multiclass_data: tuple):
-        X, y = multiclass_data
-        qsvm.train(X, y)
+        x, y = multiclass_data
+        qsvm.train(x, y)
         assert qsvm.is_trained is True
         assert sorted(qsvm.classes) == [0, 1, 2]
 
@@ -139,13 +141,13 @@ class TestQSVMTraining:
 
     def test_train_with_zz_kernel(self, zz_kernel: QuantumKernelEstimator, sample_data: tuple):
         qsvm = QSVMModel(kernel=zz_kernel, feature_map=zz_kernel.feature_map)
-        X, y = sample_data
-        qsvm.train(X, y)
+        x, y = sample_data
+        qsvm.train(x, y)
         assert qsvm.is_trained is True
 
     def test_training_time_recorded(self, qsvm: QSVMModel, sample_data: tuple):
-        X, y = sample_data
-        qsvm.train(X, y)
+        x, y = sample_data
+        qsvm.train(x, y)
         assert qsvm.quantum_metadata.metadata["training_time_s"] > 0
 
 
@@ -156,20 +158,20 @@ class TestQSVMMetadata:
         assert m.status.value == "unloaded"
 
     def test_metadata_after_training(self, qsvm: QSVMModel, sample_data: tuple):
-        X, y = sample_data
-        qsvm.train(X, y)
+        x, y = sample_data
+        qsvm.train(x, y)
         m = qsvm.metadata
         assert m.status.value == "ready"
-        assert m.training_samples == len(X)
+        assert m.training_samples == len(x)
 
     def test_quantum_metadata(self, qsvm: QSVMModel, sample_data: tuple):
-        X, y = sample_data
-        qsvm.train(X, y)
+        x, y = sample_data
+        qsvm.train(x, y)
         qm = qsvm.quantum_metadata
         assert qm.model_type == QuantumModelType.QSVM
         assert qm.name == "qsvm"
         assert qm.num_qubits == 4
-        assert qm.training_samples == len(X)
+        assert qm.training_samples == len(x)
 
     def test_quantum_metadata_model_type(self, qsvm: QSVMModel):
         qm = qsvm.quantum_metadata
@@ -183,24 +185,24 @@ class TestQSVMPrediction:
         assert result["confidence"] == 0.0
 
     async def test_predict_after_training(self, qsvm: QSVMModel, sample_data: tuple):
-        X, y = sample_data
-        qsvm.train(X, y)
-        result = await qsvm.predict(X[0])
+        x, y = sample_data
+        qsvm.train(x, y)
+        result = await qsvm.predict(x[0])
         assert "predicted_class" in result
         assert "confidence" in result
         assert "probabilities" in result
 
     async def test_predict_returns_scores(self, qsvm: QSVMModel, sample_data: tuple):
-        X, y = sample_data
-        qsvm.train(X, y)
-        result = await qsvm.predict(X[0])
+        x, y = sample_data
+        qsvm.train(x, y)
+        result = await qsvm.predict(x[0])
         assert "scores" in result
         assert isinstance(result["scores"], dict)
 
     async def test_predict_quantum(self, qsvm: QSVMModel, sample_data: tuple):
-        X, y = sample_data
-        qsvm.train(X, y)
-        qr = await qsvm.predict_quantum(X[0])
+        x, y = sample_data
+        qsvm.train(x, y)
+        qr = await qsvm.predict_quantum(x[0])
         assert qr.model_name == "qsvm"
         assert 0.0 <= qr.confidence <= 1.0
 
@@ -210,9 +212,9 @@ class TestQSVMPrediction:
         assert qr.confidence == 0.0
 
     async def test_predict_probabilities_sum(self, qsvm: QSVMModel, sample_data: tuple):
-        X, y = sample_data
-        qsvm.train(X, y)
-        result = await qsvm.predict(X[0])
+        x, y = sample_data
+        qsvm.train(x, y)
+        result = await qsvm.predict(x[0])
         probs = result["probabilities"]
         total = sum(probs.values())
         assert abs(total - 1.0) < 0.01
@@ -236,8 +238,8 @@ class TestQSVMClassifyQuantum:
         )
 
     async def test_classify_quantum_benign(self, qsvm: QSVMModel, sample_data: tuple):
-        X, y = sample_data
-        qsvm.train(X, y)
+        x, y = sample_data
+        qsvm.train(x, y)
         features = self._make_features()
         result = await qsvm.classify_quantum("Hello world", features)
         assert result.detector_name == "qsvm"
@@ -249,9 +251,11 @@ class TestQSVMClassifyQuantum:
         assert result.detector_name == "qsvm"
         assert result.risk_score == 0.0
 
-    async def test_classify_quantum_feature_vector_length(self, qsvm: QSVMModel, sample_data: tuple):
-        X, y = sample_data
-        qsvm.train(X, y)
+    async def test_classify_quantum_feature_vector_length(
+        self, qsvm: QSVMModel, sample_data: tuple
+    ):
+        x, y = sample_data
+        qsvm.train(x, y)
         features = self._make_features()
         result = await qsvm.classify_quantum("test", features)
         assert "predicted_class" in result.metadata
@@ -259,21 +263,21 @@ class TestQSVMClassifyQuantum:
 
 class TestQSVMSaveLoad:
     def test_save_returns_dict(self, qsvm: QSVMModel, sample_data: tuple):
-        X, y = sample_data
-        qsvm.train(X, y)
+        x, y = sample_data
+        qsvm.train(x, y)
         state = qsvm.save()
         assert isinstance(state, dict)
         assert state["name"] == "qsvm"
         assert state["trained"] is True
-        assert len(state["train_X"]) == len(X)
+        assert len(state["train_X"]) == len(x)
 
     def test_save_untrained(self, qsvm: QSVMModel):
         state = qsvm.save()
         assert state["trained"] is False
 
     def test_load_restores_state(self, qsvm: QSVMModel, sample_data: tuple):
-        X, y = sample_data
-        qsvm.train(X, y)
+        x, y = sample_data
+        qsvm.train(x, y)
         state = qsvm.save()
 
         qsvm2 = QSVMModel(kernel=qsvm.kernel, feature_map=qsvm.feature_map)
@@ -283,8 +287,8 @@ class TestQSVMSaveLoad:
         assert qsvm2.classes == [0, 1]
 
     def test_load_preserves_bias(self, qsvm: QSVMModel, sample_data: tuple):
-        X, y = sample_data
-        qsvm.train(X, y)
+        x, y = sample_data
+        qsvm.train(x, y)
         state = qsvm.save()
         original_bias = qsvm.bias
 
@@ -293,13 +297,13 @@ class TestQSVMSaveLoad:
         assert qsvm2.bias == original_bias
 
     def test_load_preserves_support_vectors(self, qsvm: QSVMModel, sample_data: tuple):
-        X, y = sample_data
-        qsvm.train(X, y)
+        x, y = sample_data
+        qsvm.train(x, y)
         state = qsvm.save()
 
         qsvm2 = QSVMModel(kernel=qsvm.kernel, feature_map=qsvm.feature_map)
         qsvm2.load(state)
-        assert len(qsvm2.support_vectors) == len(X)
+        assert len(qsvm2.support_vectors) == len(x)
 
 
 class TestQSVMHealth:
@@ -311,11 +315,11 @@ class TestQSVMHealth:
         assert h["num_classes"] == 0
 
     def test_health_trained(self, qsvm: QSVMModel, sample_data: tuple):
-        X, y = sample_data
-        qsvm.train(X, y)
+        x, y = sample_data
+        qsvm.train(x, y)
         h = qsvm.health()
         assert h["num_classes"] == 2
-        assert h["num_support_vectors"] == len(X)
+        assert h["num_support_vectors"] == len(x)
         assert h["training_time_s"] > 0
 
 

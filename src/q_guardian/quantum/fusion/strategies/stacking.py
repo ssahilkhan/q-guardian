@@ -7,13 +7,15 @@ averaging. This is the recommended default strategy.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import structlog
 
-from q_guardian.quantum.fusion.prediction import ThreatPrediction
-from q_guardian.quantum.fusion.strategies.base import FusionStrategy, FusedPrediction
+from q_guardian.quantum.fusion.strategies.base import FusedPrediction, FusionStrategy
+
+if TYPE_CHECKING:
+    from q_guardian.quantum.fusion.prediction import ThreatPrediction
 
 logger = structlog.get_logger("quantum.fusion.stacking")
 
@@ -45,7 +47,7 @@ class StackingFusionStrategy(FusionStrategy):
         self._epochs = epochs
         self._is_trained = False
         self._weights: np.ndarray | None = None
-        self._bias: float = 0.0
+        self._bias: Any = 0.0
         self._provider_order: list[str] = []
         self._label_to_idx: dict[str, int] = {}
         self._idx_to_label: dict[int, str] = {}
@@ -79,7 +81,8 @@ class StackingFusionStrategy(FusionStrategy):
         """Train the stacking meta-learner.
 
         Args:
-            training_samples: List of prediction batches (each batch = predictions from all providers for one input).
+            training_samples: List of prediction batches (each batch = predictions
+                from all providers for one input).
             ground_truth_labels: True label for each sample.
 
         Returns:
@@ -88,7 +91,7 @@ class StackingFusionStrategy(FusionStrategy):
         self._provider_order = self._extract_provider_order(training_samples)
         self._build_label_map(ground_truth_labels)
 
-        X = self._vectorize_batch(training_samples)
+        x = self._vectorize_batch(training_samples)
         y = np.array([self._label_to_idx.get(label, 0) for label in ground_truth_labels])
 
         n_classes = max(len(self._label_to_idx), 2)
@@ -97,14 +100,14 @@ class StackingFusionStrategy(FusionStrategy):
         if n_classes == 2:
             self._weights = np.zeros(n_features)
             self._bias = 0.0
-            self._fit_binary(X, y)
+            self._fit_binary(x, y)
         else:
             self._weights = np.zeros((n_classes, n_features))
             self._bias = 0.0
-            self._fit_multiclass(X, y, n_classes)
+            self._fit_multiclass(x, y, n_classes)
 
         self._is_trained = True
-        self._training_data_X = X.tolist()
+        self._training_data_X = x.tolist()
         self._training_data_y = y.tolist()
 
         logger.info(
@@ -121,24 +124,24 @@ class StackingFusionStrategy(FusionStrategy):
             "epochs": self._epochs,
         }
 
-    def _fit_binary(self, X: np.ndarray, y: np.ndarray) -> None:
+    def _fit_binary(self, x: np.ndarray, y: np.ndarray) -> None:
         """Simple logistic regression for binary classification."""
         for _ in range(self._epochs):
-            logits = X @ self._weights + self._bias
+            logits = x @ self._weights + self._bias
             probs = 1.0 / (1.0 + np.exp(-np.clip(logits, -10, 10)))
-            gradient_w = X.T @ (probs - y) / len(y)
+            gradient_w = x.T @ (probs - y) / len(y)
             gradient_b = float(np.mean(probs - y))
             self._weights -= self._learning_rate * gradient_w
             self._bias -= self._learning_rate * gradient_b
 
-    def _fit_multiclass(self, X: np.ndarray, y: np.ndarray, n_classes: int) -> None:
+    def _fit_multiclass(self, x: np.ndarray, y: np.ndarray, n_classes: int) -> None:
         """Simple softmax regression for multi-class."""
-        n_features = X.shape[1]
+        n_features = x.shape[1]
         self._weights = np.zeros((n_classes, n_features))
         self._bias = np.zeros(n_classes)
 
         for _ in range(self._epochs):
-            logits = X @ self._weights.T + self._bias
+            logits = x @ self._weights.T + self._bias
             logits -= logits.max(axis=1, keepdims=True)
             exp_logits = np.exp(logits)
             probs = exp_logits / exp_logits.sum(axis=1, keepdims=True)
@@ -148,7 +151,7 @@ class StackingFusionStrategy(FusionStrategy):
                 if label < n_classes:
                     y_onehot[i, label] = 1.0
 
-            gradient_w = (probs - y_onehot).T @ X / len(y)
+            gradient_w = (probs - y_onehot).T @ x / len(y)
             gradient_b = np.mean(probs - y_onehot, axis=0)
             self._weights -= self._learning_rate * gradient_w
             self._bias -= self._learning_rate * gradient_b
@@ -158,7 +161,7 @@ class StackingFusionStrategy(FusionStrategy):
     ) -> FusedPrediction:
         """Use trained meta-learner to fuse."""
         x = self._vectorize_single(predictions)
-        n_classes = len(self._label_to_idx) if self._label_to_idx else 2
+        len(self._label_to_idx) if self._label_to_idx else 2
 
         if self._weights is not None and self._weights.ndim == 1:
             logit = float(x @ self._weights + self._bias)
@@ -240,9 +243,7 @@ class StackingFusionStrategy(FusionStrategy):
             reasoning_summary=f"Stacking fallback (untrained): {best_label} = {confidence:.3f}",
         )
 
-    def _extract_provider_order(
-        self, batches: list[list[ThreatPrediction]]
-    ) -> list[str]:
+    def _extract_provider_order(self, batches: list[list[ThreatPrediction]]) -> list[str]:
         """Extract deterministic provider ordering from training data."""
         seen: dict[str, int] = {}
         for batch in batches:
@@ -267,9 +268,7 @@ class StackingFusionStrategy(FusionStrategy):
         Feature = [confidence * (1 if provider matches) for each provider].
         """
         pred_map = {p.provider_id: p.confidence for p in predictions}
-        return np.array([
-            pred_map.get(pid, 0.0) for pid in self._provider_order
-        ])
+        return np.array([pred_map.get(pid, 0.0) for pid in self._provider_order])
 
     def _compute_contributions(self, predictions: list[ThreatPrediction]) -> dict[str, float]:
         """Compute per-provider contribution weights."""

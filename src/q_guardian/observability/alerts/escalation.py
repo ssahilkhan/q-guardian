@@ -2,15 +2,17 @@
 
 from __future__ import annotations
 
-import structlog
 from datetime import UTC, datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
+import structlog
 from pydantic import BaseModel, ConfigDict, Field
 
-from q_guardian.observability.data import Alert
 from q_guardian.observability.enums import AlertSeverity, AlertState
 from q_guardian.utils.uuid_utils import generate_uuid
+
+if TYPE_CHECKING:
+    from q_guardian.observability.data import Alert
 
 logger = structlog.get_logger(__name__)
 
@@ -70,9 +72,7 @@ class EscalationManager:
         elapsed = (datetime.now(UTC) - start_time).total_seconds()
         return elapsed >= self._timeout_seconds
 
-    def get_escalation_step(
-        self, policy: EscalationPolicy, alert: Alert
-    ) -> dict[str, Any] | None:
+    def get_escalation_step(self, policy: EscalationPolicy, alert: Alert) -> dict[str, Any] | None:
         if not policy.escalation_steps:
             return None
         step_index = self._alert_step_indices.get(alert.alert_id, 0)
@@ -111,22 +111,42 @@ class EscalationManager:
         if severity == AlertSeverity.CRITICAL:
             steps = [
                 {"delay_seconds": 0, "channels": ["log"], "message": "Critical alert fired"},
-                {"delay_seconds": 60, "channels": ["log", "webhook"], "message": "Critical alert escalation"},
-                {"delay_seconds": 300, "channels": ["log", "webhook"], "message": "Critical alert final escalation"},
+                {
+                    "delay_seconds": 60,
+                    "channels": ["log", "webhook"],
+                    "message": "Critical alert escalation",
+                },
+                {
+                    "delay_seconds": 300,
+                    "channels": ["log", "webhook"],
+                    "message": "Critical alert final escalation",
+                },
             ]
         elif severity == AlertSeverity.HIGH:
             steps = [
                 {"delay_seconds": 0, "channels": ["log"], "message": "High severity alert fired"},
-                {"delay_seconds": 120, "channels": ["log", "webhook"], "message": "High severity alert escalation"},
+                {
+                    "delay_seconds": 120,
+                    "channels": ["log", "webhook"],
+                    "message": "High severity alert escalation",
+                },
             ]
         elif severity == AlertSeverity.MEDIUM:
             steps = [
                 {"delay_seconds": 0, "channels": ["log"], "message": "Medium severity alert fired"},
-                {"delay_seconds": 300, "channels": ["log"], "message": "Medium severity alert escalation"},
+                {
+                    "delay_seconds": 300,
+                    "channels": ["log"],
+                    "message": "Medium severity alert escalation",
+                },
             ]
         else:
             steps = [
-                {"delay_seconds": 0, "channels": ["log"], "message": f"{severity.value} severity alert fired"},
+                {
+                    "delay_seconds": 0,
+                    "channels": ["log"],
+                    "message": f"{severity.value} severity alert fired",
+                },
             ]
         policy = EscalationPolicy(
             name=f"Default {severity.value} escalation",

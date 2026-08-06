@@ -27,7 +27,9 @@ class BaseResponder(ABC):
         """The action type this responder handles."""
 
     @abstractmethod
-    def execute(self, decision: PolicyDecision, context: dict[str, Any] | None = None) -> ActionResult:
+    def execute(
+        self, decision: PolicyDecision, context: dict[str, Any] | None = None
+    ) -> ActionResult:
         """Execute the action.
 
         Args:
@@ -56,7 +58,9 @@ class AuditLogResponder(BaseResponder):
     def records(self) -> list[AuditRecord]:
         return list(self._records)
 
-    def execute(self, decision: PolicyDecision, context: dict[str, Any] | None = None) -> ActionResult:
+    def execute(
+        self, decision: PolicyDecision, context: dict[str, Any] | None = None
+    ) -> ActionResult:
         start = time.monotonic()
 
         record = AuditRecord(
@@ -99,7 +103,9 @@ class AlertResponder(BaseResponder):
     def notifications(self) -> list[Notification]:
         return list(self._notifications)
 
-    def execute(self, decision: PolicyDecision, context: dict[str, Any] | None = None) -> ActionResult:
+    def execute(
+        self, decision: PolicyDecision, context: dict[str, Any] | None = None
+    ) -> ActionResult:
         start = time.monotonic()
 
         severity = Severity.HIGH if decision.risk_score >= 0.7 else Severity.MEDIUM
@@ -132,11 +138,15 @@ class BlockResponder(BaseResponder):
     def action_type(self) -> PolicyAction:
         return PolicyAction.BLOCK
 
-    def execute(self, decision: PolicyDecision, context: dict[str, Any] | None = None) -> ActionResult:
+    def execute(
+        self, decision: PolicyDecision, context: dict[str, Any] | None = None
+    ) -> ActionResult:
         start = time.monotonic()
         elapsed = (time.monotonic() - start) * 1000
 
-        logger.warning("request_blocked", decision_id=decision.decision_id, risk_score=decision.risk_score)
+        logger.warning(
+            "request_blocked", decision_id=decision.decision_id, risk_score=decision.risk_score
+        )
 
         return ActionResult(
             decision_id=decision.decision_id,
@@ -155,7 +165,9 @@ class ContinueResponder(BaseResponder):
     def action_type(self) -> PolicyAction:
         return PolicyAction.ALLOW
 
-    def execute(self, decision: PolicyDecision, context: dict[str, Any] | None = None) -> ActionResult:
+    def execute(
+        self, decision: PolicyDecision, context: dict[str, Any] | None = None
+    ) -> ActionResult:
         return ActionResult(
             decision_id=decision.decision_id,
             action_type="continue",
@@ -179,7 +191,9 @@ class NotifyAdminResponder(BaseResponder):
     def notifications(self) -> list[Notification]:
         return list(self._notifications)
 
-    def execute(self, decision: PolicyDecision, context: dict[str, Any] | None = None) -> ActionResult:
+    def execute(
+        self, decision: PolicyDecision, context: dict[str, Any] | None = None
+    ) -> ActionResult:
         start = time.monotonic()
 
         notification = Notification(
@@ -211,7 +225,9 @@ class WebhookResponder(BaseResponder):
     def action_type(self) -> PolicyAction:
         return PolicyAction.CUSTOM
 
-    def execute(self, decision: PolicyDecision, context: dict[str, Any] | None = None) -> ActionResult:
+    def execute(
+        self, decision: PolicyDecision, context: dict[str, Any] | None = None
+    ) -> ActionResult:
         return ActionResult(
             decision_id=decision.decision_id,
             action_type="webhook",

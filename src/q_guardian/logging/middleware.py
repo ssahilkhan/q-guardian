@@ -11,14 +11,15 @@ from typing import TYPE_CHECKING
 
 import structlog
 from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.requests import Request
-from starlette.responses import Response
 
 from q_guardian.core.constants import CORRELATION_ID_HEADER
 from q_guardian.utils.uuid_utils import generate_correlation_id
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Awaitable, Callable
+
+    from starlette.requests import Request
+    from starlette.responses import Response
 
 
 logger = structlog.get_logger("middleware.request")
@@ -32,7 +33,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
     """
 
     async def dispatch(
-        self, request: Request, call_next: Callable[[Request], object]
+        self, request: Request, call_next: Callable[[Request], Awaitable[Response]]
     ) -> Response:
         """Process request, log details, and pass to next handler.
 
@@ -43,9 +44,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         Returns:
             The response from downstream handlers.
         """
-        correlation_id = request.headers.get(
-            CORRELATION_ID_HEADER, generate_correlation_id()
-        )
+        correlation_id = request.headers.get(CORRELATION_ID_HEADER, generate_correlation_id())
         request.state.correlation_id = correlation_id
 
         structlog.contextvars.clear_contextvars()

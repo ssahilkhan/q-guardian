@@ -11,8 +11,8 @@ import structlog
 from q_guardian.policy.data import (
     AdvancedPolicyDefinition,
     AdvancedRule,
-    Condition,
     CompoundCondition,
+    Condition,
     DSLAdapterResult,
 )
 from q_guardian.policy.enums import ComparisonOperator, DSLFormat, LogicalOperator
@@ -73,9 +73,7 @@ class RegoAdapter(DSLAdapter):
         default_action = default_match.group(2) if default_match else "allow"
 
         # Extract rule blocks
-        rule_pattern = re.compile(
-            r"(\w+)\s*\{([^}]+)\}", re.MULTILINE | re.DOTALL
-        )
+        rule_pattern = re.compile(r"(\w+)\s*\{([^}]+)\}", re.MULTILINE | re.DOTALL)
         for m in rule_pattern.finditer(raw):
             action = m.group(1)
             body = m.group(2).strip()
@@ -93,6 +91,7 @@ class RegoAdapter(DSLAdapter):
                     warnings.append(f"Could not parse Rego condition: {line}")
 
             if conditions:
+                condition: Condition | CompoundCondition
                 if len(conditions) == 1:
                     condition = conditions[0]
                 else:
@@ -109,7 +108,7 @@ class RegoAdapter(DSLAdapter):
 
         policy = AdvancedPolicyDefinition(
             name=policy_name,
-            description=f"Imported from Rego format",
+            description="Imported from Rego format",
             rules=rules,
             default_action=default_action,
         )
@@ -144,7 +143,7 @@ class RegoAdapter(DSLAdapter):
                     field = parts[0].strip()
                     raw_val = parts[1].strip().strip('"').strip("'")
                     try:
-                        value = float(raw_val)
+                        value: str | float = float(raw_val)
                     except ValueError:
                         value = raw_val
                     return Condition(field=field, operator=op_enum, value=value)
@@ -244,6 +243,7 @@ class CedarAdapter(DSLAdapter):
                         warnings.append(f"Could not parse Cedar condition: {line}")
 
             if conditions:
+                condition: Condition | CompoundCondition
                 if len(conditions) == 1:
                     condition = conditions[0]
                 else:
@@ -287,7 +287,7 @@ class CedarAdapter(DSLAdapter):
             effect = "permit" if rule.action in ("allow", "permit") else "deny"
             cond_str = CedarAdapter._condition_to_cedar(rule.condition)
             if cond_str:
-                lines.append(f'{effect}(principal, action, resource) when {{ {cond_str} }};')
+                lines.append(f"{effect}(principal, action, resource) when {{ {cond_str} }};")
             else:
                 lines.append(f"{effect}(principal, action, resource);")
 
@@ -355,29 +355,29 @@ class YAMLAdapter(DSLAdapter):
             if ":" in stripped:
                 key, _, val = stripped.partition(":")
                 key = key.strip()
-                val = val.strip()
-                if val:
+                parsed: Any = val.strip()
+                if parsed:
                     # Remove quotes
-                    val = val.strip("'\"")
+                    parsed = parsed.strip("'\"")
                     try:
-                        val = float(val)
+                        parsed = float(parsed)
                     except ValueError:
-                        if val.lower() in ("true", "false"):
-                            val = val.lower() == "true"
+                        if parsed.lower() in ("true", "false"):
+                            parsed = parsed.lower() == "true"
                 if key == "rules" and not is_list_item:
                     if current_key != "rules":
                         result.setdefault("rules", [])
                     current_key = "rules"
-                elif current_key == "rules" and is_list_item and not val:
+                elif current_key == "rules" and is_list_item and not parsed:
                     result["rules"].append({})
-                elif current_key == "rules" and is_list_item and val:
+                elif current_key == "rules" and is_list_item and parsed:
                     # List item with inline value: "- name: block-high"
-                    new_rule: dict[str, Any] = {key: val}
+                    new_rule: dict[str, Any] = {key: parsed}
                     result["rules"].append(new_rule)
                 elif current_key == "rules" and len(result["rules"]) > 0:
-                    result["rules"][-1][key] = val
+                    result["rules"][-1][key] = parsed
                 else:
-                    result[key] = val
+                    result[key] = parsed
         return result
 
     def _dict_to_policy(self, data: dict[str, Any], raw: str) -> DSLAdapterResult:
@@ -489,7 +489,7 @@ class JSONAdapter(DSLAdapter):
         )
 
     def from_policy(self, policy: AdvancedPolicyDefinition) -> DSLAdapterResult:
-        data = {
+        data: dict[str, Any] = {
             "name": policy.name,
             "description": policy.description,
             "version": policy.version,

@@ -35,9 +35,7 @@ class SemanticKernelAdapter(Adapter):
         msg = "SemanticKernelAdapter.connect_agent not yet implemented"
         raise NotImplementedError(msg)
 
-    async def process_prompt(
-        self, prompt: str, context: dict[str, Any]
-    ) -> dict[str, Any]:
+    async def process_prompt(self, prompt: str, context: dict[str, Any]) -> dict[str, Any]:
         msg = "SemanticKernelAdapter.process_prompt not yet implemented"
         raise NotImplementedError(msg)
 

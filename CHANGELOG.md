@@ -6,6 +6,70 @@ Format based on [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [1.1.0] — 2026-08-06
+
+### Benchmark Platform, Evaluation Toolkit & Embeddings — V2.0 research program
+
+Release v1.1.0 introduces the first components of the V2.0 research program: the third-party **benchmark platform** (`q_guardian.benchmark`), the **evaluation toolkit** (`q_guardian.evaluation`), and the new **embeddings layer** (`q_guardian.embeddings`). It also hardens the packaging validation pipeline, improves CI rigor, and synchronizes the full documentation set with v1.1.0.
+
+#### Added
+
+- **`q_guardian.benchmark`** — third-party benchmark platform that runs the framework's real hybrid detection pipeline over curated external datasets: dataset registry (11 specs), Hugging Face / local downloader, dataset validator, preprocessor, K-fold benchmark runner, and `BenchmarkReport` with provider metrics and rankings
+- **`q_guardian.evaluation`** — detection evaluation harness (`PromptBenchmarkDataset`, metrics, hybrid evaluator, K-fold benchmark, reporting) reused by the benchmark platform
+- **`q_guardian.embeddings`** — embeddings layer: pluggable providers (local sentence-transformers, cloud, deterministic hasher), LRU-cached embedding manager, hybrid-mode fusion with explainability, and pipeline integration
+- **`scripts/evaluate_pipeline.py`** — CLI entry point for the full evaluation pipeline
+- **`data/benchmark_prompts.jsonl`** — sample benchmark prompt dataset
+
+#### Fixed
+
+- **Packaging validation** (`scripts/packaging/validate.py`) — `__all__` export validation rewritten on `ast`, eliminating 43 false "no corresponding import" failures caused by parenthesized multi-line imports
+- **Embedding cache** (`q_guardian.embeddings.manager`) — cached vectors are now stored under the correct string key, making the LRU cache effective (previously cache hits were impossible)
+- **Mode fusion** (`q_guardian.embeddings.fusion`) — `ModeHybridEvaluator` no longer overwrites the base `feature_extractor`; mode extraction uses a dedicated `mode_extractor`
+- **Latency accounting** (`q_guardian.embeddings.base`, `q_guardian.embeddings.manager`) — inference timing switched to nanosecond-resolution clocks with a 1 µs floor so fast embeddings no longer report zero latency
+
+#### Improved
+
+- `q_guardian.embeddings` is fully type-clean (mypy: 0 errors) and ruff-clean
+- Removed an unused import and a redundant `encode("utf-8")` argument in the embeddings providers
+
+#### CI
+
+- Release gate runs lint, format check, typecheck, tests, build, and packaging validation sequentially; all green
+- Test matrix green on Python 3.12 and 3.13 — **2,650 tests passing across 123 test files**
+
+#### Packaging
+
+- Version bumped to `1.1.0` in `pyproject.toml`, `src/q_guardian/__init__.py`, `src/q_guardian/core/constants.py`, and `src/q_guardian/config/settings.py`; sdist + wheel rebuild cleanly
+- Added `sentence_transformers.*` to mypy `ignore_missing_imports` overrides for the optional local embedding provider
+
+#### Documentation
+
+- Added `docs/19_Benchmark_Platform_Documentation.md` and `docs/20_Embedding_Pipeline.md`
+- Updated module map and project structure for the new `benchmark`, `evaluation`, and `embeddings` packages
+- Synchronized version references across README, project overview, API reference, configuration, deployment, security, and user guides to v1.1.0
+- Refreshed README badges and test-count references (2,650 passing)
+
+#### Performance
+
+- The embeddings manager's LRU cache now functions correctly, avoiding recomputation of identical embedding vectors
+
+#### Testing
+
+- New suites: `tests/unit/test_benchmark_*.py` (5 files), `tests/unit/test_evaluation_*.py` (4 files), and `tests/unit/test_embeddings_*.py` (10 files)
+
+#### Known Limitations
+
+- Benchmark dataset ingestion requires network access to the Hugging Face datasets-server rows API (or locally provided files); gated datasets are not downloaded automatically
+- The local embedding provider requires the optional `sentence-transformers` package; the deterministic and cloud providers have no third-party dependency
+- Quantum backends beyond the local simulator and live MongoDB/observability integrations remain covered by unit tests but not exercised against live services
+
+#### Future Work
+
+- Continue the V2.0 research program: publish curated benchmark results, expand dataset coverage, and harden fusion calibration
+- Add PyPI publication via the release workflow
+
+---
+
 ## [1.0.0] — 2026-08-05
 
 ### Public Release — Enterprise Observability, Documentation & Explainable Demo

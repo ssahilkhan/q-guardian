@@ -2,11 +2,15 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import structlog
 
 from q_guardian.observability.exceptions import MetricError
-from q_guardian.observability.metrics.collectors import MetricCollector
-from q_guardian.observability.metrics.exporters import MetricExporter
+
+if TYPE_CHECKING:
+    from q_guardian.observability.metrics.collectors import MetricCollector
+    from q_guardian.observability.metrics.exporters import MetricExporter
 
 logger = structlog.get_logger("observability.metrics.registry")
 
@@ -51,7 +55,9 @@ class MetricRegistry:
                 details={"exporter_name": exporter.name},
             )
         self._exporters[exporter.name] = exporter
-        logger.info("exporter_registered", name=exporter.name, exporter_type=exporter.exporter_type.value)
+        logger.info(
+            "exporter_registered", name=exporter.name, exporter_type=exporter.exporter_type.value
+        )
 
     def unregister_exporter(self, name: str) -> bool:
         removed = self._exporters.pop(name, None)

@@ -7,10 +7,10 @@ source of truth for domain constants.
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 
 
-class ThreatLevel(str, Enum):
+class ThreatLevel(StrEnum):
     """Threat level classification."""
 
     NONE = "none"
@@ -20,7 +20,7 @@ class ThreatLevel(str, Enum):
     CRITICAL = "critical"
 
 
-class RiskLevel(str, Enum):
+class RiskLevel(StrEnum):
     """Risk level classification."""
 
     MINIMAL = "minimal"
@@ -31,7 +31,7 @@ class RiskLevel(str, Enum):
     CRITICAL = "critical"
 
 
-class Severity(str, Enum):
+class Severity(StrEnum):
     """Severity classification for threats."""
 
     LOW = "low"
@@ -40,7 +40,7 @@ class Severity(str, Enum):
     CRITICAL = "critical"
 
 
-class TrustLevel(str, Enum):
+class TrustLevel(StrEnum):
     """Trust level for providers and predictions."""
 
     UNTRUSTED = "untrusted"
@@ -50,7 +50,7 @@ class TrustLevel(str, Enum):
     VERIFIED = "verified"
 
 
-class PolicyAction(str, Enum):
+class PolicyAction(StrEnum):
     """Actions that a policy can prescribe."""
 
     ALLOW = "allow"
@@ -64,7 +64,7 @@ class PolicyAction(str, Enum):
     CUSTOM = "custom"
 
 
-class PolicySeverity(str, Enum):
+class PolicySeverity(StrEnum):
     """Severity classification for policies."""
 
     INFO = "info"
@@ -74,7 +74,7 @@ class PolicySeverity(str, Enum):
     CRITICAL = "critical"
 
 
-class DecisionOutcome(str, Enum):
+class DecisionOutcome(StrEnum):
     """Final decision outcome after policy evaluation."""
 
     ALLOWED = "allowed"
@@ -88,7 +88,7 @@ class DecisionOutcome(str, Enum):
     CUSTOM_ACTION = "custom_action"
 
 
-class ActionType(str, Enum):
+class ActionType(StrEnum):
     """Types of actions the action engine can execute."""
 
     AUDIT_LOG = "audit_log"
@@ -101,7 +101,7 @@ class ActionType(str, Enum):
     CUSTOM = "custom"
 
 
-class AuditStatus(str, Enum):
+class AuditStatus(StrEnum):
     """Status of an audit record."""
 
     CREATED = "created"
@@ -111,7 +111,7 @@ class AuditStatus(str, Enum):
     ESCALATED = "escalated"
 
 
-class ConfidenceMethod(str, Enum):
+class ConfidenceMethod(StrEnum):
     """Confidence normalization methods."""
 
     NONE = "none"
@@ -121,7 +121,7 @@ class ConfidenceMethod(str, Enum):
     AGGREGATE = "aggregate"
 
 
-class TrustAdjustmentReason(str, Enum):
+class TrustAdjustmentReason(StrEnum):
     """Reasons for trust score adjustments."""
 
     CORRECT_PREDICTION = "correct_prediction"
@@ -134,7 +134,7 @@ class TrustAdjustmentReason(str, Enum):
     BOOTSTRAP = "bootstrap"
 
 
-class ExplanationFormat(str, Enum):
+class ExplanationFormat(StrEnum):
     """Output formats for explanations."""
 
     JSON = "json"
@@ -143,7 +143,7 @@ class ExplanationFormat(str, Enum):
     STRUCTURED = "structured"
 
 
-class ReasoningNodeType(str, Enum):
+class ReasoningNodeType(StrEnum):
     """Types of nodes in a reasoning graph."""
 
     INPUT = "input"

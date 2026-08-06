@@ -2,22 +2,21 @@
 
 from __future__ import annotations
 
-import json
 from datetime import UTC, datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import structlog
 
-from q_guardian.observability.data import Alert, HealthReport, Metric
 from q_guardian.observability.enums import (
     AlertSeverity,
     AlertState,
-    ExporterType,
     HealthStatus,
-    MetricType,
 )
 from q_guardian.observability.exceptions import ExporterError
 from q_guardian.utils.uuid_utils import generate_uuid
+
+if TYPE_CHECKING:
+    from q_guardian.observability.data import Alert, HealthReport, Metric
 
 logger = structlog.get_logger("observability.integrations.azure_monitor")
 
@@ -202,22 +201,24 @@ class AzureMonitorIntegration:
 
         component_metrics: list[dict[str, Any]] = []
         for comp in health.components:
-            component_metrics.append({
-                "metric": f"QGuardian.ComponentHealth/{comp.component}",
-                "namespace": "QGuardian",
-                "dimNames": ["component", "status"],
-                "series": [
-                    {
-                        "dimValues": [comp.component, comp.status.value],
-                        "min": comp.health_score,
-                        "max": comp.health_score,
-                        "sum": comp.health_score,
-                        "count": 1,
-                    }
-                ],
-                "time": health.timestamp.isoformat(),
-                "top": 1,
-            })
+            component_metrics.append(
+                {
+                    "metric": f"QGuardian.ComponentHealth/{comp.component}",
+                    "namespace": "QGuardian",
+                    "dimNames": ["component", "status"],
+                    "series": [
+                        {
+                            "dimValues": [comp.component, comp.status.value],
+                            "min": comp.health_score,
+                            "max": comp.health_score,
+                            "sum": comp.health_score,
+                            "count": 1,
+                        }
+                    ],
+                    "time": health.timestamp.isoformat(),
+                    "top": 1,
+                }
+            )
 
         overall_metric = {
             "metric": "QGuardian.OverallHealth",
@@ -247,14 +248,16 @@ class AzureMonitorIntegration:
             properties={
                 "ReportId": health.report_id,
                 "OverallStatus": health.overall_status.value,
-                "OverallScore": str(health.health_score if hasattr(health, 'health_score') else health.overall_score),
+                "OverallScore": str(
+                    health.health_score if hasattr(health, "health_score") else health.overall_score
+                ),
                 "Uptime": str(health.framework_uptime_seconds),
                 "ComponentCount": str(len(health.components)),
             },
         )
 
         return {
-            "metrics": [overall_metric] + component_metrics,
+            "metrics": [overall_metric, *component_metrics],
             "logEntry": log_entry,
             "report": {
                 "reportId": health.report_id,

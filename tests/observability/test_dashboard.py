@@ -1,33 +1,27 @@
-import pytest
-import json
 from datetime import UTC, datetime
 
 from q_guardian.observability.dashboard.api import DashboardAPI
-from q_guardian.observability.dashboard.endpoints import DashboardEndpoints
-from q_guardian.observability.dashboard.serializers import DashboardSerializer
 from q_guardian.observability.dashboard.dto import (
-    MetricsResponseDTO,
-    HealthResponseDTO,
-    AnalyticsResponseDTO,
-    RuntimeResponseDTO,
     AlertsResponseDTO,
-    PluginsResponseDTO,
+    AnalyticsResponseDTO,
     DashboardSnapshotDTO,
-    ProvidersResponseDTO,
-    ResponsesResponseDTO,
-    PoliciesResponseDTO,
-    IncidentsResponseDTO,
+    HealthResponseDTO,
+    MetricsResponseDTO,
+    PluginsResponseDTO,
+    RuntimeResponseDTO,
 )
-from q_guardian.observability.dashboard.filters import DashboardFilter, TimeRangeFilter, MetricFilter
+from q_guardian.observability.dashboard.endpoints import DashboardEndpoints
+from q_guardian.observability.dashboard.filters import (
+    DashboardFilter,
+    MetricFilter,
+    TimeRangeFilter,
+)
+from q_guardian.observability.dashboard.serializers import DashboardSerializer
 from q_guardian.observability.enums import (
-    MetricType,
-    MetricUnit,
     AlertSeverity,
-    DashboardFormat,
     AnalyticsGranularity,
-    HealthStatus,
+    DashboardFormat,
 )
-from q_guardian.observability.data import TimeWindow
 
 
 class TestDashboardAPICreation:

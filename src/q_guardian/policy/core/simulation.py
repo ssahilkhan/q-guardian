@@ -108,8 +108,8 @@ class SimulationEngine:
             if simulation_ids and sim.simulation_id not in simulation_ids:
                 continue
             new_result = self._evaluator.evaluate(policy, sim.input_context)
-            from q_guardian.policy.data import SimulationResult as SR
-            result = SR(
+
+            result = SimulationResult(
                 policy_id=policy.policy_id,
                 policy_name=policy.name,
                 input_context=sim.input_context,

@@ -11,7 +11,6 @@ from q_guardian.quantum.enums import (
     BackendStatus,
     CircuitType,
     EncodingType,
-    ExecutionStatus,
     QuantumBackendType,
     QuantumModelType,
 )
@@ -53,9 +52,7 @@ class QuantumCircuitInfo(BaseModel):
     num_qubits: int = Field(description="Number of qubits")
     depth: int = Field(default=0, description="Circuit depth")
     gate_count: int = Field(default=0, description="Total gate count")
-    gate_counts: dict[str, int] = Field(
-        default_factory=dict, description="Gate count by type"
-    )
+    gate_counts: dict[str, int] = Field(default_factory=dict, description="Gate count by type")
     encoding_type: EncodingType | None = Field(
         default=None, description="Feature encoding type used"
     )
@@ -104,9 +101,7 @@ class BackendInfo(BaseModel):
     supports_hardware: bool = Field(default=False, description="Is real hardware")
     error_rate: float | None = Field(default=None, description="Gate error rate")
     connectivity: str | None = Field(default=None, description="Qubit connectivity map")
-    capabilities: list[str] = Field(
-        default_factory=list, description="Backend capabilities"
-    )
+    capabilities: list[str] = Field(default_factory=list, description="Backend capabilities")
     metadata: dict[str, Any] = Field(default_factory=dict, description="Extra data")
     last_health_check: datetime | None = Field(
         default=None, description="Last health check timestamp"
@@ -128,7 +123,9 @@ class QuantumTrainingResult(BaseModel):
     convergence_iteration: int = Field(default=0, description="Iteration at convergence")
     convergence_epoch: int = Field(default=0, description="Epoch at convergence")
     training_samples: int = Field(default=0, description="Number of training samples")
-    total_training_time_s: float = Field(default=0.0, alias="training_time_s", description="Training time in seconds")
+    total_training_time_s: float = Field(
+        default=0.0, alias="training_time_s", description="Training time in seconds"
+    )
     training_time_s: float = Field(default=0.0, description="Training time in seconds")
     metrics: dict[str, Any] = Field(default_factory=dict, description="Evaluation metrics")
     cv_scores: list[float] = Field(default_factory=list, description="Cross-validation scores")
@@ -148,9 +145,7 @@ class QuantumInferenceResult(BaseModel):
 
     result_id: str = Field(default_factory=generate_uuid, description="Unique result ID")
     model_name: str = Field(description="Model that produced this result")
-    predictions: dict[str, float] = Field(
-        default_factory=dict, description="Class probabilities"
-    )
+    predictions: dict[str, float] = Field(default_factory=dict, description="Class probabilities")
     predicted_class: str = Field(default="", description="Top predicted class")
     confidence: float = Field(default=0.0, ge=0.0, le=1.0, description="Prediction confidence")
     risk_score: float = Field(default=0.0, ge=0.0, le=1.0, description="Risk score")
@@ -204,9 +199,7 @@ class FusedResult(BaseModel):
     classical_contribution: float = Field(
         default=0.0, description="Classical model contribution weight"
     )
-    rule_contribution: float = Field(
-        default=0.0, description="Rule engine contribution weight"
-    )
+    rule_contribution: float = Field(default=0.0, description="Rule engine contribution weight")
     fusion_strategy: str = Field(default="", description="Strategy used for fusion")
     source_results: list[dict[str, Any]] = Field(
         default_factory=list, description="Individual model results"

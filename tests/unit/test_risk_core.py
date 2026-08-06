@@ -1,29 +1,64 @@
 """Tests for risk module enums, data models, config, exceptions, and events."""
 
-import pytest
-from q_guardian.risk.enums import (
-    ThreatLevel, RiskLevel, Severity, TrustLevel, PolicyAction,
-    PolicySeverity, DecisionOutcome, ActionType, AuditStatus,
-    ConfidenceMethod, TrustAdjustmentReason, ExplanationFormat,
-    ReasoningNodeType,
+from q_guardian.risk.config import (
+    ConfidenceConfig,
+    RiskConfig,
+    ScoringWeights,
+    SeverityMapping,
+    TrustConfig,
 )
 from q_guardian.risk.data import (
-    NormalizedPrediction, ThreatScore, TrustScore, SeverityScore,
-    ConfidenceScore, RiskAssessment, PolicyRule, PolicyDefinition,
-    PolicyDecision, ActionResult, AuditRecord, Notification,
-    ReasoningNode, ReasoningEdge, ReasoningGraph, Explanation,
+    ActionResult,
+    AuditRecord,
+    ConfidenceScore,
+    Explanation,
+    NormalizedPrediction,
+    Notification,
+    PolicyDecision,
+    PolicyDefinition,
+    PolicyRule,
+    ReasoningEdge,
+    ReasoningGraph,
+    ReasoningNode,
+    RiskAssessment,
+    SeverityScore,
+    ThreatScore,
+    TrustScore,
 )
-from q_guardian.risk.config import (
-    RiskConfig, ScoringWeights, SeverityMapping, TrustConfig, ConfidenceConfig,
-)
-from q_guardian.risk.exceptions import (
-    RiskError, AssessmentError, PolicyError, PolicyNotFoundError,
-    ActionError, ExplanationError, TrustError, ConfigurationError,
+from q_guardian.risk.enums import (
+    ActionType,
+    AuditStatus,
+    ConfidenceMethod,
+    DecisionOutcome,
+    ExplanationFormat,
+    PolicyAction,
+    PolicySeverity,
+    ReasoningNodeType,
+    RiskLevel,
+    Severity,
+    ThreatLevel,
+    TrustAdjustmentReason,
+    TrustLevel,
 )
 from q_guardian.risk.events import (
-    RiskCalculated, ThreatScored, TrustUpdated, PolicyMatched,
-    PolicyExecuted, ActionExecuted, ExplanationGenerated,
+    ActionExecuted,
+    ExplanationGenerated,
+    PolicyExecuted,
+    PolicyMatched,
     RiskAssessmentCompleted,
+    RiskCalculated,
+    ThreatScored,
+    TrustUpdated,
+)
+from q_guardian.risk.exceptions import (
+    ActionError,
+    AssessmentError,
+    ConfigurationError,
+    ExplanationError,
+    PolicyError,
+    PolicyNotFoundError,
+    RiskError,
+    TrustError,
 )
 
 
@@ -228,7 +263,9 @@ class TestConfig:
 
     def test_scoring_weights_defaults(self):
         w = ScoringWeights()
-        total = w.probability + w.confidence + w.reliability + w.agreement + w.diversity + w.severity
+        total = (
+            w.probability + w.confidence + w.reliability + w.agreement + w.diversity + w.severity
+        )
         assert abs(total - 1.0) < 0.01
 
     def test_severity_mapping_defaults(self):

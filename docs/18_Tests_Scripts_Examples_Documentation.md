@@ -1,6 +1,6 @@
 # 18 - Tests, Scripts & Examples
 
-> Repository: `tests\` (2,339 tests / 107 files), `scripts\`, and `examples\`.
+> Repository: `tests\` (2,650 tests / 123 files), `scripts\`, and `examples\`.
 > Companion doc for the Q-Guardrail documentation set — covers the test suite, the
 > developer tooling under `scripts/` (prompt CLI, training, benchmarks, load tests,
 > profiling, packaging), the runnable examples under `examples/`, and the docs/root
@@ -17,23 +17,24 @@
  ├── integration\            (2 files: FastAPI app + Guardian lifecycle)
  ├── response\               (9 files: engines, evidence, quarantine, playbooks, ...)
  ├── observability\          (24 files: metrics, tracing, health, alerts, dashboard, ...)
- └── unit\                   (70 files: config, events, framework, fusion, hooks, ml,
-                             plugins, policy, quantum, risk, runtime, sdk, security, utils)
+ └── unit\                   (88 files: config, events, framework, fusion, hooks, ml,
+                             plugins, policy, quantum, risk, runtime, sdk, security, utils,
+                             benchmark, embeddings)
 ```
 
 | Category | Count |
 |---|---|
-| Total test functions | **2,339** |
-| — synchronous (`def test_`) | 2,120 |
-| — asynchronous (`async def test_`) | 219 |
+| Total test functions | **2,650** |
+| — synchronous (`def test_`) | 2,415 |
+| — asynchronous (`async def test_`) | 235 |
 | `@pytest.mark.asyncio` markers | 160 |
 | `@pytest.fixture` definitions (incl. conftest) | 53 |
 | `@pytest_asyncio.fixture` definitions | 3 |
 | `@pytest.mark.parametrize` / `unit` / `integration` / `slow` / `skip` / `xfail` | **0** |
 
 There are **no** registered pytest markers: classification is by directory
-(`tests\unit\`, `tests\integration\`). Async tests always carry an explicit
-`@pytest.mark.asyncio` (no global `asyncio_mode = auto`); the `anyio_backend`
+(`tests\unit\`, `tests\integration\`). Async tests run under global
+`asyncio_mode = auto` (configured in `pyproject.toml`); the `anyio_backend`
 fixtures return `"asyncio"`.
 
 | Directory | Test files | Coverage areas |
@@ -41,8 +42,8 @@ fixtures return `"asyncio"`.
 | `tests\integration\` | 2 | FastAPI app + Guardian lifecycle |
 | `tests\observability\` | 24 | alerting, metrics, tracing, health, dashboard, storage, exporters, plugin |
 | `tests\response\` | 9 | engines, evidence, integrations, notifications, orchestration, playbooks, plugin/storage, quarantine, response engine |
-| `tests\unit\` | 70 | config, events, framework, fusion, hooks, ml, plugins, policy (9), quantum (13), risk (7), runtime (5), sdk, security (4), utils |
-| **Total** | **105 test files + 2 conftest** | |
+| `tests\unit\` | 88 | config, events, framework, fusion, hooks, ml, plugins, policy (9), quantum (13), risk (7), runtime (5), sdk, security (4), utils, benchmark (5), embeddings (10) |
+| **Total** | **123 test files + 2 conftest** | |
 
 ---
 
@@ -122,7 +123,7 @@ import safety (identical semantics; `app` imports `create_app` at module top).
 | `test_tracing_helpers.py` | 18 | `TraceContext`, `CorrelationManager` (generate/lookup/link/root), `SpanManager` (start/end/child/tags/logs/active/clear), events/metrics/health/async. |
 | `test_trend_forecast.py` | 16 | `TrendAnalyzer` (direction/slope/flat/noise/window), `ForecastEngine` (linear/polynomial/confidence/horizon/errors/seasonal/insufficient), events/metrics/health. |
 
-### 3.4 `tests\unit\` (70 files)
+### 3.4 `tests\unit\` (88 files)
 
 Unit tests are grouped into `TestXxx` classes (one per subject). Heaviest clusters:
 
@@ -135,6 +136,8 @@ Unit tests are grouped into `TestXxx` classes (one per subject). Heaviest cluste
 | **runtime** (5 files) | models (66), managers (37), context (17), events (13), SDK integration (15) | `Agent`/`AgentSession`/`AgentRequest`/`AgentResponse`/`TokenUsage`/`ToolInvocation`/`MemoryAccess`/`SecurityContext`/`ThreatContext`/`RiskContext` + enum completeness. |
 | **security** (4 files) | pipeline (42), models (22), plugin+SDK (15), decision (13) | Normalizer/validator/feature extractor/rule engine; allow/block/review/warn decision matrix; `PromptScannerPlugin` + Guardian integration. |
 | **sdk** (2 files + integration) | `test_sdk.py` (18), `test_runtime_sdk.py` (15) | `Guardian` init/lifecycle/plugins/events/adapters/hooks; runtime wiring (set_agent, create/close session, manager access). |
+| **benchmark** (5 files) | `test_benchmark_registry.py` (6), `test_benchmark_download.py` (9), `test_benchmark_validate.py` (6), `test_benchmark_preprocessing.py` (6), `test_benchmark_runner.py` (8) | `DatasetRegistry` (builtin/get/all/public/gated/ids), `DatasetDownloader` via `httpx.MockTransport` (HF rows pagination, gated-without-token raises `DatasetError`, auth header, HTTP 404, local jsonl/csv/json, max_samples cap), `DatasetValidator` (schema/text/label/category checks, `valid` flag), `DatasetPreprocessor` (text fields, label map 0/1 + string maps, split-derived labels/categories, default label, bad-row skipping, empty → `ValueError`), `BenchmarkRunner` end-to-end over a local dataset + unknown-dataset `KeyError`. |
+| **embeddings** (10 files) | errors (7), hasher (22), base (18), providers (27), cache (12), manager (52), explain (16), fusion (35), integration (9), benchmark (28) | Exception hierarchy; `hash_vector` determinism/L2/seed; `EmbeddingProvider` lifecycle + rolling latency; sentence-transformers via fake model factory (missing library → `EmbeddingNotAvailableError`) + cloud placeholders (`implemented=False`); JSON disk cache (corruption-safe, persistence across manager instances); `EmbeddingManager` registration/caching (LRU + disk read-through)/batching/fallback/`build_manager`; `EmbeddingMeta`/`EmbeddingTrace`; `FeatureMode` + `ModeFeatureExtractor` (43/16/59-dim, handcrafted parity vs `HybridEvaluator`) + `EmbeddingFeatureProvider`; trainer adapters with injected fakes; `ModeDetectionBenchmark` + `ModeComparisonRunner` end-to-end over a local dataset. |
 | **singles** | config (~16), event_bus (~18), exceptions (~12), framework config/state (~26), hooks (~18), utils (24) | Settings roundtrips + env overrides, pub/sub incl. wildcard + `publish_sync`, `GuardianError` hierarchy, `FrameworkConfig`/`FrameworkState`, hook manager, `uuid_utils`/`datetime_utils`/`json_utils`/`helpers`. |
 
 ---
@@ -153,7 +156,10 @@ engine/storage/version_manager), `_rule(...)` (conflict detector), `_make_policy
 **In-file stub classes**: `DummyQuantumBackend`, `DummyFeatureMap`, `DummyKernel`,
 `DummyQuantumModel`, `SimpleQuantumModel`, `DummyThreatModel`, `DummyModel`,
 `DummySklearnModel`, `SimplePlugin`/`AnotherPlugin`/`FailingInitPlugin`, `SamplePlugin`,
-`LifecycleTrackerPlugin`, `ConcreteEvent`, `SimpleProvider`/`FailingProvider`, `MockContext`.
+`LifecycleTrackerPlugin`, `ConcreteEvent`, `SimpleProvider`/`FailingProvider`, `MockContext`,
+`_StubProvider`, `_ExplodingProvider`, `_NamedHashProvider`, `_FakeModelTrainer`,
+`_FakeQuantumTrainer`, `_SpyExtractor`, `_LocalRegistry`, `_LocalDownloader`,
+`_LocalValidator`, `_FakeValidation`, `_LocalModel`.
 
 **Module-scope fixture sets** live with their subsystem (not global conftest): quantum
 engines (`backend`, `feature_map`, `kernel`, `engine`, `trained_qsvm*`), quantum storage
@@ -344,6 +350,74 @@ python -m scripts.profile.run_profiler leak-detect --duration 60
 python -m scripts.profile.run_profiler analyze --output report.json
 ```
 
+### 5.6 Detection-quality benchmark — `scripts\evaluate_pipeline.py`
+
+Measures the **detection quality** (not latency) of the real hybrid pipeline:
+normalizer → feature extractor → rule engine → isolation forest → random forest →
+quantum QSVM → weighted-voting fusion, wired through the framework's own provider
+adapters (`q_guardian.quantum.fusion.adapters`). Backed by the
+`q_guardian.evaluation` package:
+
+- `dataset.py` — `BenchmarkSample` + `PromptBenchmarkDataset` with a curated 62-sample
+  built-in corpus (`data/benchmark_prompts.jsonl`: 30 benign + 32 threats across 8
+  categories), stratified `train_test_split` / round-robin `kfold`, `from_jsonl`/`to_jsonl`.
+- `metrics.py` — pure-Python `roc_auc`/`pr_auc` (tie-aware rank statistics),
+  `expected_calibration_error`, `brier_score`, `detection_metrics` (confusion matrix +
+  accuracy/precision/recall/F1/MCC/specificity/TPR/FPR/FNR).
+- `pipeline.py` — `HybridEvaluator`: fits scaler + IsolationForest + RandomForest
+  (+ optional QSVM), scores through a real `HybridFusionEngine`, returns per-provider
+  and fused detection metrics.
+- `benchmark.py` — `DetectionBenchmark.run(k, seed, threshold, ablate)`: K-fold CV
+  (stratified on 0/1 labels), provider ROC-AUC ranking, per-provider ablation
+  (`fusion_roc_auc`/`fusion_f1` means) and an `ablation_summary` with
+  `most_valuable_provider`, `redundant_providers`, and a text recommendation;
+  `report["scores"]` holds out-of-fold per-sample scores.
+- `report.py` — `write_json` + `to_markdown` rendering (config/dataset/fold/mean
+  metrics/ranking/ablation + recommendation).
+
+**`evaluate_pipeline.py`** — CLI with `--dataset --k --seed --threshold --no-quantum
+--quantum-shots --quantum-feature-count --quantum-cap --no-ablate --output`. Writes
+`report.json`, `report.md`, and `scores.csv` (out-of-fold per-sample scores) under
+`--output` (default `docs/output/evaluation`, gitignored).
+
+```bash
+python scripts/evaluate_pipeline.py                        # k=5, full quantum + ablation
+python scripts/evaluate_pipeline.py --k 3 --no-quantum --no-ablate   # classical-only, fast
+python scripts/evaluate_pipeline.py --quantum-cap 30 --k 3 --output docs/output/evaluation
+```
+
+Example (k=3, full quantum + ablation, 62 samples): fusion ROC-AUC
+0.9848 ± 0.0262, F1 0.8409; provider ranking random-forest (0.9667) > qsvm (0.8567)
+> rule-engine (0.8288) > isolation-forest (0.7809); ablation flags isolation-forest as
+redundant. QSVM metrics vary slightly run-to-run because the local simulator samples
+`--quantum-shots` per kernel evaluation.
+
+### 5.7 Benchmark platform — `q_guardian.benchmark` (V2.0 M1a)
+
+The `q_guardian.benchmark` package runs the same `DetectionBenchmark` over
+**third-party datasets** instead of the built-in 62-sample corpus. Data flows:
+`DatasetRegistry` → `DatasetDownloader` (HF datasets-server or local files) →
+`DatasetValidator` → `DatasetPreprocessor` → `DetectionBenchmark.run` →
+`BenchmarkReport`. See `19_Benchmark_Platform_Documentation.md` for the full design
+and the dataset table.
+
+```python
+from q_guardian.benchmark import BenchmarkRunner
+
+runner = BenchmarkRunner()
+report = runner.run("deepset-prompt-injections", k=3)   # real HF API, cached under ~/.qguardian/benchmark
+print(report.metrics.fusion())
+print(report.ranking())
+report.as_dict()["dataset"]["validation"]
+```
+
+- Public datasets: `deepset-prompt-injections`, `jbb-behaviors`,
+  `dolly-benign`; gated mission datasets require an HF token (M1b).
+- Reproduce live runs with `QGUARDIAN_BENCHMARK_CACHE` set to a writable dir;
+  the default cache is `~/.qguardian/benchmark` (gitignored).
+- A dedicated CLI wrapping the runner is planned (M2); until then the runner is
+  exercised from Python or the unit-test fixtures.
+
 ---
 
 ## 6. Examples — `examples\`
@@ -442,7 +516,7 @@ often scores even benign prompts ~0.60 ("high"), and auto-labels can misfire.
 Regenerated automatically by PEP 517/518 builds and cleaned by `scripts/packaging/build.py`;
 not hand-maintained.
 
-- **`PKG-INFO`** (482 lines) — `Name: q-guardian`, `Version: 1.0.0`, MIT, Python
+- **`PKG-INFO`** (482 lines) — `Name: q-guardian`, `Version: 1.1.0`, MIT, Python
   >=3.12, classifiers (Dev Status 4-Beta), full dependency list with extras
   (`ml`, `ml-xgboost`, `datasets`, `quantum`, `quantum-pennylane`, `dev`) + embedded README.
 - **`requires.txt`** (41 lines) — base runtime deps (fastapi, uvicorn[standard], pydantic,

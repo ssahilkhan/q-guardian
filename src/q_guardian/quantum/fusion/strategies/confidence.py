@@ -6,12 +6,14 @@ Higher-confidence predictions have more influence on the fused result.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
-from q_guardian.quantum.fusion.prediction import ThreatPrediction
-from q_guardian.quantum.fusion.strategies.base import FusionStrategy, FusedPrediction
+from q_guardian.quantum.fusion.strategies.base import FusedPrediction, FusionStrategy
+
+if TYPE_CHECKING:
+    from q_guardian.quantum.fusion.prediction import ThreatPrediction
 
 
 class ConfidenceFusionStrategy(FusionStrategy):
@@ -62,7 +64,7 @@ class ConfidenceFusionStrategy(FusionStrategy):
             final_weights = {k: v / total for k, v in final_weights.items()}
 
         votes: dict[str, float] = {}
-        for i, pred in enumerate(valid):
+        for pred in valid:
             label = pred.predicted_label
             votes[label] = votes.get(label, 0.0) + final_weights[pred.provider_id]
 

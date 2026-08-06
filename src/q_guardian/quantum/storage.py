@@ -8,17 +8,14 @@ q_guardian.ml.storage.ModelStorage.
 from __future__ import annotations
 
 import json
-import os
-import time
 import shutil
+import time
 from pathlib import Path
 from typing import Any
 
 import structlog
 
-from q_guardian.quantum.data import QuantumModelMetadata
-from q_guardian.quantum.enums import QuantumModelType
-from q_guardian.quantum.exceptions import ConfigurationError, QuantumError
+from q_guardian.quantum.exceptions import QuantumError
 
 logger = structlog.get_logger("quantum.storage")
 
@@ -105,8 +102,9 @@ class QuantumModelStorage:
                 f"Model state not found: {model_name}",
             )
 
-        with open(state_file, "r", encoding="utf-8") as f:
-            return json.load(f)
+        with open(state_file, encoding="utf-8") as f:
+            state: dict[str, Any] = json.load(f)
+            return state
 
     def load_version(self, model_name: str, version: str) -> dict[str, Any]:
         """Load a specific versioned model state."""
@@ -116,8 +114,9 @@ class QuantumModelStorage:
                 f"Version {version} not found for model {model_name}",
             )
 
-        with open(version_file, "r", encoding="utf-8") as f:
-            return json.load(f)
+        with open(version_file, encoding="utf-8") as f:
+            state: dict[str, Any] = json.load(f)
+            return state
 
     def load_metadata(self, model_name: str) -> dict[str, Any]:
         """Load model metadata from disk."""
@@ -127,8 +126,9 @@ class QuantumModelStorage:
         if not meta_file.exists():
             return {}
 
-        with open(meta_file, "r", encoding="utf-8") as f:
-            return json.load(f)
+        with open(meta_file, encoding="utf-8") as f:
+            metadata: dict[str, Any] = json.load(f)
+            return metadata
 
     def exists(self, model_name: str) -> bool:
         """Check if a model is stored."""
@@ -148,19 +148,21 @@ class QuantumModelStorage:
                 metadata: dict[str, Any] = {}
                 if meta_file.exists():
                     try:
-                        with open(meta_file, "r", encoding="utf-8") as f:
+                        with open(meta_file, encoding="utf-8") as f:
                             metadata = json.load(f)
                     except (json.JSONDecodeError, OSError):
                         pass
 
                 versions = self._list_versions(entry.name)
 
-                models.append({
-                    "name": entry.name,
-                    "metadata": metadata,
-                    "versions": versions,
-                    "has_state": (entry / STATE_FILENAME).exists(),
-                })
+                models.append(
+                    {
+                        "name": entry.name,
+                        "metadata": metadata,
+                        "versions": versions,
+                        "has_state": (entry / STATE_FILENAME).exists(),
+                    }
+                )
 
         return models
 
@@ -241,7 +243,4 @@ class QuantumModelStorage:
         if not versions_dir.exists():
             return []
 
-        return sorted(
-            f.stem for f in versions_dir.iterdir()
-            if f.is_file() and f.suffix == ".json"
-        )
+        return sorted(f.stem for f in versions_dir.iterdir() if f.is_file() and f.suffix == ".json")

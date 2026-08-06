@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "q-guardian"
-version = "1.0.0"
+version = "1.1.0"
 description = "Q-Guardian: A Hybrid Quantum-Classical Framework for Runtime Security of Autonomous AI Agents"
 readme = "README.md"
 license = {text = "MIT"}
@@ -66,6 +66,10 @@ dev = [
     "mypy>=1.14.0",
     "pre-commit>=4.0.0",
     "mongomock>=4.2.0",
+    "numpy>=1.24.0",
+    "scikit-learn>=1.3.0",
+    "xgboost>=2.0.0",
+    "types-PyYAML>=6.0.12",
 ]
 
 [project.urls]
@@ -112,11 +116,25 @@ disallow_untyped_defs = true
 disallow_incomplete_defs = true
 check_untyped_defs = true
 no_implicit_optional = true
+explicit_package_bases = true
+mypy_path = "src"
 plugins = ["pydantic.mypy"]
 
 [[tool.mypy.overrides]]
 module = ["tests.*"]
 disallow_untyped_defs = false
+
+[[tool.mypy.overrides]]
+module = [
+    "qiskit.*",
+    "qiskit_aer.*",
+    "qiskit_ibm_runtime.*",
+    "datasets.*",
+    "sklearn.*",
+    "joblib",
+    "sentence_transformers.*",
+]
+ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

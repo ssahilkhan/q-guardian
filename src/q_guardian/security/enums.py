@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 
 
-class PromptSeverity(str, Enum):
+class PromptSeverity(StrEnum):
     """Severity level of a prompt finding."""
 
     INFO = "info"
@@ -15,7 +15,7 @@ class PromptSeverity(str, Enum):
     CRITICAL = "critical"
 
 
-class PromptCategory(str, Enum):
+class PromptCategory(StrEnum):
     """Category of detected prompt issue."""
 
     PROMPT_INJECTION = "prompt_injection"
@@ -30,7 +30,7 @@ class PromptCategory(str, Enum):
     UNKNOWN = "unknown"
 
 
-class PromptDecision(str, Enum):
+class PromptDecision(StrEnum):
     """Security decision for a prompt."""
 
     ALLOW = "allow"
@@ -39,7 +39,7 @@ class PromptDecision(str, Enum):
     BLOCK = "block"
 
 
-class ValidationStatus(str, Enum):
+class ValidationStatus(StrEnum):
     """Result of prompt validation."""
 
     VALID = "valid"

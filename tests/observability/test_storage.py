@@ -1,5 +1,3 @@
-import json
-import tempfile
 from pathlib import Path
 
 import pytest
@@ -7,10 +5,7 @@ import pytest
 from q_guardian.observability.data import (
     Alert,
     AlertEvent,
-    AlertSeverity,
     AlertState,
-    AlertType,
-    HealthReport,
     Metric,
     MetricType,
     Trace,
@@ -94,9 +89,7 @@ class TestMetricStorage:
 
 
 class TestTraceStorage:
-    def test_save_and_load_trace(
-        self, storage: ObservabilityStorage, sample_trace: Trace
-    ) -> None:
+    def test_save_and_load_trace(self, storage: ObservabilityStorage, sample_trace: Trace) -> None:
         path = storage.save_trace(sample_trace)
         assert path.exists()
         data = storage.load_trace(sample_trace.trace_id)
@@ -123,9 +116,7 @@ class TestTraceStorage:
 
 
 class TestAlertStorage:
-    def test_save_and_load_alert(
-        self, storage: ObservabilityStorage, sample_alert: Alert
-    ) -> None:
+    def test_save_and_load_alert(self, storage: ObservabilityStorage, sample_alert: Alert) -> None:
         path = storage.save_alert(sample_alert)
         assert path.exists()
         data = storage.load_alert(sample_alert.alert_id)

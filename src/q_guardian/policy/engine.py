@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import time
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import structlog
 
@@ -14,27 +14,6 @@ from q_guardian.policy.core.evaluator import PolicyEvaluator
 from q_guardian.policy.core.registry import PolicyRegistry
 from q_guardian.policy.core.simulation import SimulationEngine
 from q_guardian.policy.core.version_manager import VersionManager
-from q_guardian.policy.data import (
-    AdvancedPolicyDefinition,
-    AdvancedRule,
-    ConflictResult,
-    Condition,
-    CompoundCondition,
-    DSLAdapterResult,
-    PolicyEvaluationResult,
-    SimulationResult,
-)
-from q_guardian.policy.enums import (
-    ConflictResolution,
-    DSLFormat,
-    Permission,
-    PolicyStatus,
-)
-from q_guardian.policy.exceptions import (
-    PolicyConflictError,
-    PolicyEngineError,
-    PolicyNotFoundError,
-)
 from q_guardian.policy.events import (
     PolicyActivated,
     PolicyConflictDetected,
@@ -44,6 +23,26 @@ from q_guardian.policy.events import (
     PolicySimulated,
     PolicyUpdated,
 )
+from q_guardian.policy.exceptions import (
+    PolicyConflictError,
+    PolicyEngineError,
+    PolicyNotFoundError,
+)
+
+if TYPE_CHECKING:
+    from q_guardian.policy.data import (
+        AdvancedPolicyDefinition,
+        CompoundCondition,
+        Condition,
+        ConflictResult,
+        DSLAdapterResult,
+        PolicyEvaluationResult,
+        SimulationResult,
+    )
+    from q_guardian.policy.enums import (
+        DSLFormat,
+        Permission,
+    )
 
 logger = structlog.get_logger(__name__)
 
@@ -60,15 +59,11 @@ class AdvancedPolicyEngine:
         self._registry = PolicyRegistry(
             storage_path=self._config.storage_path if self._config.persist_to_file else None
         )
-        self._evaluator = PolicyEvaluator(
-            timeout_seconds=self._config.evaluation_timeout_seconds
-        )
+        self._evaluator = PolicyEvaluator(timeout_seconds=self._config.evaluation_timeout_seconds)
         self._conflict_detector = ConflictDetector(
             resolution=self._config.default_conflict_resolution
         )
-        self._version_manager = VersionManager(
-            max_versions=self._config.max_versions_per_policy
-        )
+        self._version_manager = VersionManager(max_versions=self._config.max_versions_per_policy)
         self._simulation_engine = SimulationEngine(evaluator=self._evaluator)
 
         # Optional components (initialized lazily)
@@ -293,18 +288,17 @@ class AdvancedPolicyEngine:
     def import_from_dsl(
         self,
         raw: str,
-        format: DSLFormat,
+        dsl_format: DSLFormat,
     ) -> AdvancedPolicyDefinition:
         """Import a policy from an external DSL format."""
         from q_guardian.policy.adapters import get_adapter
 
-        adapter = get_adapter(format)
+        adapter = get_adapter(dsl_format)
         result = adapter.to_policy(raw)
         if not result.success:
             from q_guardian.policy.exceptions import DSLAdapterError
-            raise DSLAdapterError(
-                f"Failed to import from {format.value}: {result.errors}"
-            )
+
+            raise DSLAdapterError(f"Failed to import from {dsl_format.value}: {result.errors}")
         if result.policy:
             self.register_policy(result.policy)
             return result.policy
@@ -313,13 +307,13 @@ class AdvancedPolicyEngine:
     def export_to_dsl(
         self,
         policy_id: str,
-        format: DSLFormat,
+        dsl_format: DSLFormat,
     ) -> DSLAdapterResult:
         """Export a policy to an external DSL format."""
         from q_guardian.policy.adapters import get_adapter
 
         policy = self._registry.get(policy_id)
-        adapter = get_adapter(format)
+        adapter = get_adapter(dsl_format)
         return adapter.from_policy(policy)
 
     # ------------------------------------------------------------------
@@ -328,12 +322,13 @@ class AdvancedPolicyEngine:
 
     def init_rbac(self) -> None:
         from q_guardian.policy.rbac import RBACManager
+
         self._rbac = RBACManager(default_role=self._config.default_role)
 
     def check_permission(self, user_id: str, permission: Permission) -> bool:
         if self._rbac is None:
             return True
-        return self._rbac.check_permission(user_id, permission)
+        return bool(self._rbac.check_permission(user_id, permission))
 
     @property
     def rbac(self) -> Any:
@@ -345,9 +340,8 @@ class AdvancedPolicyEngine:
 
     def init_composition(self) -> None:
         from q_guardian.policy.composition import PolicyComposer
-        self._composer = PolicyComposer(
-            max_inheritance_depth=self._config.max_inheritance_depth
-        )
+
+        self._composer = PolicyComposer(max_inheritance_depth=self._config.max_inheritance_depth)
 
     @property
     def composer(self) -> Any:

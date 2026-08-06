@@ -119,7 +119,7 @@ Prefix: `APP_`
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `name` | str | Q-Guardian | Application name |
-| `version` | str | 1.0.0 | Application version |
+| `version` | str | 1.1.0 | Application version |
 | `environment` | Environment | development | Runtime environment |
 | `debug` | bool | true | Debug mode |
 | `host` | str | 0.0.0.0 | Server host |

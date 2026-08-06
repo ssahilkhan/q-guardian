@@ -4,8 +4,6 @@ from __future__ import annotations
 
 import os
 
-import pytest
-
 
 class TestAppSettings:
     """Tests for AppSettings configuration."""

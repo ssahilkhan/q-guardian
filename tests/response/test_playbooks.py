@@ -1,27 +1,30 @@
 """Tests for Playbook subsystem."""
 
 import pytest
+
 from q_guardian.response.data import PlaybookDefinition, PlaybookStep
-from q_guardian.response.enums import FailureStrategy, StepType
+from q_guardian.response.enums import StepType
 from q_guardian.response.exceptions import PlaybookError, PlaybookValidationError
-from q_guardian.response.playbooks.registry import PlaybookRegistry
-from q_guardian.response.playbooks.parser import PlaybookParser
 from q_guardian.response.playbooks.executor import PlaybookExecutor
-from q_guardian.response.playbooks.validator import PlaybookValidator
+from q_guardian.response.playbooks.parser import PlaybookParser
+from q_guardian.response.playbooks.registry import PlaybookRegistry
 from q_guardian.response.playbooks.templates import (
     BUILTIN_PLAYBOOKS,
     create_block_threat_playbook,
-    create_quarantine_playbook,
     create_escalation_playbook,
+    create_quarantine_playbook,
     create_rollback_playbook,
 )
+from q_guardian.response.playbooks.validator import PlaybookValidator
 
 
 def _make_step(name: str = "test-step", action: str = "test_action", **kw: object) -> PlaybookStep:
     return PlaybookStep(name=name, action=action, **kw)
 
 
-def _make_playbook(name: str = "test-playbook", steps: list[PlaybookStep] | None = None, **kw: object) -> PlaybookDefinition:
+def _make_playbook(
+    name: str = "test-playbook", steps: list[PlaybookStep] | None = None, **kw: object
+) -> PlaybookDefinition:
     return PlaybookDefinition(name=name, steps=steps or [_make_step()], **kw)
 
 
@@ -105,10 +108,12 @@ class TestPlaybookRegistry:
 class TestPlaybookParser:
     def test_parse_dict(self) -> None:
         parser = PlaybookParser()
-        pb = parser.parse_dict({
-            "name": "parsed",
-            "steps": [{"name": "s1", "action": "act1"}],
-        })
+        pb = parser.parse_dict(
+            {
+                "name": "parsed",
+                "steps": [{"name": "s1", "action": "act1"}],
+            }
+        )
         assert pb.name == "parsed"
         assert len(pb.steps) == 1
         assert pb.steps[0].name == "s1"
@@ -246,7 +251,7 @@ class TestPlaybookTemplates:
         assert len(pb.steps) >= 3
 
     def test_all_builtin_playbooks_callable(self) -> None:
-        for name, factory in BUILTIN_PLAYBOOKS.items():
+        for _name, factory in BUILTIN_PLAYBOOKS.items():
             pb = factory()
             assert pb.name
             assert len(pb.steps) > 0

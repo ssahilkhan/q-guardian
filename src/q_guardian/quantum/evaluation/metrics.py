@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import time
-from typing import Any
+from typing import TYPE_CHECKING
 
 import structlog
 
 from q_guardian.quantum.data import QuantumEvaluationMetrics
-from q_guardian.quantum.models.base import BaseQuantumModel
+
+if TYPE_CHECKING:
+    from q_guardian.quantum.models.base import BaseQuantumModel
 
 logger = structlog.get_logger("quantum.evaluation")
 
@@ -26,7 +28,7 @@ class QuantumEvaluator:
     def evaluate(
         self,
         model: BaseQuantumModel,
-        X_test: list[list[float]],
+        x_test: list[list[float]],
         y_test: list[int],
         class_names: list[str] | None = None,
     ) -> QuantumEvaluationMetrics:
@@ -34,7 +36,7 @@ class QuantumEvaluator:
 
         Args:
             model: The trained quantum model.
-            X_test: Test feature vectors.
+            x_test: Test feature vectors.
             y_test: Test labels.
             class_names: Optional class name mapping.
 
@@ -47,7 +49,7 @@ class QuantumEvaluator:
         confidences: list[float] = []
         start = time.monotonic()
 
-        for x in X_test:
+        for x in x_test:
             try:
                 result = asyncio.run(model.predict(x))
                 pred_class = result.get("predicted_class", "")
@@ -68,7 +70,7 @@ class QuantumEvaluator:
         elapsed = time.monotonic() - start
 
         tp = tn = fp = fn = 0
-        for pred, true in zip(predictions, y_test):
+        for pred, true in zip(predictions, y_test, strict=False):
             if pred == true:
                 tp += 1
             elif pred >= 0:
@@ -85,7 +87,7 @@ class QuantumEvaluator:
         fnr = fn / (fn + tp) if (fn + tp) > 0 else 0.0
 
         avg_confidence = sum(confidences) / len(confidences) if confidences else 0.0
-        avg_time_ms = (elapsed * 1000) / max(len(X_test), 1)
+        avg_time_ms = (elapsed * 1000) / max(len(x_test), 1)
 
         qmeta = model.quantum_metadata
         return QuantumEvaluationMetrics(
@@ -100,7 +102,7 @@ class QuantumEvaluator:
             backend_used=qmeta.backend_type.value,
             metadata={
                 "model_name": model.name,
-                "num_samples": len(X_test),
+                "num_samples": len(x_test),
                 "avg_confidence": round(avg_confidence, 4),
             },
         )
@@ -108,7 +110,7 @@ class QuantumEvaluator:
     def compare_models(
         self,
         models: list[BaseQuantumModel],
-        X_test: list[list[float]],
+        x_test: list[list[float]],
         y_test: list[int],
         class_names: list[str] | None = None,
     ) -> dict[str, QuantumEvaluationMetrics]:
@@ -116,7 +118,7 @@ class QuantumEvaluator:
 
         Args:
             models: List of trained quantum models.
-            X_test: Test feature vectors.
+            x_test: Test feature vectors.
             y_test: Test labels.
             class_names: Optional class name mapping.
 
@@ -126,7 +128,7 @@ class QuantumEvaluator:
         results: dict[str, QuantumEvaluationMetrics] = {}
         for model in models:
             try:
-                metrics = self.evaluate(model, X_test, y_test, class_names)
+                metrics = self.evaluate(model, x_test, y_test, class_names)
                 results[model.name] = metrics
             except Exception as e:
                 logger.error("model_evaluation_error", model=model.name, error=str(e))

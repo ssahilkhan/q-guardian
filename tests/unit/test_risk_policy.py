@@ -1,18 +1,24 @@
 """Tests for PolicyRegistry, PolicyEvaluator, PolicyEngine, and built-in policies."""
 
 import pytest
-from q_guardian.risk.policy.policy_registry import PolicyRegistry
-from q_guardian.risk.policy.evaluator import PolicyEvaluator
-from q_guardian.risk.policy.policy_engine import PolicyEngine
-from q_guardian.risk.policy.policies import (
-    create_default_policy, create_strict_policy,
-    create_permissive_policy, create_quarantine_policy,
-)
+
 from q_guardian.risk.data import PolicyDefinition, PolicyRule, RiskAssessment
 from q_guardian.risk.enums import (
-    PolicyAction, PolicySeverity, DecisionOutcome, RiskLevel, Severity,
+    DecisionOutcome,
+    PolicyAction,
+    PolicySeverity,
+    RiskLevel,
 )
 from q_guardian.risk.exceptions import PolicyNotFoundError
+from q_guardian.risk.policy.evaluator import PolicyEvaluator
+from q_guardian.risk.policy.policies import (
+    create_default_policy,
+    create_permissive_policy,
+    create_quarantine_policy,
+    create_strict_policy,
+)
+from q_guardian.risk.policy.policy_engine import PolicyEngine
+from q_guardian.risk.policy.policy_registry import PolicyRegistry
 
 
 class TestPolicyRegistry:

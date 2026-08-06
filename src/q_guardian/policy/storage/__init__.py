@@ -59,9 +59,7 @@ class PolicyStorage:
     def _persist(self) -> None:
         try:
             self._path.parent.mkdir(parents=True, exist_ok=True)
-            self._path.write_text(
-                json.dumps(self._policies, indent=2, default=str)
-            )
+            self._path.write_text(json.dumps(self._policies, indent=2, default=str))
         except Exception as e:
             logger.error("storage_persist_error", error=str(e))
 

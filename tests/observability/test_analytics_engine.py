@@ -1,7 +1,7 @@
 import pytest
 
 from q_guardian.observability.analytics.analytics_engine import AnalyticsEngine
-from q_guardian.observability.data import AnalyticsReport, TimeWindow
+from q_guardian.observability.data import AnalyticsReport
 from q_guardian.observability.enums import TrendDirection
 from q_guardian.observability.exceptions import AnalyticsError
 

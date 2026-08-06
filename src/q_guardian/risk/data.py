@@ -25,11 +25,9 @@ from q_guardian.risk.enums import (
     RiskLevel,
     Severity,
     ThreatLevel,
-    TrustAdjustmentReason,
     TrustLevel,
 )
 from q_guardian.utils.uuid_utils import generate_uuid
-
 
 # ── Input models ────────────────────────────────────────────────────────
 
@@ -54,13 +52,19 @@ class NormalizedPrediction(BaseModel):
     probabilities: dict[str, float] = Field(default_factory=dict, description="Class probabilities")
     risk_score: float = Field(default=0.0, ge=0.0, le=1.0, description="Risk score 0-1")
 
-    reasoning_steps: list[str] = Field(default_factory=list, description="Reasoning steps from source")
+    reasoning_steps: list[str] = Field(
+        default_factory=list, description="Reasoning steps from source"
+    )
     evidence: list[str] = Field(default_factory=list, description="Evidence snippets")
     rules_triggered: list[str] = Field(default_factory=list, description="Rule IDs that fired")
-    feature_importances: dict[str, float] = Field(default_factory=dict, description="Feature importances")
+    feature_importances: dict[str, float] = Field(
+        default_factory=dict, description="Feature importances"
+    )
 
     metadata: dict[str, Any] = Field(default_factory=dict, description="Extra source metadata")
-    timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC), description="Creation time")
+    timestamp: datetime = Field(
+        default_factory=lambda: datetime.now(UTC), description="Creation time"
+    )
     is_valid: bool = Field(default=True, description="Whether prediction is usable")
     error_message: str = Field(default="", description="Error if prediction failed")
 
@@ -75,9 +79,15 @@ class ThreatScore(BaseModel):
 
     score_id: str = Field(default_factory=generate_uuid, description="Unique ID")
     threat_score: float = Field(default=0.0, ge=0.0, le=1.0, description="Composite threat score")
-    probability_component: float = Field(default=0.0, ge=0.0, le=1.0, description="Probability weight")
-    confidence_component: float = Field(default=0.0, ge=0.0, le=1.0, description="Confidence weight")
-    reliability_component: float = Field(default=0.0, ge=0.0, le=1.0, description="Reliability weight")
+    probability_component: float = Field(
+        default=0.0, ge=0.0, le=1.0, description="Probability weight"
+    )
+    confidence_component: float = Field(
+        default=0.0, ge=0.0, le=1.0, description="Confidence weight"
+    )
+    reliability_component: float = Field(
+        default=0.0, ge=0.0, le=1.0, description="Reliability weight"
+    )
     agreement_component: float = Field(default=0.0, ge=0.0, le=1.0, description="Agreement weight")
     diversity_component: float = Field(default=0.0, ge=0.0, le=1.0, description="Diversity weight")
     severity_component: float = Field(default=0.0, ge=0.0, le=1.0, description="Severity weight")
@@ -122,7 +132,9 @@ class ConfidenceScore(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     raw_confidence: float = Field(default=0.0, ge=0.0, le=1.0, description="Raw confidence")
-    normalized_confidence: float = Field(default=0.0, ge=0.0, le=1.0, description="Normalized confidence")
+    normalized_confidence: float = Field(
+        default=0.0, ge=0.0, le=1.0, description="Normalized confidence"
+    )
     method: ConfidenceMethod = Field(default=ConfidenceMethod.NONE, description="Method used")
     confidence_interval: tuple[float, float] | None = Field(
         default=None, description="Confidence interval (low, high)"
@@ -148,17 +160,27 @@ class RiskAssessment(BaseModel):
 
     risk_score: float = Field(default=0.0, ge=0.0, le=1.0, description="Overall risk score 0-1")
     risk_level: RiskLevel = Field(default=RiskLevel.MINIMAL, description="Risk level")
-    threat_score: ThreatScore = Field(default_factory=ThreatScore, description="Threat scoring detail")
-    severity: SeverityScore = Field(default_factory=SeverityScore, description="Severity classification")
-    confidence: ConfidenceScore = Field(default_factory=ConfidenceScore, description="Confidence detail")
+    threat_score: ThreatScore = Field(
+        default_factory=ThreatScore, description="Threat scoring detail"
+    )
+    severity: SeverityScore = Field(
+        default_factory=SeverityScore, description="Severity classification"
+    )
+    confidence: ConfidenceScore = Field(
+        default_factory=ConfidenceScore, description="Confidence detail"
+    )
     trust_scores: dict[str, TrustScore] = Field(
         default_factory=dict, description="Provider trust scores"
     )
 
     reasoning: list[str] = Field(default_factory=list, description="Assessment reasoning steps")
-    contributing_sources: list[str] = Field(default_factory=list, description="Source IDs that contributed")
+    contributing_sources: list[str] = Field(
+        default_factory=list, description="Source IDs that contributed"
+    )
     metadata: dict[str, Any] = Field(default_factory=dict, description="Extra metadata")
-    timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC), description="Assessment time")
+    timestamp: datetime = Field(
+        default_factory=lambda: datetime.now(UTC), description="Assessment time"
+    )
 
 
 # ── Policy models ───────────────────────────────────────────────────────
@@ -190,12 +212,20 @@ class PolicyDefinition(BaseModel):
     version: str = Field(default="1.0.0", description="Policy version")
     enabled: bool = Field(default=True, description="Whether policy is active")
     rules: list[PolicyRule] = Field(default_factory=list, description="Policy rules")
-    default_action: PolicyAction = Field(default=PolicyAction.ALLOW, description="Default action if no rule matches")
-    default_severity: PolicySeverity = Field(default=PolicySeverity.LOW, description="Default severity")
+    default_action: PolicyAction = Field(
+        default=PolicyAction.ALLOW, description="Default action if no rule matches"
+    )
+    default_severity: PolicySeverity = Field(
+        default=PolicySeverity.LOW, description="Default severity"
+    )
     tags: list[str] = Field(default_factory=list, description="Searchable tags")
     metadata: dict[str, Any] = Field(default_factory=dict, description="Extra metadata")
-    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC), description="Creation time")
-    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC), description="Last update")
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC), description="Creation time"
+    )
+    updated_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC), description="Last update"
+    )
 
 
 class PolicyDecision(BaseModel):
@@ -208,15 +238,21 @@ class PolicyDecision(BaseModel):
     policy_id: str = Field(default="", description="Policy used")
     policy_name: str = Field(default="", description="Policy name")
 
-    outcome: DecisionOutcome = Field(default=DecisionOutcome.ALLOWED, description="Decision outcome")
+    outcome: DecisionOutcome = Field(
+        default=DecisionOutcome.ALLOWED, description="Decision outcome"
+    )
     action: PolicyAction = Field(default=PolicyAction.ALLOW, description="Action prescribed")
     severity: PolicySeverity = Field(default=PolicySeverity.LOW, description="Severity level")
-    risk_score: float = Field(default=0.0, ge=0.0, le=1.0, description="Risk score at decision time")
+    risk_score: float = Field(
+        default=0.0, ge=0.0, le=1.0, description="Risk score at decision time"
+    )
 
     matched_rules: list[str] = Field(default_factory=list, description="Rule IDs that matched")
     reasoning: list[str] = Field(default_factory=list, description="Decision reasoning")
     metadata: dict[str, Any] = Field(default_factory=dict, description="Extra data")
-    timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC), description="Decision time")
+    timestamp: datetime = Field(
+        default_factory=lambda: datetime.now(UTC), description="Decision time"
+    )
 
 
 # ── Action models ───────────────────────────────────────────────────────
@@ -234,7 +270,9 @@ class ActionResult(BaseModel):
     message: str = Field(default="", description="Result message")
     details: dict[str, Any] = Field(default_factory=dict, description="Extra result data")
     execution_time_ms: float = Field(default=0.0, description="Execution time in ms")
-    timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC), description="Execution time")
+    timestamp: datetime = Field(
+        default_factory=lambda: datetime.now(UTC), description="Execution time"
+    )
 
 
 class AuditRecord(BaseModel):
@@ -250,7 +288,9 @@ class AuditRecord(BaseModel):
     risk_score: float = Field(default=0.0, ge=0.0, le=1.0, description="Risk score")
     risk_level: RiskLevel = Field(default=RiskLevel.MINIMAL, description="Risk level")
     severity: Severity = Field(default=Severity.LOW, description="Severity")
-    outcome: DecisionOutcome = Field(default=DecisionOutcome.ALLOWED, description="Decision outcome")
+    outcome: DecisionOutcome = Field(
+        default=DecisionOutcome.ALLOWED, description="Decision outcome"
+    )
     action: PolicyAction = Field(default=PolicyAction.ALLOW, description="Action taken")
 
     contributing_sources: list[str] = Field(default_factory=list, description="Source IDs")
@@ -259,7 +299,9 @@ class AuditRecord(BaseModel):
 
     status: AuditStatus = Field(default=AuditStatus.ACTIVE, description="Audit status")
     metadata: dict[str, Any] = Field(default_factory=dict, description="Extra data")
-    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC), description="Creation time")
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC), description="Creation time"
+    )
 
 
 # ── Explanation models ──────────────────────────────────────────────────
@@ -322,15 +364,15 @@ class Explanation(BaseModel):
     policy_used: str = Field(default="", description="Policy name")
     action_taken: str = Field(default="", description="Action taken")
 
-    reasoning_graph: ReasoningGraph | None = Field(
-        default=None, description="Reasoning graph"
-    )
+    reasoning_graph: ReasoningGraph | None = Field(default=None, description="Reasoning graph")
     format: ExplanationFormat = Field(
         default=ExplanationFormat.STRUCTURED, description="Output format"
     )
     export_data: dict[str, Any] = Field(default_factory=dict, description="Exportable data")
     metadata: dict[str, Any] = Field(default_factory=dict, description="Extra data")
-    timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC), description="Generation time")
+    timestamp: datetime = Field(
+        default_factory=lambda: datetime.now(UTC), description="Generation time"
+    )
 
 
 # ── Notification models ─────────────────────────────────────────────────
@@ -349,4 +391,6 @@ class Notification(BaseModel):
     channel: str = Field(default="default", description="Notification channel")
     sent: bool = Field(default=False, description="Whether notification was sent")
     metadata: dict[str, Any] = Field(default_factory=dict, description="Extra data")
-    timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC), description="Creation time")
+    timestamp: datetime = Field(
+        default_factory=lambda: datetime.now(UTC), description="Creation time"
+    )

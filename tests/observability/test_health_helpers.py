@@ -1,12 +1,8 @@
-import time
-
-import pytest
-
-from q_guardian.observability.health.health_registry import HealthRegistry
-from q_guardian.observability.health.heartbeat import HeartbeatManager
-from q_guardian.observability.health.diagnostics import DiagnosticEngine
 from q_guardian.observability.data import HealthStatusModel
 from q_guardian.observability.enums import HealthStatus
+from q_guardian.observability.health.diagnostics import DiagnosticEngine
+from q_guardian.observability.health.health_registry import HealthRegistry
+from q_guardian.observability.health.heartbeat import HeartbeatManager
 
 
 class TestHealthRegistry:

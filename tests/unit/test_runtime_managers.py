@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import UTC, datetime, timedelta
-from unittest.mock import patch
 
 import pytest
 
@@ -18,12 +16,7 @@ from q_guardian.runtime.managers import (
 from q_guardian.runtime.models import (
     AgentRequest,
     AgentResponse,
-    AgentSession,
-    MemoryAccess,
-    TokenUsage,
-    ToolInvocation,
 )
-
 
 # ---------------------------------------------------------------------------
 # SessionManager
@@ -56,9 +49,7 @@ class TestSessionManager:
     @pytest.mark.asyncio
     async def test_update_session(self, mgr: SessionManager) -> None:
         session = await mgr.create_session(agent_id="agent-1")
-        updated = await mgr.update_session(
-            session.session_id, user_id="user-42"
-        )
+        updated = await mgr.update_session(session.session_id, user_id="user-42")
         assert updated is not None
         assert updated.user_id == "user-42"
 
@@ -86,6 +77,7 @@ class TestSessionManager:
         mgr = SessionManager(session_timeout_seconds=0)
         session = await mgr.create_session(agent_id="agent-1")
         import asyncio
+
         await asyncio.sleep(0.01)
         expired = await mgr.remove_expired_sessions()
         assert session.session_id in expired
@@ -200,9 +192,7 @@ class TestToolExecutionTracker:
 
     def test_finish_invocation(self, tracker: ToolExecutionTracker) -> None:
         inv = tracker.start_invocation("search")
-        result = tracker.finish_invocation(
-            inv.invocation_id, result={"found": True}, success=True
-        )
+        result = tracker.finish_invocation(inv.invocation_id, result={"found": True}, success=True)
         assert result is not None
         assert result.success is True
         assert result.result == {"found": True}
@@ -242,7 +232,7 @@ class TestToolExecutionTracker:
         assert stats["failed"] == 1
 
     def test_clear(self, tracker: ToolExecutionTracker) -> None:
-        inv = tracker.start_invocation("a")
+        tracker.start_invocation("a")
         loop = asyncio.new_event_loop()
         loop.run_until_complete(tracker.clear())
         assert tracker.active_count == 0

@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import structlog
 
-from q_guardian.quantum.backends.base import QuantumBackend
 from q_guardian.quantum.config import QuantumBackendConfig
-from q_guardian.quantum.enums import BackendStatus, QuantumBackendType
-from q_guardian.quantum.data import BackendInfo
-from q_guardian.quantum.exceptions import BackendNotAvailableError, ConfigurationError
+from q_guardian.quantum.exceptions import BackendNotAvailableError
+
+if TYPE_CHECKING:
+    from q_guardian.quantum.backends.base import QuantumBackend
 
 logger = structlog.get_logger("quantum.backend_manager")
 
@@ -155,11 +157,7 @@ class BackendManager:
         Returns:
             List of available backend names.
         """
-        return [
-            name
-            for name, backend in self._backends.items()
-            if backend.is_available()
-        ]
+        return [name for name, backend in self._backends.items() if backend.is_available()]
 
     def create_default_backend(self) -> QuantumBackend:
         """Create and register a default simulator backend.

@@ -1,15 +1,14 @@
-import pytest
-import json
 import csv
 import io
+import json
 from datetime import UTC, datetime
 
-from q_guardian.observability.exporters.prometheus import PrometheusExporter
-from q_guardian.observability.exporters.opentelemetry import OpenTelemetryExporter
-from q_guardian.observability.exporters.json import JsonExporter
+from q_guardian.observability.data import Metric
+from q_guardian.observability.enums import ExporterType, MetricType, MetricUnit
 from q_guardian.observability.exporters.csv import CsvExporter
-from q_guardian.observability.data import Metric, MetricPoint
-from q_guardian.observability.enums import MetricType, MetricUnit, ExporterType
+from q_guardian.observability.exporters.json import JsonExporter
+from q_guardian.observability.exporters.opentelemetry import OpenTelemetryExporter
+from q_guardian.observability.exporters.prometheus import PrometheusExporter
 
 
 def _make_metric(
@@ -27,7 +26,7 @@ def _make_metric(
         description=description,
         labels=labels or {},
     )
-    for v in (values or [42.0]):
+    for v in values or [42.0]:
         m.add_point(v)
     return m
 
@@ -87,8 +86,8 @@ class TestPrometheusExporter:
     def test_format_labels(self):
         exp = PrometheusExporter()
         result = exp._format_labels({"host": "web1", "env": "prod"})
-        assert "host=\"web1\"" in result
-        assert "env=\"prod\"" in result
+        assert 'host="web1"' in result
+        assert 'env="prod"' in result
         assert result.startswith("{")
 
     def test_format_labels_empty(self):
@@ -98,8 +97,8 @@ class TestPrometheusExporter:
     def test_parse_exposition(self):
         exp = PrometheusExporter()
         text = (
-            '# HELP my_counter Total requests\n'
-            '# TYPE my_counter counter\n'
+            "# HELP my_counter Total requests\n"
+            "# TYPE my_counter counter\n"
             'my_counter{job="api"} 42.0\n'
         )
         result = exp.parse_exposition(text)
@@ -111,7 +110,7 @@ class TestPrometheusExporter:
 
     def test_parse_exposition_simple_metric(self):
         exp = PrometheusExporter()
-        text = 'simple_metric 123.45\n'
+        text = "simple_metric 123.45\n"
         result = exp.parse_exposition(text)
         assert "simple_metric" in result
         assert result["simple_metric"]["samples"][0]["value"] == 123.45
@@ -249,10 +248,22 @@ class TestCsvExporter:
     def test_export_alerts_with_headers(self):
         exp = CsvExporter()
         alerts = [
-            {"alert_id": "a1", "rule_id": "r1", "rule_name": "test", "state": "firing",
-             "severity": "high", "alert_type": "threshold", "message": "msg",
-             "created_at": "", "updated_at": "", "resolved_at": None,
-             "evaluation_value": None, "escalation_level": 0, "labels": {}, "annotations": {}}
+            {
+                "alert_id": "a1",
+                "rule_id": "r1",
+                "rule_name": "test",
+                "state": "firing",
+                "severity": "high",
+                "alert_type": "threshold",
+                "message": "msg",
+                "created_at": "",
+                "updated_at": "",
+                "resolved_at": None,
+                "evaluation_value": None,
+                "escalation_level": 0,
+                "labels": {},
+                "annotations": {},
+            }
         ]
         result = exp.export_alerts(alerts)
         reader = csv.reader(io.StringIO(result))
@@ -263,9 +274,16 @@ class TestCsvExporter:
     def test_export_traces(self):
         exp = CsvExporter()
         traces = [
-            {"trace_id": "t1", "correlation_id": "c1", "status": "completed",
-             "start_time": "", "end_time": "", "duration_ms": 100.0, "span_count": 3,
-             "labels": {"env": "test"}}
+            {
+                "trace_id": "t1",
+                "correlation_id": "c1",
+                "status": "completed",
+                "start_time": "",
+                "end_time": "",
+                "duration_ms": 100.0,
+                "span_count": 3,
+                "labels": {"env": "test"},
+            }
         ]
         result = exp.export_traces(traces)
         reader = csv.reader(io.StringIO(result))

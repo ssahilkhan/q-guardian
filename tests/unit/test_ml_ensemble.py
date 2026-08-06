@@ -11,32 +11,43 @@ from q_guardian.security.models import PromptFeatures
 
 
 def _make_features(**overrides) -> PromptFeatures:
-    defaults = dict(
-        length=100, word_count=20, line_count=3, token_estimate=25,
-        entropy=3.5, uppercase_ratio=0.1, digit_ratio=0.05,
-        special_char_count=5, code_block_count=1, url_count=0,
-        markdown_usage=True, has_unicode_escaped=False, has_html_tags=False,
-        suspicious_keywords=[], repeated_patterns=[],
-    )
+    defaults = {
+        "length": 100,
+        "word_count": 20,
+        "line_count": 3,
+        "token_estimate": 25,
+        "entropy": 3.5,
+        "uppercase_ratio": 0.1,
+        "digit_ratio": 0.05,
+        "special_char_count": 5,
+        "code_block_count": 1,
+        "url_count": 0,
+        "markdown_usage": True,
+        "has_unicode_escaped": False,
+        "has_html_tags": False,
+        "suspicious_keywords": [],
+        "repeated_patterns": [],
+    }
     defaults.update(overrides)
     return PromptFeatures(**defaults)
 
 
 def _make_training_data(n: int = 50) -> tuple[list[list[float]], list[int]]:
     import random
+
     random.seed(42)
-    X = [[random.uniform(0, 100) for _ in range(12)] for _ in range(n)]
+    x = [[random.uniform(0, 100) for _ in range(12)] for _ in range(n)]
     y = [random.choice([0, 1, 2]) for _ in range(n)]
-    return X, y
+    return x, y
 
 
 class TestEnsembleDetector:
     def setup_method(self) -> None:
         self.detector = IsolationForestDetector()
         self.classifier = RandomForestThreatClassifier()
-        X, y = _make_training_data(60)
-        self.detector.train(X)
-        self.classifier.train(X, y)
+        x, y = _make_training_data(60)
+        self.detector.train(x)
+        self.classifier.train(x, y)
 
     def test_name(self) -> None:
         ensemble = EnsembleDetector()

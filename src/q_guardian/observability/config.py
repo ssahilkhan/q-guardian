@@ -20,12 +20,8 @@ class MetricsConfig(BaseModel):
     max_series_per_metric: int = Field(
         default=10_000, description="Maximum data points per metric series"
     )
-    histogram_bucket_count: int = Field(
-        default=20, description="Number of histogram buckets"
-    )
-    enable_percentiles: bool = Field(
-        default=True, description="Enable percentile calculations"
-    )
+    histogram_bucket_count: int = Field(default=20, description="Number of histogram buckets")
+    enable_percentiles: bool = Field(default=True, description="Enable percentile calculations")
     percentiles: list[float] = Field(
         default_factory=lambda: [50.0, 95.0, 99.0],
         description="Percentile values to compute",
@@ -39,12 +35,8 @@ class TracingConfig(BaseModel):
     model_config = ConfigDict(extra="allow")
 
     enabled: bool = Field(default=True, description="Enable distributed tracing")
-    max_spans_per_trace: int = Field(
-        default=500, description="Maximum spans per trace"
-    )
-    max_trace_duration_seconds: int = Field(
-        default=3600, description="Maximum trace duration"
-    )
+    max_spans_per_trace: int = Field(default=500, description="Maximum spans per trace")
+    max_trace_duration_seconds: int = Field(default=3600, description="Maximum trace duration")
     sample_rate: float = Field(
         default=1.0, ge=0.0, le=1.0, description="Sampling rate (0.0 to 1.0)"
     )
@@ -59,18 +51,12 @@ class HealthConfig(BaseModel):
     model_config = ConfigDict(extra="allow")
 
     enabled: bool = Field(default=True, description="Enable health monitoring")
-    heartbeat_interval_seconds: int = Field(
-        default=30, description="Heartbeat check interval"
-    )
+    heartbeat_interval_seconds: int = Field(default=30, description="Heartbeat check interval")
     heartbeat_timeout_seconds: int = Field(
         default=90, description="Heartbeat timeout before unhealthy"
     )
-    unhealthy_threshold: int = Field(
-        default=3, description="Consecutive failures before unhealthy"
-    )
-    degraded_threshold: int = Field(
-        default=1, description="Consecutive warnings before degraded"
-    )
+    unhealthy_threshold: int = Field(default=3, description="Consecutive failures before unhealthy")
+    degraded_threshold: int = Field(default=1, description="Consecutive warnings before degraded")
 
 
 class AnalyticsConfig(BaseModel):
@@ -79,21 +65,11 @@ class AnalyticsConfig(BaseModel):
     model_config = ConfigDict(extra="allow")
 
     enabled: bool = Field(default=True, description="Enable analytics")
-    default_granularity: str = Field(
-        default="hour", description="Default analytics granularity"
-    )
-    retention_days: int = Field(
-        default=90, description="Analytics data retention in days"
-    )
-    enable_forecasting: bool = Field(
-        default=True, description="Enable trend forecasting"
-    )
-    forecast_horizon_hours: int = Field(
-        default=24, description="Forecast horizon in hours"
-    )
-    max_report_size: int = Field(
-        default=10_000, description="Maximum entries per analytics report"
-    )
+    default_granularity: str = Field(default="hour", description="Default analytics granularity")
+    retention_days: int = Field(default=90, description="Analytics data retention in days")
+    enable_forecasting: bool = Field(default=True, description="Enable trend forecasting")
+    forecast_horizon_hours: int = Field(default=24, description="Forecast horizon in hours")
+    max_report_size: int = Field(default=10_000, description="Maximum entries per analytics report")
 
 
 class AlertConfig(BaseModel):
@@ -105,21 +81,11 @@ class AlertConfig(BaseModel):
     evaluation_interval_seconds: int = Field(
         default=30, description="Alert rule evaluation interval"
     )
-    suppression_window_seconds: int = Field(
-        default=300, description="Alert suppression window"
-    )
-    max_active_alerts: int = Field(
-        default=1000, description="Maximum active alerts"
-    )
-    default_severity: str = Field(
-        default="medium", description="Default alert severity"
-    )
-    enable_escalation: bool = Field(
-        default=True, description="Enable alert escalation"
-    )
-    escalation_timeout_seconds: int = Field(
-        default=600, description="Escalation timeout"
-    )
+    suppression_window_seconds: int = Field(default=300, description="Alert suppression window")
+    max_active_alerts: int = Field(default=1000, description="Maximum active alerts")
+    default_severity: str = Field(default="medium", description="Default alert severity")
+    enable_escalation: bool = Field(default=True, description="Enable alert escalation")
+    escalation_timeout_seconds: int = Field(default=600, description="Escalation timeout")
 
 
 class DashboardConfig(BaseModel):
@@ -128,12 +94,8 @@ class DashboardConfig(BaseModel):
     model_config = ConfigDict(extra="allow")
 
     enabled: bool = Field(default=True, description="Enable dashboard API")
-    api_prefix: str = Field(
-        default="/api/v1/observability", description="API endpoint prefix"
-    )
-    max_results: int = Field(
-        default=500, description="Maximum results per query"
-    )
+    api_prefix: str = Field(default="/api/v1/observability", description="API endpoint prefix")
+    max_results: int = Field(default=500, description="Maximum results per query")
     default_time_range_seconds: int = Field(
         default=3600, description="Default time range for queries"
     )
@@ -149,9 +111,7 @@ class ExporterConfig(BaseModel):
         default_factory=lambda: ["json"],
         description="List of active exporter names",
     )
-    export_interval_seconds: int = Field(
-        default=60, description="Export interval"
-    )
+    export_interval_seconds: int = Field(default=60, description="Export interval")
     batch_size: int = Field(default=100, description="Batch size for exports")
 
 

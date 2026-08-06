@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 
 
-class ModelType(str, Enum):
+class ModelType(StrEnum):
     """Type of ML model."""
 
     ANOMALY_DETECTION = "anomaly_detection"
@@ -14,7 +14,7 @@ class ModelType(str, Enum):
     CUSTOM = "custom"
 
 
-class ModelBackend(str, Enum):
+class ModelBackend(StrEnum):
     """ML framework backend."""
 
     SKLEARN = "sklearn"
@@ -22,7 +22,7 @@ class ModelBackend(str, Enum):
     CUSTOM = "custom"
 
 
-class FeatureType(str, Enum):
+class FeatureType(StrEnum):
     """Type of extracted feature."""
 
     NUMERICAL = "numerical"
@@ -32,7 +32,7 @@ class FeatureType(str, Enum):
     STATISTICAL = "statistical"
 
 
-class TrainingStatus(str, Enum):
+class TrainingStatus(StrEnum):
     """Status of a training run."""
 
     PENDING = "pending"
@@ -42,7 +42,7 @@ class TrainingStatus(str, Enum):
     CANCELLED = "cancelled"
 
 
-class ModelStatus(str, Enum):
+class ModelStatus(StrEnum):
     """Lifecycle status of a registered model."""
 
     UNLOADED = "unloaded"
@@ -52,7 +52,7 @@ class ModelStatus(str, Enum):
     DEPRECATED = "deprecated"
 
 
-class DatasetFormat(str, Enum):
+class DatasetFormat(StrEnum):
     """Supported dataset file formats."""
 
     CSV = "csv"

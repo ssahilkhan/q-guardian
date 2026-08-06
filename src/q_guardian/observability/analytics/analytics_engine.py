@@ -18,7 +18,7 @@ from q_guardian.observability.data import (
     TimeWindow,
     TrendData,
 )
-from q_guardian.observability.enums import AnalyticsGranularity, TrendDirection
+from q_guardian.observability.enums import AnalyticsGranularity
 from q_guardian.observability.exceptions import AnalyticsError
 from q_guardian.utils.uuid_utils import generate_uuid
 
@@ -132,9 +132,7 @@ class AnalyticsEngine:
                 value=value,
             )
 
-    def generate_report(
-        self, time_window: TimeWindow | None = None
-    ) -> AnalyticsReport:
+    def generate_report(self, time_window: TimeWindow | None = None) -> AnalyticsReport:
         with self._lock:
             self._ensure_initialized()
             effective_window = time_window or self._build_default_window()
@@ -177,9 +175,7 @@ class AnalyticsEngine:
     def _build_default_window(self) -> TimeWindow:
         now = datetime.now(UTC)
         return TimeWindow(
-            start=datetime(
-                now.year, now.month, now.day, now.hour, tzinfo=UTC
-            ),
+            start=datetime(now.year, now.month, now.day, now.hour, tzinfo=UTC),
             end=now,
         )
 
@@ -218,56 +214,40 @@ class AnalyticsEngine:
                 pass
         return timestamps
 
-    def get_threat_trends(
-        self, window: TimeWindow | None = None
-    ) -> list[TrendData]:
+    def get_threat_trends(self, window: TimeWindow | None = None) -> list[TrendData]:
         with self._lock:
             values = self._extract_metric_values(self._threat_events, window)
             timestamps = self._extract_timestamps(self._threat_events, window)
             if not values:
                 return []
-            trend = self._trend_analyzer.analyze(
-                "threat_volume", values, timestamps or None
-            )
+            trend = self._trend_analyzer.analyze("threat_volume", values, timestamps or None)
             return [trend]
 
-    def get_policy_trends(
-        self, window: TimeWindow | None = None
-    ) -> list[TrendData]:
+    def get_policy_trends(self, window: TimeWindow | None = None) -> list[TrendData]:
         with self._lock:
             values = self._extract_metric_values(self._policy_events, window)
             timestamps = self._extract_timestamps(self._policy_events, window)
             if not values:
                 return []
-            trend = self._trend_analyzer.analyze(
-                "policy_activity", values, timestamps or None
-            )
+            trend = self._trend_analyzer.analyze("policy_activity", values, timestamps or None)
             return [trend]
 
-    def get_risk_trends(
-        self, window: TimeWindow | None = None
-    ) -> list[TrendData]:
+    def get_risk_trends(self, window: TimeWindow | None = None) -> list[TrendData]:
         with self._lock:
             values = self._extract_metric_values(self._risk_events, window)
             timestamps = self._extract_timestamps(self._risk_events, window)
             if not values:
                 return []
-            trend = self._trend_analyzer.analyze(
-                "risk_score", values, timestamps or None
-            )
+            trend = self._trend_analyzer.analyze("risk_score", values, timestamps or None)
             return [trend]
 
-    def get_response_trends(
-        self, window: TimeWindow | None = None
-    ) -> list[TrendData]:
+    def get_response_trends(self, window: TimeWindow | None = None) -> list[TrendData]:
         with self._lock:
             values = self._extract_metric_values(self._response_events, window)
             timestamps = self._extract_timestamps(self._response_events, window)
             if not values:
                 return []
-            trend = self._trend_analyzer.analyze(
-                "response_metrics", values, timestamps or None
-            )
+            trend = self._trend_analyzer.analyze("response_metrics", values, timestamps or None)
             return [trend]
 
     def get_provider_accuracy(self) -> dict[str, float]:
@@ -303,7 +283,9 @@ class AnalyticsEngine:
         with self._lock:
             usage: dict[str, int] = Counter()
             for event in self._fusion_events:
-                strategy = event.get("strategy", event.get("fusion_strategy", event.get("name", "unknown")))
+                strategy = event.get(
+                    "strategy", event.get("fusion_strategy", event.get("name", "unknown"))
+                )
                 usage[str(strategy)] += 1
             return dict(usage)
 
@@ -317,13 +299,12 @@ class AnalyticsEngine:
         with self._lock:
             counts: dict[str, int] = Counter()
             for event in self._threat_events:
-                threat_type = event.get("type", event.get("threat_type", event.get("name", "unknown")))
+                threat_type = event.get(
+                    "type", event.get("threat_type", event.get("name", "unknown"))
+                )
                 counts[str(threat_type)] += 1
             sorted_threats = sorted(counts.items(), key=lambda x: x[1], reverse=True)
-            return [
-                {"type": t, "count": c}
-                for t, c in sorted_threats[:limit]
-            ]
+            return [{"type": t, "count": c} for t, c in sorted_threats[:limit]]
 
     def get_top_policies(self, limit: int = 10) -> list[dict[str, Any]]:
         with self._lock:
@@ -332,10 +313,7 @@ class AnalyticsEngine:
                 policy = event.get("policy", event.get("policy_name", event.get("name", "unknown")))
                 counts[str(policy)] += 1
             sorted_policies = sorted(counts.items(), key=lambda x: x[1], reverse=True)
-            return [
-                {"policy": p, "count": c}
-                for p, c in sorted_policies[:limit]
-            ]
+            return [{"policy": p, "count": c} for p, c in sorted_policies[:limit]]
 
     def get_most_active_sessions(self, limit: int = 10) -> list[dict[str, Any]]:
         with self._lock:
@@ -344,10 +322,7 @@ class AnalyticsEngine:
                 session = event.get("session_id", event.get("session", event.get("id", "unknown")))
                 counts[str(session)] += 1
             sorted_sessions = sorted(counts.items(), key=lambda x: x[1], reverse=True)
-            return [
-                {"session_id": s, "event_count": c}
-                for s, c in sorted_sessions[:limit]
-            ]
+            return [{"session_id": s, "event_count": c} for s, c in sorted_sessions[:limit]]
 
     def get_most_active_agents(self, limit: int = 10) -> list[dict[str, Any]]:
         with self._lock:
@@ -356,21 +331,16 @@ class AnalyticsEngine:
                 agent = event.get("agent_id", event.get("agent", event.get("name", "unknown")))
                 counts[str(agent)] += 1
             sorted_agents = sorted(counts.items(), key=lambda x: x[1], reverse=True)
-            return [
-                {"agent_id": a, "event_count": c}
-                for a, c in sorted_agents[:limit]
-            ]
+            return [{"agent_id": a, "event_count": c} for a, c in sorted_agents[:limit]]
 
-    def forecast(
-        self, metric_name: str, horizon_hours: int = 24
-    ) -> ForecastResult | None:
+    def forecast(self, metric_name: str, horizon_hours: int = 24) -> ForecastResult | None:
         with self._lock:
             self._ensure_initialized()
             points = self._metric_points.get(metric_name)
             if not points or len(points) < 2:
                 return None
             values = [p.value for p in points]
-            timestamps = [p.timestamp for p in points]
+            [p.timestamp for p in points]
             result = self._forecast_engine.forecast(
                 metric_name=metric_name,
                 values=values,

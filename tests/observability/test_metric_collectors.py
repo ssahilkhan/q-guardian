@@ -41,7 +41,7 @@ class TestPluginMetricsCollector:
         collector = PluginMetricsCollector()
         collector.record_plugin_request("auto_plugin", 50.0)
         metrics = collector.collect()
-        requests_metric = [m for m in metrics if m.name == "plugin.total_requests"][0]
+        requests_metric = next(m for m in metrics if m.name == "plugin.total_requests")
         assert requests_metric.points[0].value == 1.0
 
 

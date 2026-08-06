@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 
 
-class MetricType(str, Enum):
+class MetricType(StrEnum):
     """Type of metric measurement."""
 
     COUNTER = "counter"
@@ -14,7 +14,7 @@ class MetricType(str, Enum):
     TIMER = "timer"
 
 
-class MetricUnit(str, Enum):
+class MetricUnit(StrEnum):
     """Unit of measurement for metrics."""
 
     NONE = "none"
@@ -30,7 +30,7 @@ class MetricUnit(str, Enum):
     PER_SECOND = "per_second"
 
 
-class HealthStatus(str, Enum):
+class HealthStatus(StrEnum):
     """Health status of a component."""
 
     HEALTHY = "healthy"
@@ -40,7 +40,7 @@ class HealthStatus(str, Enum):
     MAINTENANCE = "maintenance"
 
 
-class HealthLevel(str, Enum):
+class HealthLevel(StrEnum):
     """Health score level classification."""
 
     EXCELLENT = "excellent"
@@ -50,7 +50,7 @@ class HealthLevel(str, Enum):
     CRITICAL = "critical"
 
 
-class AlertSeverity(str, Enum):
+class AlertSeverity(StrEnum):
     """Alert severity levels."""
 
     INFO = "info"
@@ -60,7 +60,7 @@ class AlertSeverity(str, Enum):
     CRITICAL = "critical"
 
 
-class AlertState(str, Enum):
+class AlertState(StrEnum):
     """Current state of an alert."""
 
     PENDING = "pending"
@@ -71,7 +71,7 @@ class AlertState(str, Enum):
     ESCALATED = "escalated"
 
 
-class AlertType(str, Enum):
+class AlertType(StrEnum):
     """Type of alert rule."""
 
     THRESHOLD = "threshold"
@@ -82,7 +82,7 @@ class AlertType(str, Enum):
     CUSTOM = "custom"
 
 
-class TraceStatus(str, Enum):
+class TraceStatus(StrEnum):
     """Status of a distributed trace."""
 
     ACTIVE = "active"
@@ -91,7 +91,7 @@ class TraceStatus(str, Enum):
     TIMEOUT = "timeout"
 
 
-class SpanKind(str, Enum):
+class SpanKind(StrEnum):
     """Kind of span in a trace."""
 
     INTERNAL = "internal"
@@ -101,7 +101,7 @@ class SpanKind(str, Enum):
     CONSUMER = "consumer"
 
 
-class AnalyticsGranularity(str, Enum):
+class AnalyticsGranularity(StrEnum):
     """Time granularity for analytics."""
 
     MINUTE = "minute"
@@ -111,7 +111,7 @@ class AnalyticsGranularity(str, Enum):
     MONTH = "month"
 
 
-class ExporterType(str, Enum):
+class ExporterType(StrEnum):
     """Type of metric exporter."""
 
     PROMETHEUS = "prometheus"
@@ -121,7 +121,7 @@ class ExporterType(str, Enum):
     CUSTOM = "custom"
 
 
-class DashboardFormat(str, Enum):
+class DashboardFormat(StrEnum):
     """Response format for dashboard API."""
 
     JSON = "json"
@@ -129,7 +129,7 @@ class DashboardFormat(str, Enum):
     DETAILED = "detailed"
 
 
-class AggregationType(str, Enum):
+class AggregationType(StrEnum):
     """Type of metric aggregation."""
 
     SUM = "sum"
@@ -142,7 +142,7 @@ class AggregationType(str, Enum):
     PERCENTILE = "percentile"
 
 
-class PercentileType(str, Enum):
+class PercentileType(StrEnum):
     """Standard percentile types."""
 
     P50 = "p50"
@@ -152,7 +152,7 @@ class PercentileType(str, Enum):
     P99 = "p99"
 
 
-class TrendDirection(str, Enum):
+class TrendDirection(StrEnum):
     """Direction of a measured trend."""
 
     INCREASING = "increasing"
@@ -161,7 +161,7 @@ class TrendDirection(str, Enum):
     VOLATILE = "volatile"
 
 
-class RollupInterval(str, Enum):
+class RollupInterval(StrEnum):
     """Time intervals for metric rollups."""
 
     ONE_MINUTE = "1m"

@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
-
 import pytest
 
 from q_guardian.events.base import Event
@@ -171,6 +169,7 @@ class TestEventBus:
     @pytest.mark.asyncio
     async def test_clear(self, bus: EventBus) -> None:
         """Verify clear removes all subscriptions."""
+
         async def handler(event: Event) -> None:
             pass
 

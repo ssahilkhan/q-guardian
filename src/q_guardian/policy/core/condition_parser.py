@@ -15,7 +15,7 @@ Supports:
 from __future__ import annotations
 
 import re
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from q_guardian.policy.data import CompoundCondition, Condition
@@ -25,7 +25,6 @@ from q_guardian.policy.enums import (
     LogicalOperator,
 )
 from q_guardian.policy.exceptions import ConditionParseError
-
 
 # ---------------------------------------------------------------------------
 # Tokenizer
@@ -62,9 +61,7 @@ _TOKEN_SPEC = [
     ("SKIP", r"\s+"),
 ]
 
-_TOKEN_RE = re.compile(
-    "|".join(f"(?P<{name}>{pattern})" for name, pattern in _TOKEN_SPEC)
-)
+_TOKEN_RE = re.compile("|".join(f"(?P<{name}>{pattern})" for name, pattern in _TOKEN_SPEC))
 
 
 class _Token:
@@ -85,32 +82,27 @@ def _tokenize(expr: str) -> list[_Token]:
         # Check for gaps (unrecognized characters)
         if m.start() > pos:
             gap = expr[pos : m.start()]
-            raise ConditionParseError(
-                f"Unexpected character(s) at position {pos}: {gap!r}"
-            )
+            raise ConditionParseError(f"Unexpected character(s) at position {pos}: {gap!r}")
         kind = m.lastgroup or ""
         value = m.group()
         if kind == "SKIP":
             pos = m.end()
             continue
         if kind is None:
-            raise ConditionParseError(
-                f"Unexpected character at position {m.start()}: {value!r}"
-            )
+            raise ConditionParseError(f"Unexpected character at position {m.start()}: {value!r}")
         tokens.append(_Token(kind, value))
         pos = m.end()
     # Check for trailing unrecognized characters
     if pos < len(expr):
         trailing = expr[pos:]
-        raise ConditionParseError(
-            f"Unexpected trailing character(s): {trailing!r}"
-        )
+        raise ConditionParseError(f"Unexpected trailing character(s): {trailing!r}")
     return tokens
 
 
 # ---------------------------------------------------------------------------
 # Recursive-descent parser
 # ---------------------------------------------------------------------------
+
 
 class _Parser:
     """Recursive-descent parser for the condition DSL."""
@@ -144,37 +136,38 @@ class _Parser:
 
     def _parse_or(self) -> Condition | CompoundCondition:
         left = self._parse_and()
-        while self._peek() and self._peek().type == "OR":
+        while True:
+            tok = self._peek()
+            if tok is None or tok.type != "OR":
+                break
             self._advance()
             right = self._parse_and()
             if isinstance(left, CompoundCondition) and left.operator == LogicalOperator.OR:
                 left.conditions.append(right)
             else:
-                left = CompoundCondition(
-                    operator=LogicalOperator.OR, conditions=[left, right]
-                )
+                left = CompoundCondition(operator=LogicalOperator.OR, conditions=[left, right])
         return left
 
     def _parse_and(self) -> Condition | CompoundCondition:
         left = self._parse_not()
-        while self._peek() and self._peek().type == "AND":
+        while True:
+            tok = self._peek()
+            if tok is None or tok.type != "AND":
+                break
             self._advance()
             right = self._parse_not()
             if isinstance(left, CompoundCondition) and left.operator == LogicalOperator.AND:
                 left.conditions.append(right)
             else:
-                left = CompoundCondition(
-                    operator=LogicalOperator.AND, conditions=[left, right]
-                )
+                left = CompoundCondition(operator=LogicalOperator.AND, conditions=[left, right])
         return left
 
     def _parse_not(self) -> Condition | CompoundCondition:
-        if self._peek() and self._peek().type == "NOT":
+        tok = self._peek()
+        if tok is not None and tok.type == "NOT":
             self._advance()
             inner = self._parse_primary()
-            return CompoundCondition(
-                operator=LogicalOperator.NOT, conditions=[inner]
-            )
+            return CompoundCondition(operator=LogicalOperator.NOT, conditions=[inner])
         return self._parse_primary()
 
     def _parse_primary(self) -> Condition | CompoundCondition:
@@ -213,13 +206,9 @@ class _Parser:
         raw_value = self._strip_quotes(value_tok.value)
         dt = datetime.fromisoformat(raw_value)
         if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=timezone.utc)
+            dt = dt.replace(tzinfo=UTC)
 
-        op = (
-            ComparisonOperator.GTE
-            if op_tok.type == "AFTER"
-            else ComparisonOperator.LTE
-        )
+        op = ComparisonOperator.GTE if op_tok.type == "AFTER" else ComparisonOperator.LTE
         return Condition(
             field=field,
             operator=op,
@@ -241,20 +230,18 @@ class _Parser:
         field_tok = self._advance()
 
         # Check for membership: in [...] / not_in [...]
-        if self._peek() and self._peek().type in ("IN", "NOT_IN"):
+        tok = self._peek()
+        if tok is not None and tok.type in ("IN", "NOT_IN"):
             op_tok = self._advance()
             self._expect("LBRACKET")
             values = self._parse_value_list()
             self._expect("RBRACKET")
-            op = (
-                ComparisonOperator.IN
-                if op_tok.type == "IN"
-                else ComparisonOperator.NOT_IN
-            )
+            op = ComparisonOperator.IN if op_tok.type == "IN" else ComparisonOperator.NOT_IN
             return Condition(field=field_tok.value, operator=op, value=values)
 
         # Check for string ops
-        if self._peek() and self._peek().type in (
+        tok = self._peek()
+        if tok is not None and tok.type in (
             "CONTAINS",
             "STARTS_WITH",
             "ENDS_WITH",
@@ -287,20 +274,21 @@ class _Parser:
         }
         raw_value = self._strip_quotes(value_tok.value)
         try:
-            parsed_value = float(raw_value)
+            parsed_value: str | float = float(raw_value)
         except ValueError:
             parsed_value = raw_value
 
-        return Condition(
-            field=field_tok.value, operator=op_map[op_tok.type], value=parsed_value
-        )
+        return Condition(field=field_tok.value, operator=op_map[op_tok.type], value=parsed_value)
 
     def _parse_value_list(self) -> list[Any]:
         values: list[Any] = []
         tok = self._peek()
         if tok and tok.type in ("STRING", "NUMBER", "IDENT"):
             values.append(self._parse_list_value())
-            while self._peek() and self._peek().type == "COMMA":
+            while True:
+                tok = self._peek()
+                if tok is None or tok.type != "COMMA":
+                    break
                 self._advance()
                 values.append(self._parse_list_value())
         return values
@@ -318,9 +306,7 @@ class _Parser:
 
     @staticmethod
     def _strip_quotes(s: str) -> str:
-        if (s.startswith("'") and s.endswith("'")) or (
-            s.startswith('"') and s.endswith('"')
-        ):
+        if (s.startswith("'") and s.endswith("'")) or (s.startswith('"') and s.endswith('"')):
             return s[1:-1]
         return s
 
@@ -328,6 +314,7 @@ class _Parser:
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
+
 
 def parse_condition(expression: str) -> Condition | CompoundCondition:
     """Parse a condition expression string into a Condition tree.

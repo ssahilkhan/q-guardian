@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-from typing import Any, Callable
+from typing import TYPE_CHECKING, Any
 
 import structlog
 
-from q_guardian.response.enums import ResponseAction
+if TYPE_CHECKING:
+    from q_guardian.response.enums import ResponseAction
 
 logger = structlog.get_logger(__name__)
 

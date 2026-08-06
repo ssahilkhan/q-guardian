@@ -116,17 +116,13 @@ class TestStateTransitionError:
 
     def test_error_message(self) -> None:
         """Verify error message format."""
-        exc = StateTransitionError(
-            FrameworkState.RUNNING, FrameworkState.INITIALIZING
-        )
+        exc = StateTransitionError(FrameworkState.RUNNING, FrameworkState.INITIALIZING)
         assert "running" in exc.message
         assert "initializing" in exc.message
 
     def test_error_details(self) -> None:
         """Verify error details include states."""
-        exc = StateTransitionError(
-            FrameworkState.RUNNING, FrameworkState.INITIALIZING
-        )
+        exc = StateTransitionError(FrameworkState.RUNNING, FrameworkState.INITIALIZING)
         assert exc.details["current_state"] == "running"
         assert exc.details["target_state"] == "initializing"
         assert exc.code == "INVALID_STATE_TRANSITION"

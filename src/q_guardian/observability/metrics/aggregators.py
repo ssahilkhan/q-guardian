@@ -6,7 +6,6 @@ import structlog
 
 from q_guardian.observability.data import AggregatedMetric
 from q_guardian.observability.enums import AggregationType
-from q_guardian.utils.uuid_utils import generate_uuid
 
 logger = structlog.get_logger("observability.metrics.aggregators")
 
@@ -88,7 +87,9 @@ class MetricAggregator:
             AggregationType.COUNT: lambda: float(MetricAggregator.aggregate_count(data)),
             AggregationType.RATE: lambda: MetricAggregator.aggregate_rate(data, 60),
             AggregationType.LAST: lambda: MetricAggregator.aggregate_last(data),
-            AggregationType.PERCENTILE: lambda: MetricAggregator.aggregate_percentile(data, percentile),
+            AggregationType.PERCENTILE: lambda: MetricAggregator.aggregate_percentile(
+                data, percentile
+            ),
         }
 
         compute_fn = dispatch.get(aggregation)

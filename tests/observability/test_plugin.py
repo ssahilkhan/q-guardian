@@ -1,16 +1,17 @@
-import pytest
+import contextlib
 
-from q_guardian.observability.plugin import ObservabilityPlugin
-from q_guardian.observability.metrics.metrics_engine import MetricsEngine
-from q_guardian.observability.health.health_engine import HealthEngine
-from q_guardian.observability.tracing.trace_engine import TraceEngine
-from q_guardian.observability.analytics.analytics_engine import AnalyticsEngine
 from q_guardian.observability.alerts.alert_engine import AlertEngine
+from q_guardian.observability.analytics.analytics_engine import AnalyticsEngine
+from q_guardian.observability.health.health_engine import HealthEngine
+from q_guardian.observability.metrics.metrics_engine import MetricsEngine
+from q_guardian.observability.plugin import ObservabilityPlugin
+from q_guardian.observability.tracing.trace_engine import TraceEngine
 
 
 class MockContext:
     def __init__(self):
         from q_guardian.events.bus import EventBus
+
         self.event_bus = EventBus()
 
 
@@ -47,6 +48,7 @@ class TestObservabilityPluginLifecycle:
         plugin = ObservabilityPlugin()
         ctx = MockContext()
         import asyncio
+
         asyncio.run(plugin.initialize(ctx))
         assert plugin.metrics_engine is not None
         assert plugin.health_engine is not None
@@ -64,6 +66,7 @@ class TestObservabilityPluginLifecycle:
         plugin = ObservabilityPlugin()
         ctx = MockContext()
         import asyncio
+
         asyncio.run(plugin.initialize(ctx))
         asyncio.run(plugin.start())
         health = plugin.health()
@@ -80,6 +83,7 @@ class TestObservabilityPluginLifecycle:
         assert plugin.health_engine is None
         ctx = MockContext()
         import asyncio
+
         asyncio.run(plugin.initialize(ctx))
         assert isinstance(plugin.metrics_engine, MetricsEngine)
         assert isinstance(plugin.health_engine, HealthEngine)
@@ -91,12 +95,11 @@ class TestObservabilityPluginLifecycle:
         plugin = ObservabilityPlugin()
         ctx = MockContext()
         import asyncio
+
         asyncio.run(plugin.initialize(ctx))
         asyncio.run(plugin.start())
-        try:
+        with contextlib.suppress(TypeError):
             asyncio.run(plugin.stop())
-        except TypeError:
-            pass
         health = plugin.health()
         assert health["status"] == "stopped"
 
@@ -112,6 +115,7 @@ class TestObservabilityPluginLifecycle:
         plugin = ObservabilityPlugin()
         ctx = MockContext()
         import asyncio
+
         asyncio.run(plugin.initialize(ctx))
         asyncio.run(plugin.start())
         health = plugin.health()

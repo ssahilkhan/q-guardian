@@ -8,11 +8,14 @@ from __future__ import annotations
 import asyncio
 import os
 import sys
-from typing import AsyncGenerator, Any
+from typing import TYPE_CHECKING, Any
 
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
+
+if TYPE_CHECKING:
+    from collections.abc import AsyncGenerator
 
 if sys.platform == "win32":
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())

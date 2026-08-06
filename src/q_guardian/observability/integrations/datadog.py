@@ -2,16 +2,16 @@
 
 from __future__ import annotations
 
-import json
 from datetime import UTC, datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import structlog
 
-from q_guardian.observability.data import Alert, HealthReport, Metric
-from q_guardian.observability.enums import AlertSeverity, AlertState, ExporterType, HealthStatus
+from q_guardian.observability.enums import AlertSeverity, AlertState, HealthStatus
 from q_guardian.observability.exceptions import ExporterError
-from q_guardian.utils.uuid_utils import generate_uuid
+
+if TYPE_CHECKING:
+    from q_guardian.observability.data import Alert, HealthReport, Metric
 
 logger = structlog.get_logger("observability.integrations.datadog")
 
@@ -27,7 +27,9 @@ class DatadogIntegration:
         self._series_api_url = f"https://api.{site}/api/v2/series"
         self._events_api_url = f"https://api.{site}/api/v1/events"
         self._service_check_url = f"https://api.{site}/api/v1/check_run"
-        logger.info("datadog_integration_initialized", site=site, has_keys=bool(api_key and app_key))
+        logger.info(
+            "datadog_integration_initialized", site=site, has_keys=bool(api_key and app_key)
+        )
 
     def format_metrics_for_datadog(self, metrics: list[Metric]) -> list[dict[str, Any]]:
         if not metrics:
@@ -95,7 +97,8 @@ class DatadogIntegration:
 
         event_payload: dict[str, Any] = {
             "title": f"[Q-Guardian] {alert.rule_name}",
-            "text": alert.message or f"Alert {alert.rule_name} triggered with severity {alert.severity.value}",
+            "text": alert.message
+            or f"Alert {alert.rule_name} triggered with severity {alert.severity.value}",
             "alert_type": alert_type_map.get(alert.state, "warning"),
             "date_happened": int(alert.created_at.timestamp()),
             "priority": str(severity_priority.get(alert.severity, 3)),
@@ -119,7 +122,7 @@ class DatadogIntegration:
     def create_metric_payload(
         self, name: str, points: list[tuple[int, float]], tags: list[str] | None = None
     ) -> dict[str, Any]:
-        base_tags: list[str] = [f"source:q-guardian"]
+        base_tags: list[str] = ["source:q-guardian"]
         if tags:
             base_tags.extend(tags)
 
@@ -142,7 +145,7 @@ class DatadogIntegration:
         alert_type: str = "info",
         tags: list[str] | None = None,
     ) -> dict[str, Any]:
-        base_tags: list[str] = [f"source:q-guardian"]
+        base_tags: list[str] = ["source:q-guardian"]
         if tags:
             base_tags.extend(tags)
 
@@ -182,9 +185,7 @@ class DatadogIntegration:
 
         for comp in health.components:
             comp_status = status_service_check.get(comp.status, "unknown")
-            messages.append(
-                f"  {comp.component}: {comp_status} ({comp.health_score:.2f})"
-            )
+            messages.append(f"  {comp.component}: {comp_status} ({comp.health_score:.2f})")
 
         tags = [
             f"status:{health.overall_status.value}",
@@ -212,7 +213,7 @@ class DatadogIntegration:
         if status not in valid_statuses:
             status = "unknown"
 
-        base_tags: list[str] = [f"source:q-guardian"]
+        base_tags: list[str] = ["source:q-guardian"]
         if tags:
             base_tags.extend(tags)
 

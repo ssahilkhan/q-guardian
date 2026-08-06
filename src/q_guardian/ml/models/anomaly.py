@@ -11,12 +11,11 @@ from sklearn.ensemble import IsolationForest
 
 from q_guardian.ml.base import BaseThreatModel
 from q_guardian.ml.config import MLConfig
+from q_guardian.ml.data import ModelMetadata
 from q_guardian.ml.enums import ModelBackend, ModelStatus, ModelType
-from q_guardian.ml.data import InferenceResult, ModelMetadata
-from q_guardian.security.enums import PromptCategory, PromptDecision, PromptSeverity
+from q_guardian.security.enums import PromptCategory, PromptSeverity
 from q_guardian.security.extensibility import DetectionResult, PromptDetector
 from q_guardian.security.models import PromptFeatures, PromptFinding
-from q_guardian.utils.uuid_utils import generate_uuid
 
 logger = structlog.get_logger("ml.anomaly")
 
@@ -65,13 +64,14 @@ class IsolationForestDetector(PromptDetector, BaseThreatModel):
     def is_trained(self) -> bool:
         return self._model is not None
 
-    def train(self, X: list[list[float]]) -> None:
+    def train(self, x: list[list[float]], y: list[int] | None = None) -> None:
         """Train the Isolation Forest on feature vectors.
 
         Args:
-            X: 2D array of feature vectors.
+            x: 2D array of feature vectors.
+            y: Unused; unsupervised anomaly detection.
         """
-        arr = np.array(X, dtype=np.float64)
+        arr = np.array(x, dtype=np.float64)
         self._model = IsolationForest(
             contamination=self._contamination,
             n_estimators=self._n_estimators,
@@ -79,9 +79,9 @@ class IsolationForestDetector(PromptDetector, BaseThreatModel):
         )
         self._model.fit(arr)
         self._metadata.status = ModelStatus.READY
-        self._metadata.training_samples = len(X)
+        self._metadata.training_samples = len(x)
         self._metadata.feature_count = arr.shape[1] if arr.ndim == 2 else 0
-        logger.info("isolation_forest_trained", samples=len(X), features=arr.shape[1])
+        logger.info("isolation_forest_trained", samples=len(x), features=arr.shape[1])
 
     async def detect(self, prompt: str, features: PromptFeatures) -> DetectionResult:
         """Detect anomalies in a prompt.
@@ -113,15 +113,19 @@ class IsolationForestDetector(PromptDetector, BaseThreatModel):
             if is_anomaly:
                 risk_score = anomaly_score
                 confidence = min(1.0, anomaly_score * 1.5)
-                findings.append(PromptFinding(
-                    rule_id="isolation-forest",
-                    rule_name="Isolation Forest Anomaly Detection",
-                    category=PromptCategory.UNKNOWN,
-                    severity=PromptSeverity.MEDIUM if anomaly_score < 0.7 else PromptSeverity.HIGH,
-                    description=f"Anomalous prompt detected (score: {anomaly_score:.3f})",
-                    confidence=confidence,
-                    metadata={"anomaly_score": anomaly_score, "raw_score": float(raw_score)},
-                ))
+                findings.append(
+                    PromptFinding(
+                        rule_id="isolation-forest",
+                        rule_name="Isolation Forest Anomaly Detection",
+                        category=PromptCategory.UNKNOWN,
+                        severity=PromptSeverity.MEDIUM
+                        if anomaly_score < 0.7
+                        else PromptSeverity.HIGH,
+                        description=f"Anomalous prompt detected (score: {anomaly_score:.3f})",
+                        confidence=confidence,
+                        metadata={"anomaly_score": anomaly_score, "raw_score": float(raw_score)},
+                    )
+                )
 
         elapsed_ms = (time.monotonic() - start) * 1000
 

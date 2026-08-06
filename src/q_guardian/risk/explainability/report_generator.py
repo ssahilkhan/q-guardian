@@ -2,10 +2,6 @@
 
 from __future__ import annotations
 
-import json
-from datetime import UTC, datetime
-from typing import Any
-
 import structlog
 
 from q_guardian.risk.data import (
@@ -36,7 +32,7 @@ class ReportGenerator:
         decision: PolicyDecision,
         action_result: ActionResult | None = None,
         reasoning_graph: ReasoningGraph | None = None,
-        format: ExplanationFormat = ExplanationFormat.STRUCTURED,
+        explanation_format: ExplanationFormat = ExplanationFormat.STRUCTURED,
     ) -> Explanation:
         """Generate a complete explanation report.
 
@@ -45,7 +41,7 @@ class ReportGenerator:
             decision: The policy decision.
             action_result: Optional action execution result.
             reasoning_graph: Optional reasoning graph.
-            format: Output format.
+            explanation_format: Output format.
 
         Returns:
             Complete Explanation.
@@ -67,18 +63,18 @@ class ReportGenerator:
             policy_used=decision.policy_name,
             action_taken=decision.action.value,
             reasoning_graph=reasoning_graph,
-            format=format,
+            format=explanation_format,
         )
 
         if action_result is not None:
             explanation.metadata["action_success"] = action_result.success
             explanation.metadata["action_message"] = action_result.message
 
-        if format == ExplanationFormat.JSON:
+        if explanation_format == ExplanationFormat.JSON:
             explanation.export_data = {"json": explanation.model_dump_json(indent=2)}
-        elif format == ExplanationFormat.MARKDOWN:
+        elif explanation_format == ExplanationFormat.MARKDOWN:
             explanation.export_data = {"markdown": self._to_markdown(explanation)}
-        elif format == ExplanationFormat.TEXT:
+        elif explanation_format == ExplanationFormat.TEXT:
             explanation.export_data = {"text": self._to_text(explanation)}
         else:
             explanation.export_data = explanation.model_dump()
@@ -86,7 +82,7 @@ class ReportGenerator:
         logger.debug(
             "explanation_generated",
             explanation_id=explanation.explanation_id,
-            format=format.value,
+            format=explanation_format.value,
         )
 
         return explanation
@@ -121,8 +117,12 @@ class ReportGenerator:
         c = assessment.confidence
         interval_str = ""
         if c.confidence_interval:
-            interval_str = f" (95% CI: [{c.confidence_interval[0]:.4f}, {c.confidence_interval[1]:.4f}])"
-        return f"Confidence: {c.normalized_confidence:.4f} (raw: {c.raw_confidence:.4f}){interval_str}"
+            interval_str = (
+                f" (95% CI: [{c.confidence_interval[0]:.4f}, {c.confidence_interval[1]:.4f}])"
+            )
+        return (
+            f"Confidence: {c.normalized_confidence:.4f} (raw: {c.raw_confidence:.4f}){interval_str}"
+        )
 
     def _build_risk_summary(self, assessment: RiskAssessment) -> str:
         ts = assessment.threat_score

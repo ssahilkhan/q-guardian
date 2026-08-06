@@ -36,9 +36,7 @@ class LangGraphAdapter(Adapter):
         msg = "LangGraphAdapter.connect_agent not yet implemented"
         raise NotImplementedError(msg)
 
-    async def process_prompt(
-        self, prompt: str, context: dict[str, Any]
-    ) -> dict[str, Any]:
+    async def process_prompt(self, prompt: str, context: dict[str, Any]) -> dict[str, Any]:
         msg = "LangGraphAdapter.process_prompt not yet implemented"
         raise NotImplementedError(msg)
 

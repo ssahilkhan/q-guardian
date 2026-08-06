@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import json
-
 import pytest
 
 from q_guardian.utils.datetime_utils import (
@@ -70,7 +68,7 @@ class TestDatetimeUtils:
 
     def test_to_iso_format(self) -> None:
         """Verify ISO format conversion."""
-        from datetime import datetime, UTC
+        from datetime import UTC, datetime
 
         dt = datetime(2026, 1, 15, 10, 30, 0, tzinfo=UTC)
         result = to_iso_format(dt)

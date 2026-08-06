@@ -7,8 +7,9 @@ and the EventHandler type used by the EventBus.
 from __future__ import annotations
 
 from abc import ABC
+from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
-from typing import Any, Awaitable, Callable
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -45,12 +46,8 @@ class Event(BaseModel, ABC):
     )
     source: str = Field(default="system", description="Event source component")
     data: dict[str, Any] = Field(default_factory=dict, description="Event payload")
-    metadata: dict[str, Any] = Field(
-        default_factory=dict, description="Event metadata"
-    )
-    propagation_stopped: bool = Field(
-        default=False, description="Flag to stop event propagation"
-    )
+    metadata: dict[str, Any] = Field(default_factory=dict, description="Event metadata")
+    propagation_stopped: bool = Field(default=False, description="Flag to stop event propagation")
 
     def stop_propagation(self) -> None:
         """Stop this event from being delivered to further handlers."""

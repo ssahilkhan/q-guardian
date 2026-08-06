@@ -5,10 +5,10 @@ Defines all status and type enumerations used across runtime models.
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 
 
-class AgentStatus(str, Enum):
+class AgentStatus(StrEnum):
     """Lifecycle status of an AI agent."""
 
     INACTIVE = "inactive"
@@ -17,7 +17,7 @@ class AgentStatus(str, Enum):
     DISABLED = "disabled"
 
 
-class SessionStatus(str, Enum):
+class SessionStatus(StrEnum):
     """Lifecycle status of an agent session."""
 
     OPEN = "open"
@@ -26,7 +26,7 @@ class SessionStatus(str, Enum):
     ERROR = "error"
 
 
-class RequestStatus(str, Enum):
+class RequestStatus(StrEnum):
     """Status of an agent request."""
 
     PENDING = "pending"
@@ -35,7 +35,7 @@ class RequestStatus(str, Enum):
     FAILED = "failed"
 
 
-class ResponseStatus(str, Enum):
+class ResponseStatus(StrEnum):
     """Status of an agent response."""
 
     SUCCESS = "success"
@@ -44,7 +44,7 @@ class ResponseStatus(str, Enum):
     BLOCKED = "blocked"
 
 
-class MemoryType(str, Enum):
+class MemoryType(StrEnum):
     """Type of memory being accessed."""
 
     SHORT_TERM = "short_term"
@@ -55,7 +55,7 @@ class MemoryType(str, Enum):
     VECTOR = "vector"
 
 
-class MemoryOperation(str, Enum):
+class MemoryOperation(StrEnum):
     """Type of memory operation."""
 
     READ = "read"
@@ -65,7 +65,7 @@ class MemoryOperation(str, Enum):
     UPDATE = "update"
 
 
-class ToolType(str, Enum):
+class ToolType(StrEnum):
     """Type of tool being invoked."""
 
     FUNCTION = "function"
@@ -76,7 +76,7 @@ class ToolType(str, Enum):
     CUSTOM = "custom"
 
 
-class ThreatSeverity(str, Enum):
+class ThreatSeverity(StrEnum):
     """Severity level of a detected threat."""
 
     LOW = "low"
@@ -85,7 +85,7 @@ class ThreatSeverity(str, Enum):
     CRITICAL = "critical"
 
 
-class ThreatType(str, Enum):
+class ThreatType(StrEnum):
     """Category of detected threat."""
 
     PROMPT_INJECTION = "prompt_injection"

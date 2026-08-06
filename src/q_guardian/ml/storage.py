@@ -2,14 +2,15 @@
 
 from __future__ import annotations
 
-import time
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import structlog
 
 from q_guardian.ml.enums import ModelStatus
-from q_guardian.ml.data import ModelMetadata
+
+if TYPE_CHECKING:
+    from q_guardian.ml.data import ModelMetadata
 
 logger = structlog.get_logger("ml.storage")
 
@@ -53,9 +54,7 @@ class ModelStorage:
 
         metadata.artifact_path = str(artifact_path)
         metadata.status = ModelStatus.READY
-        metadata.updated_at = metadata.updated_at.__class__.now(
-            metadata.updated_at.tzinfo
-        )
+        metadata.updated_at = metadata.updated_at.__class__.now(metadata.updated_at.tzinfo)
 
         logger.info(
             "model_saved",

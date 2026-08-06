@@ -7,12 +7,13 @@ Fusion Engine can compare and combine scores fairly.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import structlog
 
-from q_guardian.quantum.fusion.prediction import ThreatPrediction
+if TYPE_CHECKING:
+    from q_guardian.quantum.fusion.prediction import ThreatPrediction
 
 logger = structlog.get_logger("quantum.fusion.calibrator")
 
@@ -72,15 +73,15 @@ class ConfidenceCalibrator:
         calibrated: list[ThreatPrediction] = []
         for pred in predictions:
             new_confidence = self._apply_calibration(pred.provider_id, pred.confidence)
-            new_probabilities = self._calibrate_probabilities(
-                pred.probabilities, pred.provider_id
-            )
+            new_probabilities = self._calibrate_probabilities(pred.probabilities, pred.provider_id)
 
-            calibrated_pred = pred.model_copy(update={
-                "confidence": round(new_confidence, 6),
-                "probabilities": new_probabilities,
-                "metadata": {**pred.metadata, "calibration_method": self._method},
-            })
+            calibrated_pred = pred.model_copy(
+                update={
+                    "confidence": round(new_confidence, 6),
+                    "probabilities": new_probabilities,
+                    "metadata": {**pred.metadata, "calibration_method": self._method},
+                }
+            )
             calibrated.append(calibrated_pred)
 
         logger.debug(
@@ -192,7 +193,7 @@ class ConfidenceCalibrator:
 class _ProviderStats:
     """Running statistics for a single provider."""
 
-    __slots__ = ("count", "mean", "m2", "min", "max")
+    __slots__ = ("count", "m2", "max", "mean", "min")
 
     def __init__(self) -> None:
         self.count: int = 0
@@ -205,7 +206,7 @@ class _ProviderStats:
     def std(self) -> float:
         if self.count < 2:
             return 0.0
-        return (self.m2 / (self.count - 1)) ** 0.5
+        return float((self.m2 / (self.count - 1)) ** 0.5)
 
     def update(self, value: float) -> None:
         self.count += 1

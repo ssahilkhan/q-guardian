@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-import structlog
 from typing import Any
+
+import structlog
 
 from q_guardian.observability.data import AlertRule
 from q_guardian.observability.enums import AlertSeverity, AlertType

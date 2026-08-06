@@ -13,8 +13,8 @@ import structlog
 
 from q_guardian.quantum.backends.base import QuantumBackend
 from q_guardian.quantum.config import QuantumBackendConfig
-from q_guardian.quantum.enums import BackendStatus, QuantumBackendType
 from q_guardian.quantum.data import BackendInfo, CircuitResult
+from q_guardian.quantum.enums import BackendStatus, QuantumBackendType
 from q_guardian.quantum.exceptions import (
     BackendNotAvailableError,
     CircuitExecutionError,
@@ -43,6 +43,7 @@ class QiskitAerBackend(QuantumBackend):
     def _try_init(self) -> None:
         try:
             from qiskit_aer import AerSimulator
+
             self._backend = AerSimulator()
             self._available = True
             logger.info("qiskit_aer_initialized")
@@ -150,7 +151,9 @@ class QiskitRuntimeBackend(QuantumBackend):
     Requires valid IBM Quantum credentials.
     """
 
-    def __init__(self, config: QuantumBackendConfig | None = None, token: str | None = None) -> None:
+    def __init__(
+        self, config: QuantumBackendConfig | None = None, token: str | None = None
+    ) -> None:
         self._config = config or QuantumBackendConfig()
         self._token = token or self._config.provider_options.get("token")
         self._provider: Any = None

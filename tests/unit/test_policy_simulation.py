@@ -1,9 +1,6 @@
 """Tests for the Simulation Engine."""
 
-import pytest
-
 from q_guardian.policy.core.simulation import SimulationEngine
-from q_guardian.policy.core.evaluator import PolicyEvaluator
 from q_guardian.policy.data import AdvancedPolicyDefinition, AdvancedRule, Condition
 from q_guardian.policy.enums import ComparisonOperator
 
@@ -63,9 +60,7 @@ class TestSimulationEngine:
     def test_simulate_with_overrides(self):
         engine = SimulationEngine()
         policy = _policy_with_rules()
-        result = engine.simulate_with_overrides(
-            policy, {"score": 0.9}, override_action="log"
-        )
+        result = engine.simulate_with_overrides(policy, {"score": 0.9}, override_action="log")
         # Override action only affects default_action, not rule-matched actions
         assert result.action == "block"
 
@@ -91,7 +86,7 @@ class TestSimulationEngine:
         engine = SimulationEngine()
         policy = _policy_with_rules()
         r1 = engine.simulate(policy, {"score": 0.9})
-        r2 = engine.simulate(policy, {"score": 0.3})
+        engine.simulate(policy, {"score": 0.3})
         replay_results = engine.replay(policy, simulation_ids=[r1.simulation_id])
         assert len(replay_results) == 1
 
@@ -129,18 +124,24 @@ class TestSimulationEngine:
 
     def test_compare_same_action(self):
         engine = SimulationEngine()
-        p1 = AdvancedPolicyDefinition(name="a", rules=[
-            AdvancedRule(
-                condition=Condition(field="x", operator=ComparisonOperator.GT, value=0.5),
-                action="block",
-            )
-        ])
-        p2 = AdvancedPolicyDefinition(name="b", rules=[
-            AdvancedRule(
-                condition=Condition(field="y", operator=ComparisonOperator.GT, value=0.5),
-                action="block",
-            )
-        ])
+        p1 = AdvancedPolicyDefinition(
+            name="a",
+            rules=[
+                AdvancedRule(
+                    condition=Condition(field="x", operator=ComparisonOperator.GT, value=0.5),
+                    action="block",
+                )
+            ],
+        )
+        p2 = AdvancedPolicyDefinition(
+            name="b",
+            rules=[
+                AdvancedRule(
+                    condition=Condition(field="y", operator=ComparisonOperator.GT, value=0.5),
+                    action="block",
+                )
+            ],
+        )
         comparison = engine.compare_policies(p1, p2, {"x": 0.9, "y": 0.9})
         assert comparison["same_action"] is True
 

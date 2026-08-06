@@ -14,6 +14,8 @@ from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 from q_guardian.config.settings import get_settings
 
 if TYPE_CHECKING:
+    from collections.abc import AsyncGenerator
+
     from motor.motor_asyncio import AsyncIOMotorCollection
 
 logger = structlog.get_logger("database.client")
@@ -118,13 +120,13 @@ def get_db_client() -> MongoDBClient:
     Returns:
         The singleton MongoDBClient instance.
     """
-    global _client_instance  # noqa: PLW0603
+    global _client_instance
     if _client_instance is None:
         _client_instance = MongoDBClient()
     return _client_instance
 
 
-async def get_database() -> AsyncIOMotorDatabase[Any]:
+async def get_database() -> AsyncGenerator[AsyncIOMotorDatabase[Any], None]:
     """FastAPI dependency that provides the database instance.
 
     Yields:

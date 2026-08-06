@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -12,6 +12,7 @@ from q_guardian.response.enums import (
     ApprovalStatus,
     ApprovalType,
     EvidenceType,
+    FailureStrategy,
     IntegrationType,
     NotificationChannel,
     NotificationPriority,
@@ -23,13 +24,11 @@ from q_guardian.response.enums import (
     RollbackTarget,
     StepStatus,
     StepType,
-    TimelineFormat,
-    FailureStrategy,
 )
 
 
 def _utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def _uuid() -> str:
@@ -39,6 +38,7 @@ def _uuid() -> str:
 # ---------------------------------------------------------------------------
 # Input models (source-agnostic)
 # ---------------------------------------------------------------------------
+
 
 class PolicyDecision(BaseModel):
     """Source-agnostic policy decision input."""
@@ -83,6 +83,7 @@ class ActionPlan(BaseModel):
 # Response models
 # ---------------------------------------------------------------------------
 
+
 class ResponseRequest(BaseModel):
     """A request for the response engine to process."""
 
@@ -118,6 +119,7 @@ class ResponseResult(BaseModel):
 # ---------------------------------------------------------------------------
 # Playbook models
 # ---------------------------------------------------------------------------
+
 
 class PlaybookStep(BaseModel):
     """A single step in a playbook."""
@@ -191,6 +193,7 @@ class StepResult(BaseModel):
 # Quarantine models
 # ---------------------------------------------------------------------------
 
+
 class QuarantineRecord(BaseModel):
     """Record of a quarantine action."""
 
@@ -211,6 +214,7 @@ class QuarantineRecord(BaseModel):
 # ---------------------------------------------------------------------------
 # Evidence models
 # ---------------------------------------------------------------------------
+
 
 class EvidenceRecord(BaseModel):
     """An immutable evidence artifact."""
@@ -253,6 +257,7 @@ class Timeline(BaseModel):
 # Notification models
 # ---------------------------------------------------------------------------
 
+
 class NotificationRecord(BaseModel):
     """Record of a sent notification."""
 
@@ -273,6 +278,7 @@ class NotificationRecord(BaseModel):
 # ---------------------------------------------------------------------------
 # Approval models
 # ---------------------------------------------------------------------------
+
 
 class ApprovalRequest(BaseModel):
     """An approval request."""
@@ -296,6 +302,7 @@ class ApprovalRequest(BaseModel):
 # ---------------------------------------------------------------------------
 # Rollback models
 # ---------------------------------------------------------------------------
+
 
 class Checkpoint(BaseModel):
     """A rollback checkpoint."""
@@ -327,6 +334,7 @@ class RollbackResult(BaseModel):
 # Recovery models
 # ---------------------------------------------------------------------------
 
+
 class RecoveryPlan(BaseModel):
     """A plan for recovering from an incident."""
 
@@ -357,6 +365,7 @@ class RecoveryResult(BaseModel):
 # ---------------------------------------------------------------------------
 # Integration models
 # ---------------------------------------------------------------------------
+
 
 class IntegrationConfig(BaseModel):
     """Configuration for a SOAR integration."""

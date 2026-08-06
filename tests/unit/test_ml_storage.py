@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import tempfile
-from pathlib import Path
 
 import pytest
 
@@ -14,8 +13,9 @@ from q_guardian.ml.storage import ModelStorage
 
 class DummySklearnModel:
     """Minimal mock sklearn model for serialization testing."""
-    def predict(self, X):
-        return [0] * len(X)
+
+    def predict(self, x):
+        return [0] * len(x)
 
 
 class TestModelStorage:

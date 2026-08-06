@@ -2,23 +2,22 @@
 
 from __future__ import annotations
 
-import json
 from datetime import UTC, datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import structlog
 
-from q_guardian.observability.data import Alert, HealthReport, Metric
 from q_guardian.observability.enums import (
     AlertSeverity,
     AlertState,
-    ExporterType,
     HealthStatus,
-    MetricType,
     MetricUnit,
 )
 from q_guardian.observability.exceptions import ExporterError
 from q_guardian.utils.uuid_utils import generate_uuid
+
+if TYPE_CHECKING:
+    from q_guardian.observability.data import Alert, HealthReport, Metric
 
 logger = structlog.get_logger("observability.integrations.cloudwatch")
 
@@ -80,9 +79,7 @@ class CloudWatchIntegration:
 
                 entry: dict[str, Any] = {
                     "MetricName": metric.name,
-                    "Dimensions": [
-                        {"Name": k, "Value": v} for k, v in dimensions.items()
-                    ],
+                    "Dimensions": [{"Name": k, "Value": v} for k, v in dimensions.items()],
                     "Timestamp": point.timestamp,
                     "Value": point.value,
                     "Unit": unit,
@@ -111,10 +108,12 @@ class CloudWatchIntegration:
             AlertSeverity.CRITICAL: {"color": "#d9534f", "awsSeverity": "CRITICAL"},
         }
 
-        detail_info = severity_detail.get(alert.severity, {"color": "#f0ad4e", "awsSeverity": "WARNING"})
+        detail_info = severity_detail.get(
+            alert.severity, {"color": "#f0ad4e", "awsSeverity": "WARNING"}
+        )
         alert_type = ALERT_TYPE_MAP.get(alert.state, "info")
 
-        resources: list[dict[str, str]] = [
+        resources: list[dict[str, Any]] = [
             {
                 "type": "QGuardianAlert",
                 "id": alert.alert_id,
@@ -236,17 +235,19 @@ class CloudWatchIntegration:
         ]
 
         for comp in health.components:
-            metric_data.append({
-                "MetricName": f"ComponentHealth.{comp.component}",
-                "Dimensions": [
-                    {"Name": "Source", "Value": "QGuardian"},
-                    {"Name": "Component", "Value": comp.component},
-                ],
-                "Timestamp": health.timestamp,
-                "Value": comp.health_score,
-                "Unit": "Percent",
-                "StorageResolution": 1,
-            })
+            metric_data.append(
+                {
+                    "MetricName": f"ComponentHealth.{comp.component}",
+                    "Dimensions": [
+                        {"Name": "Source", "Value": "QGuardian"},
+                        {"Name": "Component", "Value": comp.component},
+                    ],
+                    "Timestamp": health.timestamp,
+                    "Value": comp.health_score,
+                    "Unit": "Percent",
+                    "StorageResolution": 1,
+                }
+            )
 
         alarm_event = {
             "version": "0",
@@ -287,9 +288,7 @@ class CloudWatchIntegration:
             "logStream": self._log_stream,
         }
 
-    def create_log_event(
-        self, message: str, timestamp: datetime | None = None
-    ) -> dict[str, Any]:
+    def create_log_event(self, message: str, timestamp: datetime | None = None) -> dict[str, Any]:
         ts = timestamp or datetime.now(UTC)
 
         return {

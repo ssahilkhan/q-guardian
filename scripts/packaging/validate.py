@@ -1,6 +1,7 @@
 """Validate Q-Guardian package metadata and structure."""
 from __future__ import annotations
 
+import ast
 import sys
 import tomllib
 from pathlib import Path
@@ -70,28 +71,33 @@ def _validate_exports() -> list[str]:
         errors.append("src/q_guardian/__init__.py not found")
         return errors
 
-    content = init.read_text()
-    all_list: list[str] = []
-    in_all = False
-    for line in content.splitlines():
-        stripped = line.strip()
-        if stripped.startswith("__all__"):
-            in_all = True
-        if in_all:
-            if stripped.startswith('"') or stripped.startswith("'"):
-                name = stripped.strip('",')
-                if name:
-                    all_list.append(name)
-            if "]" in stripped:
-                in_all = False
+    try:
+        tree = ast.parse(init.read_text())
+    except SyntaxError as exc:
+        errors.append(f"src/q_guardian/__init__.py failed to parse: {exc}")
+        return errors
 
     imports = set()
-    for line in content.splitlines():
-        line = line.strip()
-        if line.startswith("from ") and " import " in line:
-            _, imported = line.split(" import ", 1)
-            for item in imported.split(","):
-                imports.add(item.strip())
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                imports.add(alias.asname or alias.name.split(".", 1)[0])
+        elif isinstance(node, ast.ImportFrom):
+            for alias in node.names:
+                imports.add(alias.asname or alias.name.split(".", 1)[0])
+
+    all_list: list[str] = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Assign) and any(
+            isinstance(target, ast.Name) and target.id == "__all__"
+            for target in node.targets
+        ):
+            if isinstance(node.value, (ast.List, ast.Tuple)):
+                all_list.extend(
+                    elt.value
+                    for elt in node.value.elts
+                    if isinstance(elt, ast.Constant) and isinstance(elt.value, str)
+                )
 
     for name in all_list:
         if name not in imports:

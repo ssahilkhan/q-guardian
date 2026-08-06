@@ -3,22 +3,19 @@
 from __future__ import annotations
 
 import json
-import os
-from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import structlog
 
-from q_guardian.response.data import (
-    PlaybookExecution,
-    QuarantineRecord,
-    RecoveryResult,
-    ResponseResult,
-    RollbackResult,
-    Timeline,
-)
-from q_guardian.response.exceptions import ResponseEngineError
+if TYPE_CHECKING:
+    from q_guardian.response.data import (
+        PlaybookExecution,
+        QuarantineRecord,
+        RecoveryResult,
+        ResponseResult,
+        RollbackResult,
+    )
 
 logger = structlog.get_logger(__name__)
 
@@ -59,7 +56,8 @@ class ResponseStorage:
         path = self._responses_path / f"{response_id}.json"
         if not path.exists():
             return None
-        return json.loads(path.read_text(encoding="utf-8"))
+        data: dict[str, Any] | None = json.loads(path.read_text(encoding="utf-8"))
+        return data
 
     def save_quarantine(self, record: QuarantineRecord) -> Path:
         path = self._quarantines_path / f"{record.quarantine_id}.json"
@@ -71,7 +69,8 @@ class ResponseStorage:
         path = self._quarantines_path / f"{quarantine_id}.json"
         if not path.exists():
             return None
-        return json.loads(path.read_text(encoding="utf-8"))
+        data: dict[str, Any] | None = json.loads(path.read_text(encoding="utf-8"))
+        return data
 
     def save_playbook_execution(self, execution: PlaybookExecution) -> Path:
         path = self._playbooks_path / f"{execution.execution_id}.json"
@@ -121,7 +120,8 @@ class ResponseStorage:
     @staticmethod
     def _serialize(obj: Any) -> dict[str, Any]:
         if hasattr(obj, "model_dump"):
-            return obj.model_dump(mode="json")
+            data: dict[str, Any] = obj.model_dump(mode="json")
+            return data
         elif hasattr(obj, "__dict__"):
             return {k: v for k, v in obj.__dict__.items() if not k.startswith("_")}
         return {"value": str(obj)}

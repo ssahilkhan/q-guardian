@@ -1,27 +1,25 @@
 """Tests for the Advanced Policy Engine — main orchestrator integration."""
 
-import pytest
-import tempfile
 import os
+import tempfile
 
-from q_guardian.policy.engine import AdvancedPolicyEngine
+import pytest
+
 from q_guardian.policy.config import PolicyEngineConfig
 from q_guardian.policy.data import AdvancedPolicyDefinition, AdvancedRule, Condition
+from q_guardian.policy.engine import AdvancedPolicyEngine
 from q_guardian.policy.enums import (
     ComparisonOperator,
     DSLFormat,
     Permission,
-    PolicyStatus,
+)
+from q_guardian.policy.events import (
+    PolicyEvaluated,
+    PolicyRegistered,
 )
 from q_guardian.policy.exceptions import (
     PolicyConflictError,
     PolicyNotFoundError,
-    DSLAdapterError,
-)
-from q_guardian.policy.events import (
-    PolicyRegistered,
-    PolicyEvaluated,
-    PolicySimulated,
 )
 
 
@@ -119,6 +117,7 @@ class TestAdvancedPolicyEngine:
         policy = _policy()
         engine.register_policy(policy)
         from q_guardian.policy.exceptions import PolicyEngineError
+
         with pytest.raises(PolicyEngineError):
             engine.simulate(policy.policy_id, {"score": 0.9})
 
@@ -126,9 +125,7 @@ class TestAdvancedPolicyEngine:
         engine = AdvancedPolicyEngine()
         policy = _policy()
         engine.register_policy(policy)
-        results = engine.simulate_batch(
-            policy.policy_id, [{"score": 0.9}, {"score": 0.3}]
-        )
+        results = engine.simulate_batch(policy.policy_id, [{"score": 0.9}, {"score": 0.3}])
         assert len(results) == 2
 
     def test_conflict_detection(self):
@@ -203,6 +200,7 @@ class TestAdvancedPolicyEngine:
             ],
         }
         import json
+
         policy = engine.import_from_dsl(json.dumps(data), DSLFormat.JSON)
         assert policy.name == "imported"
 
@@ -230,6 +228,7 @@ rules:
         result = engine.export_to_dsl(policy.policy_id, DSLFormat.JSON)
         assert result.success is True
         import json
+
         data = json.loads(result.raw_source)
         assert data["name"] == "export-test"
 
@@ -341,6 +340,7 @@ rules:
         )
         engine.register_policy(p2)
         from q_guardian.policy.events import PolicyConflictDetected
+
         assert any(isinstance(e, PolicyConflictDetected) for e in engine.get_events())
 
 
@@ -378,9 +378,7 @@ class TestAdvancedPolicyEngineIntegration:
                 ),
                 AdvancedRule(
                     name="warn-high",
-                    condition=AdvancedPolicyEngine.parse_condition(
-                        "risk_score >= 0.7"
-                    ),
+                    condition=AdvancedPolicyEngine.parse_condition("risk_score >= 0.7"),
                     action="warn",
                     severity="high",
                     priority=5,

@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 import time
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 import structlog
 
 from q_guardian.response.data import RecoveryPlan, RecoveryResult
 from q_guardian.response.enums import RecoveryAction
-from q_guardian.response.exceptions import RecoveryError
 
 logger = structlog.get_logger(__name__)
 

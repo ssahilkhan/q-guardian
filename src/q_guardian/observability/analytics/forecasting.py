@@ -6,7 +6,7 @@ from datetime import UTC, datetime, timedelta
 import structlog
 
 from q_guardian.observability.analytics.statistics import StatisticsEngine
-from q_guardian.observability.data import ForecastResult, MetricPoint, TimeWindow
+from q_guardian.observability.data import ForecastResult, MetricPoint
 
 logger = structlog.get_logger("observability.analytics.forecasting")
 
@@ -32,7 +32,7 @@ class ForecastEngine:
                 confidence_interval_lower=[],
                 confidence_interval_upper=[],
             )
-        x_values = list(range(len(values)))
+        x_values = [float(i) for i in range(len(values))]
         slope, intercept, r_squared = self._stats.linear_regression(x_values, values)
         std_val = self._stats.std_dev(values) if len(values) > 1 else 0.0
         base_timestamp = self._resolve_base_timestamp(timestamps, values)
@@ -123,13 +123,8 @@ class ForecastEngine:
             )
         ema_series = self._stats.exponential_moving_average(values, alpha)
         level = ema_series[-1]
-        if len(ema_series) >= 2:
-            trend = ema_series[-1] - ema_series[-2]
-        else:
-            trend = 0.0
-        residuals = [
-            values[i] - ema_series[i] for i in range(len(values))
-        ]
+        trend = ema_series[-1] - ema_series[-2] if len(ema_series) >= 2 else 0.0
+        residuals = [values[i] - ema_series[i] for i in range(len(values))]
         residual_std = self._stats.std_dev(residuals) if len(residuals) > 1 else 0.0
         base_timestamp = datetime.now(UTC)
         forecast_points: list[MetricPoint] = []
@@ -175,9 +170,7 @@ class ForecastEngine:
         return result
 
     @staticmethod
-    def _resolve_base_timestamp(
-        timestamps: list[datetime] | None, values: list[float]
-    ) -> datetime:
+    def _resolve_base_timestamp(timestamps: list[datetime] | None, values: list[float]) -> datetime:
         if timestamps and len(timestamps) > 0:
             return timestamps[-1]
         return datetime.now(UTC)

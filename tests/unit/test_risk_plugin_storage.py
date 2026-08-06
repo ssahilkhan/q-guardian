@@ -1,22 +1,31 @@
 """Tests for RiskAnalysisPlugin and RiskStorage."""
 
-import pytest
 import tempfile
-import os
-from pathlib import Path
-from q_guardian.risk.plugin import RiskAnalysisPlugin
-from q_guardian.risk.storage import RiskStorage
+
+import pytest
+
+from q_guardian.events.bus import EventBus
+from q_guardian.framework.context import FrameworkContext
 from q_guardian.risk.config import RiskConfig
 from q_guardian.risk.data import (
-    NormalizedPrediction, RiskAssessment, AuditRecord, Explanation,
+    AuditRecord,
+    Explanation,
+    NormalizedPrediction,
+    RiskAssessment,
 )
-from q_guardian.risk.enums import RiskLevel, AuditStatus
-from q_guardian.framework.context import FrameworkContext
-from q_guardian.events.bus import EventBus
+from q_guardian.risk.enums import RiskLevel
+from q_guardian.risk.exceptions import RiskError
+from q_guardian.risk.plugin import RiskAnalysisPlugin
+from q_guardian.risk.storage import RiskStorage
 
 
 def _make_prediction(**kwargs) -> NormalizedPrediction:
-    defaults = {"predicted_label": "threat", "confidence": 0.8, "risk_score": 0.7, "provider_id": "test"}
+    defaults = {
+        "predicted_label": "threat",
+        "confidence": 0.8,
+        "risk_score": 0.7,
+        "provider_id": "test",
+    }
     defaults.update(kwargs)
     return NormalizedPrediction(**defaults)
 
@@ -88,8 +97,11 @@ class TestRiskAnalysisPlugin:
         plugin = RiskAnalysisPlugin()
         bus = EventBus()
         ctx = FrameworkContext(
-            logger=None, config=None, event_bus=bus,
-            plugin_registry=None, hook_manager=None,
+            logger=None,
+            config=None,
+            event_bus=bus,
+            plugin_registry=None,
+            hook_manager=None,
         )
         await plugin.initialize(ctx)
         await plugin.start()
@@ -103,8 +115,11 @@ class TestRiskAnalysisPlugin:
         plugin = RiskAnalysisPlugin()
         bus = EventBus()
         ctx = FrameworkContext(
-            logger=None, config=None, event_bus=bus,
-            plugin_registry=None, hook_manager=None,
+            logger=None,
+            config=None,
+            event_bus=bus,
+            plugin_registry=None,
+            hook_manager=None,
         )
         await plugin.initialize(ctx)
 
@@ -118,8 +133,11 @@ class TestRiskAnalysisPlugin:
     async def test_stop(self):
         plugin = RiskAnalysisPlugin()
         ctx = FrameworkContext(
-            logger=None, config=None, event_bus=None,
-            plugin_registry=None, hook_manager=None,
+            logger=None,
+            config=None,
+            event_bus=None,
+            plugin_registry=None,
+            hook_manager=None,
         )
         await plugin.initialize(ctx)
         await plugin.start()
@@ -145,7 +163,7 @@ class TestRiskStorage:
     def test_load_assessment_not_found(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             storage = RiskStorage(tmpdir)
-            with pytest.raises(Exception):
+            with pytest.raises(RiskError):
                 storage.load_assessment("nonexistent")
 
     def test_save_audit_record(self):
@@ -206,5 +224,6 @@ class TestRiskStorage:
         assert storage.root.exists()
         # cleanup
         import shutil
+
         if storage.root.name == "risk_storage":
             shutil.rmtree(storage.root, ignore_errors=True)

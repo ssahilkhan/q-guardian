@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import json
 from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING
 
 import structlog
 
-from q_guardian.observability.data import Trace
+if TYPE_CHECKING:
+    from q_guardian.observability.data import Trace
 
 logger = structlog.get_logger()
 

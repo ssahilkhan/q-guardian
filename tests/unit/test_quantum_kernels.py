@@ -2,13 +2,11 @@
 
 from __future__ import annotations
 
-import pytest
-
+from q_guardian.quantum.backends.simulator import LocalSimulatorBackend
+from q_guardian.quantum.data import QuantumCircuitInfo
+from q_guardian.quantum.feature_maps.angle_encoding import AngleEncodingMap
 from q_guardian.quantum.kernels.base import QuantumKernel
 from q_guardian.quantum.kernels.quantum_kernel import QuantumKernelEstimator
-from q_guardian.quantum.backends.simulator import LocalSimulatorBackend
-from q_guardian.quantum.feature_maps.angle_encoding import AngleEncodingMap
-from q_guardian.quantum.data import QuantumCircuitInfo
 
 
 class DummyKernel(QuantumKernel):
@@ -23,9 +21,9 @@ class DummyKernel(QuantumKernel):
         return 4
 
     def compute_kernel_matrix(
-        self, X1: list[list[float]], X2: list[list[float]] | None = None
+        self, x1: list[list[float]], x2: list[list[float]] | None = None
     ) -> list[list[float]]:
-        n = len(X1)
+        n = len(x1)
         return [[1.0 if i == j else 0.5 for j in range(n)] for i in range(n)]
 
     def evaluate(self, x1: list[float], x2: list[float]) -> float:
@@ -46,8 +44,8 @@ class TestQuantumKernelABC:
 
     def test_compute_kernel_matrix(self) -> None:
         kernel = DummyKernel()
-        X = [[1.0, 2.0], [3.0, 4.0]]
-        matrix = kernel.compute_kernel_matrix(X)
+        x = [[1.0, 2.0], [3.0, 4.0]]
+        matrix = kernel.compute_kernel_matrix(x)
         assert len(matrix) == 2
         assert len(matrix[0]) == 2
         assert matrix[0][0] == 1.0
@@ -90,24 +88,24 @@ class TestQuantumKernelEstimator:
 
     def test_compute_kernel_matrix_symmetric(self) -> None:
         kernel = QuantumKernelEstimator(self.feature_map, self.backend)
-        X = [[0.5, 1.0, 1.5], [2.0, 0.5, 0.1]]
-        matrix = kernel.compute_kernel_matrix(X)
+        x = [[0.5, 1.0, 1.5], [2.0, 0.5, 0.1]]
+        matrix = kernel.compute_kernel_matrix(x)
         assert len(matrix) == 2
         assert len(matrix[0]) == 2
         assert abs(matrix[0][1] - matrix[1][0]) < 0.01
 
     def test_compute_kernel_matrix_diagonal(self) -> None:
         kernel = QuantumKernelEstimator(self.feature_map, self.backend)
-        X = [[0.5, 1.0, 1.5], [2.0, 0.5, 0.1]]
-        matrix = kernel.compute_kernel_matrix(X)
+        x = [[0.5, 1.0, 1.5], [2.0, 0.5, 0.1]]
+        matrix = kernel.compute_kernel_matrix(x)
         for i in range(2):
             assert matrix[i][i] >= 0.0
 
-    def test_compute_kernel_matrix_with_X2(self) -> None:
+    def test_compute_kernel_matrix_with_x2(self) -> None:
         kernel = QuantumKernelEstimator(self.feature_map, self.backend)
-        X1 = [[0.5, 1.0, 1.5]]
-        X2 = [[2.0, 0.5, 0.1], [0.5, 1.0, 1.5]]
-        matrix = kernel.compute_kernel_matrix(X1, X2)
+        x1 = [[0.5, 1.0, 1.5]]
+        x2 = [[2.0, 0.5, 0.1], [0.5, 1.0, 1.5]]
+        matrix = kernel.compute_kernel_matrix(x1, x2)
         assert len(matrix) == 1
         assert len(matrix[0]) == 2
 

@@ -66,7 +66,9 @@ class TestAlertEngineRules:
         engine = AlertEngine()
         rule = AlertRule(rule_id="r1", name="test", metric_name="m", condition="gt", threshold=1.0)
         engine.add_rule(rule)
-        updated = AlertRule(rule_id="r1", name="updated", metric_name="m", condition="lt", threshold=5.0)
+        updated = AlertRule(
+            rule_id="r1", name="updated", metric_name="m", condition="lt", threshold=5.0
+        )
         assert engine.update_rule(updated) is True
         assert engine.get_rule("r1").name == "updated"
 
@@ -78,8 +80,12 @@ class TestAlertEngineRules:
 
     def test_list_rules(self) -> None:
         engine = AlertEngine()
-        engine.add_rule(AlertRule(rule_id="r1", name="a", metric_name="m", condition="gt", threshold=1.0))
-        engine.add_rule(AlertRule(rule_id="r2", name="b", metric_name="m", condition="lt", threshold=5.0))
+        engine.add_rule(
+            AlertRule(rule_id="r1", name="a", metric_name="m", condition="gt", threshold=1.0)
+        )
+        engine.add_rule(
+            AlertRule(rule_id="r2", name="b", metric_name="m", condition="lt", threshold=5.0)
+        )
         rules = engine.list_rules()
         assert len(rules) == 2
 

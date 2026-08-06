@@ -7,8 +7,6 @@ to its occurrence.
 
 from __future__ import annotations
 
-from typing import Any
-
 from pydantic import Field
 
 from q_guardian.events.base import Event

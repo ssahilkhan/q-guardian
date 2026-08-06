@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import structlog
 
-from q_guardian.risk.data import PolicyDefinition
 from q_guardian.risk.exceptions import PolicyNotFoundError
+
+if TYPE_CHECKING:
+    from q_guardian.risk.data import PolicyDefinition
 
 logger = structlog.get_logger("risk.policy_registry")
 

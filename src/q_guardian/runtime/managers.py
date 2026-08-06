@@ -20,7 +20,6 @@ from q_guardian.runtime.models import (
     MemoryAccess,
     ToolInvocation,
 )
-from q_guardian.utils.uuid_utils import generate_uuid
 
 logger = structlog.get_logger("runtime.managers")
 
@@ -164,10 +163,7 @@ class SessionManager:
         Returns:
             List of active sessions.
         """
-        return [
-            s for s in self._sessions.values()
-            if s.status == SessionStatus.OPEN
-        ]
+        return [s for s in self._sessions.values() if s.status == SessionStatus.OPEN]
 
     @property
     def session_count(self) -> int:
@@ -215,7 +211,7 @@ class RequestManager:
         self._requests[request.request_id] = request
         self._history.append(request.request_id)
         if len(self._history) > self._max_history:
-            self._history = self._history[-self._max_history:]
+            self._history = self._history[-self._max_history :]
         logger.info("request_tracked", request_id=request.request_id)
 
     async def complete_request(
@@ -377,16 +373,14 @@ class ToolExecutionTracker:
             return None
 
         invocation.completed_at = datetime.now(UTC)
-        invocation.duration = (
-            invocation.completed_at - invocation.started_at
-        ).total_seconds()
+        invocation.duration = (invocation.completed_at - invocation.started_at).total_seconds()
         invocation.result = result
         invocation.success = success
         invocation.error = error
 
         self._history.append(invocation)
         if len(self._history) > self._max_history:
-            self._history = self._history[-self._max_history:]
+            self._history = self._history[-self._max_history :]
 
         return invocation
 
@@ -421,11 +415,7 @@ class ToolExecutionTracker:
         total = len(self._history)
         successful = sum(1 for i in self._history if i.success)
         failed = total - successful
-        avg_duration = (
-            sum(i.duration for i in self._history) / total
-            if total > 0
-            else 0.0
-        )
+        avg_duration = sum(i.duration for i in self._history) / total if total > 0 else 0.0
         return {
             "total": total,
             "successful": successful,
@@ -473,9 +463,7 @@ class MemoryTracker:
         """
         self._history: list[MemoryAccess] = []
         self._max_history = max_history
-        self._operation_counts: dict[MemoryOperation, int] = {
-            op: 0 for op in MemoryOperation
-        }
+        self._operation_counts: dict[MemoryOperation, int] = dict.fromkeys(MemoryOperation, 0)
 
     def record_access(
         self,
@@ -511,11 +499,9 @@ class MemoryTracker:
             metadata=metadata or {},
         )
         self._history.append(access)
-        self._operation_counts[operation] = (
-            self._operation_counts.get(operation, 0) + 1
-        )
+        self._operation_counts[operation] = self._operation_counts.get(operation, 0) + 1
         if len(self._history) > self._max_history:
-            self._history = self._history[-self._max_history:]
+            self._history = self._history[-self._max_history :]
         return access
 
     def record_read(
@@ -653,4 +639,4 @@ class MemoryTracker:
     async def clear(self) -> None:
         """Clear all tracking data."""
         self._history.clear()
-        self._operation_counts = {op: 0 for op in MemoryOperation}
+        self._operation_counts = dict.fromkeys(MemoryOperation, 0)

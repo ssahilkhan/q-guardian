@@ -9,6 +9,6 @@ from q_guardian.events.bus import EventBus
 
 __all__ = [
     "Event",
-    "EventHandler",
     "EventBus",
+    "EventHandler",
 ]

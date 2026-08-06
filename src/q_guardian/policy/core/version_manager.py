@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import structlog
 
@@ -74,7 +74,7 @@ class VersionManager:
         restored = pv.policy_snapshot.model_copy(deep=True)
         # Bump the version to indicate a new version was created from rollback
         restored.version = self._bump_version(restored.version, "patch")
-        restored.updated_at = datetime.now(timezone.utc)
+        restored.updated_at = datetime.now(UTC)
         logger.info(
             "version_rollback",
             policy_id=policy_id,
@@ -91,7 +91,7 @@ class VersionManager:
         """Bump the policy version. Returns the new version string."""
         new_version = self._bump_version(policy.version, level)
         policy.version = new_version
-        policy.updated_at = datetime.now(timezone.utc)
+        policy.updated_at = datetime.now(UTC)
         return new_version
 
     @staticmethod

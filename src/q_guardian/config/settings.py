@@ -6,7 +6,7 @@ multiple environment profiles (development, testing, production).
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 from functools import lru_cache
 from typing import Any
 
@@ -14,7 +14,7 @@ from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-class Environment(str, Enum):
+class Environment(StrEnum):
     """Supported application environments."""
 
     DEVELOPMENT = "development"
@@ -34,7 +34,7 @@ class AppSettings(BaseSettings):
     )
 
     name: str = Field(default="Q-Guardian", description="Application name")
-    version: str = Field(default="1.0.0", description="Application version")
+    version: str = Field(default="1.1.0", description="Application version")
     environment: Environment = Field(
         default=Environment.DEVELOPMENT, description="Runtime environment"
     )
@@ -71,9 +71,7 @@ class DatabaseSettings(BaseSettings):
         extra="ignore",
     )
 
-    url: str = Field(
-        default="mongodb://localhost:27017", description="MongoDB connection URL"
-    )
+    url: str = Field(default="mongodb://localhost:27017", description="MongoDB connection URL")
     database: str = Field(default="q_guardian", description="Database name")
     min_pool_size: int = Field(default=1, description="Minimum connection pool size")
     max_pool_size: int = Field(default=10, description="Maximum connection pool size")

@@ -9,9 +9,10 @@ any specific algorithm.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from q_guardian.quantum.fusion.prediction import ThreatPrediction
+if TYPE_CHECKING:
+    from q_guardian.quantum.fusion.prediction import ThreatPrediction
 
 
 class PredictionProvider(ABC):
@@ -74,6 +75,7 @@ class PredictionProvider(ABC):
         Args:
             training_data: List of {'prompt': str, 'label': str, ...} dicts.
         """
+        return None
 
     def health(self) -> dict[str, Any]:
         """Health status of this provider."""

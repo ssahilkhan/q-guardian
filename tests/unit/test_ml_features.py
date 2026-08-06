@@ -4,29 +4,28 @@ from __future__ import annotations
 
 import pytest
 
-from q_guardian.ml.config import MLConfig
 from q_guardian.ml.feature_pipeline import MLFeatureProvider
 from q_guardian.security.models import PromptFeatures
 
 
 def _make_features(**overrides) -> PromptFeatures:
-    defaults = dict(
-        length=100,
-        word_count=20,
-        line_count=3,
-        token_estimate=25,
-        entropy=3.5,
-        uppercase_ratio=0.1,
-        digit_ratio=0.05,
-        special_char_count=5,
-        code_block_count=1,
-        url_count=0,
-        markdown_usage=True,
-        has_unicode_escaped=False,
-        has_html_tags=False,
-        suspicious_keywords=["ignore"],
-        repeated_patterns=[],
-    )
+    defaults = {
+        "length": 100,
+        "word_count": 20,
+        "line_count": 3,
+        "token_estimate": 25,
+        "entropy": 3.5,
+        "uppercase_ratio": 0.1,
+        "digit_ratio": 0.05,
+        "special_char_count": 5,
+        "code_block_count": 1,
+        "url_count": 0,
+        "markdown_usage": True,
+        "has_unicode_escaped": False,
+        "has_html_tags": False,
+        "suspicious_keywords": ["ignore"],
+        "repeated_patterns": [],
+    }
     defaults.update(overrides)
     return PromptFeatures(**defaults)
 

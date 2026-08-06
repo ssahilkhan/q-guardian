@@ -2,15 +2,16 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import pytest
 
 from q_guardian.core.framework_state import FrameworkState
-from q_guardian.events.base import Event
-from q_guardian.framework.config import FrameworkConfig
 from q_guardian.plugins.base import Plugin
 from q_guardian.sdk.guardian import Guardian
+
+if TYPE_CHECKING:
+    from q_guardian.events.base import Event
 
 
 class LifecycleTrackerPlugin(Plugin):

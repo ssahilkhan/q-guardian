@@ -3,15 +3,15 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import structlog
 
 from q_guardian.ml.base import BaseThreatModel
-from q_guardian.quantum.data import QuantumModelMetadata, QuantumInferenceResult
-from q_guardian.quantum.enums import QuantumModelType
-from q_guardian.security.extensibility import DetectionResult, ThreatClassifier
-from q_guardian.security.models import PromptFeatures
+from q_guardian.security.extensibility import ThreatClassifier
+
+if TYPE_CHECKING:
+    from q_guardian.quantum.data import QuantumInferenceResult, QuantumModelMetadata
 
 logger = structlog.get_logger("quantum.base_model")
 

@@ -64,7 +64,7 @@ pip install q-guardian[dev]
 
 ```python
 import q_guardian
-print(q_guardian.__version__)  # 1.0.0
+print(q_guardian.__version__)  # 1.1.0
 ```
 
 ---

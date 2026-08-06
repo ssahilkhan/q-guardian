@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from q_guardian.ml.data import (
     DatasetEntry,
     EvaluationMetrics,
@@ -18,7 +16,9 @@ from q_guardian.security.enums import PromptCategory, PromptSeverity
 
 class TestModelMetadata:
     def test_defaults(self) -> None:
-        meta = ModelMetadata(name="test", model_type=ModelType.CLASSIFICATION, backend=ModelBackend.SKLEARN)
+        meta = ModelMetadata(
+            name="test", model_type=ModelType.CLASSIFICATION, backend=ModelBackend.SKLEARN
+        )
         assert meta.name == "test"
         assert meta.model_type == ModelType.CLASSIFICATION
         assert meta.backend == ModelBackend.SKLEARN
@@ -29,7 +29,9 @@ class TestModelMetadata:
         assert meta.feature_count == 0
 
     def test_roundtrip(self) -> None:
-        meta = ModelMetadata(name="test", model_type=ModelType.ANOMALY_DETECTION, backend=ModelBackend.SKLEARN)
+        meta = ModelMetadata(
+            name="test", model_type=ModelType.ANOMALY_DETECTION, backend=ModelBackend.SKLEARN
+        )
         data = meta.model_dump()
         restored = ModelMetadata.model_validate(data)
         assert restored.name == meta.name
@@ -93,8 +95,14 @@ class TestEvaluationMetrics:
 
     def test_full(self) -> None:
         em = EvaluationMetrics(
-            accuracy=0.95, precision=0.93, recall=0.97, f1_score=0.95,
-            true_positives=90, true_negatives=85, false_positives=5, false_negatives=3,
+            accuracy=0.95,
+            precision=0.93,
+            recall=0.97,
+            f1_score=0.95,
+            true_positives=90,
+            true_negatives=85,
+            false_positives=5,
+            false_negatives=3,
         )
         assert em.accuracy == 0.95
         assert em.true_positives == 90
@@ -102,7 +110,12 @@ class TestEvaluationMetrics:
 
 class TestDatasetEntry:
     def test_defaults(self) -> None:
-        entry = DatasetEntry(prompt="test prompt", label=PromptCategory.BENIGN if hasattr(PromptCategory, 'BENIGN') else PromptCategory.UNKNOWN)
+        entry = DatasetEntry(
+            prompt="test prompt",
+            label=PromptCategory.BENIGN
+            if hasattr(PromptCategory, "BENIGN")
+            else PromptCategory.UNKNOWN,
+        )
         assert entry.prompt == "test prompt"
         assert entry.is_malicious is False
 

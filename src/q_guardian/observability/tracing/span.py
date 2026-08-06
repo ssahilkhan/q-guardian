@@ -46,19 +46,13 @@ class SpanManager:
             status_code=span.status.code,
         )
 
-    def add_event(
-        self, span: Span, name: str, attributes: dict[str, Any] | None = None
-    ) -> None:
+    def add_event(self, span: Span, name: str, attributes: dict[str, Any] | None = None) -> None:
         span.add_event(name=name, attributes=attributes)
-        self._logger.debug(
-            "span_event_added", span_id=span.span_id, event_name=name
-        )
+        self._logger.debug("span_event_added", span_id=span.span_id, event_name=name)
 
     def set_attribute(self, span: Span, key: str, value: Any) -> None:
         span.set_attribute(key=key, value=value)
-        self._logger.debug(
-            "span_attribute_set", span_id=span.span_id, key=key
-        )
+        self._logger.debug("span_attribute_set", span_id=span.span_id, key=key)
 
     def get_duration_ms(self, span: Span) -> float | None:
         return span.duration_ms

@@ -11,7 +11,6 @@ from __future__ import annotations
 import math
 import re
 import unicodedata
-from typing import Any
 
 import structlog
 
@@ -147,16 +146,12 @@ class PromptValidator:
 
         # Length check
         if len(prompt) > self._max_length:
-            errors.append(
-                f"Prompt exceeds maximum length: {len(prompt)} > {self._max_length}"
-            )
+            errors.append(f"Prompt exceeds maximum length: {len(prompt)} > {self._max_length}")
 
         # Line count check
         line_count = prompt.count("\n") + 1
         if line_count > self._max_lines:
-            errors.append(
-                f"Prompt exceeds maximum lines: {line_count} > {self._max_lines}"
-            )
+            errors.append(f"Prompt exceeds maximum lines: {line_count} > {self._max_lines}")
 
         # Encoding check (detect replacement characters)
         if "\ufffd" in prompt:
@@ -262,9 +257,7 @@ class PromptFeatureExtractor:
             r"^\s*\d+\.\s",  # numbered lists
             r"`[^`]+`",  # inline code
         ]
-        markdown_usage = any(
-            re.search(pat, prompt, re.MULTILINE) for pat in markdown_patterns
-        )
+        markdown_usage = any(re.search(pat, prompt, re.MULTILINE) for pat in markdown_patterns)
 
         # Repeated patterns (words repeated 3+ times)
         repeated = self._find_repeated_patterns(prompt)
@@ -274,9 +267,7 @@ class PromptFeatureExtractor:
 
         # Suspicious keywords
         prompt_lower = prompt.lower()
-        matched_keywords = [
-            kw for kw in self._suspicious_keywords if kw in prompt_lower
-        ]
+        matched_keywords = [kw for kw in self._suspicious_keywords if kw in prompt_lower]
 
         # Unicode escapes
         has_unicode_escaped = bool(re.search(r"\\u[0-9a-fA-F]{4}", prompt))
@@ -287,17 +278,11 @@ class PromptFeatureExtractor:
         # Uppercase ratio
         alpha_chars = [c for c in prompt if c.isalpha()]
         uppercase_ratio = (
-            sum(1 for c in alpha_chars if c.isupper()) / len(alpha_chars)
-            if alpha_chars
-            else 0.0
+            sum(1 for c in alpha_chars if c.isupper()) / len(alpha_chars) if alpha_chars else 0.0
         )
 
         # Digit ratio
-        digit_ratio = (
-            sum(1 for c in prompt if c.isdigit()) / char_count
-            if char_count > 0
-            else 0.0
-        )
+        digit_ratio = sum(1 for c in prompt if c.isdigit()) / char_count if char_count > 0 else 0.0
 
         return PromptFeatures(
             length=char_count,
@@ -509,7 +494,7 @@ class RuleEngine:
             rules: List of detection rules. If None, uses defaults.
         """
         self._rules: dict[str, PromptRule] = {}
-        for rule in (rules or DEFAULT_RULES):
+        for rule in rules or DEFAULT_RULES:
             self._rules[rule.rule_id] = rule
 
     def add_rule(self, rule: PromptRule) -> None:

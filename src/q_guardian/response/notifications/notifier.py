@@ -8,7 +8,6 @@ import structlog
 
 from q_guardian.response.data import NotificationRecord
 from q_guardian.response.enums import NotificationChannel, NotificationPriority
-from q_guardian.response.exceptions import NotificationError
 
 logger = structlog.get_logger(__name__)
 

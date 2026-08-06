@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from q_guardian.ml.evaluation.metrics import BenchmarkMetrics, ResearchMetrics
 
 

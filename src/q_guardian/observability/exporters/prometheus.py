@@ -2,14 +2,15 @@ from __future__ import annotations
 
 import re
 from datetime import UTC, datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import structlog
 
-from q_guardian.observability.data import Metric
 from q_guardian.observability.enums import ExporterType
 from q_guardian.observability.exceptions import ExporterError
-from q_guardian.utils.uuid_utils import generate_uuid
+
+if TYPE_CHECKING:
+    from q_guardian.observability.data import Metric
 
 logger = structlog.get_logger("observability.exporters.prometheus")
 
@@ -209,14 +210,14 @@ class PrometheusExporter:
                                 "type": None,
                                 "samples": [],
                             }
-                        result[metric_name]["samples"].append({
-                            "labels": labels,
-                            "value": float(value_str),
-                        })
-                    else:
-                        match_simple = re.match(
-                            r"^([a-zA-Z_:][a-zA-Z0-9_:]*)\s+(.+)$", line
+                        result[metric_name]["samples"].append(
+                            {
+                                "labels": labels,
+                                "value": float(value_str),
+                            }
                         )
+                    else:
+                        match_simple = re.match(r"^([a-zA-Z_:][a-zA-Z0-9_:]*)\s+(.+)$", line)
                         if match_simple:
                             metric_name = match_simple.group(1)
                             value_str = match_simple.group(2)
@@ -226,10 +227,12 @@ class PrometheusExporter:
                                     "type": None,
                                     "samples": [],
                                 }
-                            result[metric_name]["samples"].append({
-                                "labels": {},
-                                "value": float(value_str),
-                            })
+                            result[metric_name]["samples"].append(
+                                {
+                                    "labels": {},
+                                    "value": float(value_str),
+                                }
+                            )
             self._logger.debug(
                 "exposition_parsed",
                 metric_count=len(result),

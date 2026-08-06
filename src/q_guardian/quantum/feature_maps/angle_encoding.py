@@ -2,15 +2,14 @@
 
 from __future__ import annotations
 
-import math
 from typing import Any
 
 import structlog
 
-from q_guardian.quantum.feature_maps.base import EncodedCircuit, QuantumFeatureMap
-from q_guardian.quantum.enums import EncodingType
 from q_guardian.quantum.config import QuantumFeatureMapConfig
+from q_guardian.quantum.enums import EncodingType
 from q_guardian.quantum.exceptions import EncodingDimensionError
+from q_guardian.quantum.feature_maps.base import EncodedCircuit, QuantumFeatureMap
 
 logger = structlog.get_logger("quantum.angle_encoding")
 

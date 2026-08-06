@@ -1,6 +1,5 @@
 """Tests for RiskAssessmentEngine."""
 
-import pytest
 from q_guardian.risk.assessment.risk_engine import RiskAssessmentEngine
 from q_guardian.risk.config import RiskConfig
 from q_guardian.risk.data import NormalizedPrediction, RiskAssessment
@@ -8,7 +7,12 @@ from q_guardian.risk.enums import RiskLevel
 
 
 def _make_prediction(**kwargs) -> NormalizedPrediction:
-    defaults = {"predicted_label": "threat", "confidence": 0.8, "risk_score": 0.7, "provider_id": "test-provider"}
+    defaults = {
+        "predicted_label": "threat",
+        "confidence": 0.8,
+        "risk_score": 0.7,
+        "provider_id": "test-provider",
+    }
     defaults.update(kwargs)
     return NormalizedPrediction(**defaults)
 

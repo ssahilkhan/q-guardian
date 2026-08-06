@@ -8,7 +8,7 @@ import pytest
 
 from q_guardian.ml.base import BaseThreatModel, ModelRegistry
 from q_guardian.ml.data import ModelMetadata
-from q_guardian.ml.enums import ModelBackend, ModelStatus, ModelType
+from q_guardian.ml.enums import ModelBackend, ModelType
 
 
 class DummyThreatModel(BaseThreatModel):

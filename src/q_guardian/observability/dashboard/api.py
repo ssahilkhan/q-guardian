@@ -1,17 +1,10 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import structlog
 
-from q_guardian.observability.data import (
-    DashboardSnapshot,
-    PerformanceMetrics,
-    ResourceMetrics,
-    RuntimeStatistics,
-    TimeWindow,
-)
 from q_guardian.observability.dashboard.dto import (
     AlertsResponseDTO,
     AnalyticsResponseDTO,
@@ -28,6 +21,11 @@ from q_guardian.observability.dashboard.dto import (
 from q_guardian.observability.dashboard.serializers import DashboardSerializer
 from q_guardian.observability.exceptions import DashboardError
 from q_guardian.utils.uuid_utils import generate_uuid
+
+if TYPE_CHECKING:
+    from q_guardian.observability.data import (
+        TimeWindow,
+    )
 
 logger = structlog.get_logger("observability.dashboard.api")
 
@@ -58,14 +56,11 @@ class DashboardAPI:
             metrics_list: list[dict[str, Any]] = []
             if self._metrics_engine is not None:
                 all_metrics = self._metrics_engine.get_all_metrics()
-                for name, metric in all_metrics.items():
+                for _name, metric in all_metrics.items():
                     metric_dict = metric.model_dump(mode="json")
-                    if query is not None:
-                        if not self._matches_query(metric_dict, query):
-                            continue
-                    metrics_list.append(
-                        self._serializer.serialize_metric(metric_dict)
-                    )
+                    if query is not None and not self._matches_query(metric_dict, query):
+                        continue
+                    metrics_list.append(self._serializer.serialize_metric(metric_dict))
             dto = MetricsResponseDTO(
                 metrics=metrics_list,
                 total=len(metrics_list),
@@ -78,7 +73,7 @@ class DashboardAPI:
             raise DashboardError(
                 message="Failed to retrieve metrics",
                 details={"error": str(e)},
-            )
+            ) from e
 
     def get_health(self) -> dict[str, Any]:
         try:
@@ -92,9 +87,7 @@ class DashboardAPI:
                 overall_score = report.overall_score
                 for component in report.components:
                     comp_dict = component.model_dump(mode="json")
-                    components.append(
-                        self._serializer.serialize_health(comp_dict)
-                    )
+                    components.append(self._serializer.serialize_health(comp_dict))
 
             dto = HealthResponseDTO(
                 overall_status=overall_status,
@@ -109,11 +102,9 @@ class DashboardAPI:
             raise DashboardError(
                 message="Failed to retrieve health status",
                 details={"error": str(e)},
-            )
+            ) from e
 
-    def get_analytics(
-        self, time_window: TimeWindow | None = None
-    ) -> dict[str, Any]:
+    def get_analytics(self, time_window: TimeWindow | None = None) -> dict[str, Any]:
         try:
             report_id = generate_uuid()
             title = "Q-Guardian Analytics Report"
@@ -149,7 +140,7 @@ class DashboardAPI:
             raise DashboardError(
                 message="Failed to retrieve analytics",
                 details={"error": str(e)},
-            )
+            ) from e
 
     def get_runtime(self) -> dict[str, Any]:
         try:
@@ -181,7 +172,7 @@ class DashboardAPI:
             raise DashboardError(
                 message="Failed to retrieve runtime statistics",
                 details={"error": str(e)},
-            )
+            ) from e
 
     def get_providers(self) -> dict[str, Any]:
         try:
@@ -192,10 +183,12 @@ class DashboardAPI:
                 accuracy = self._analytics_engine.get_provider_accuracy()
 
             for name, acc in accuracy.items():
-                providers.append({
-                    "name": name,
-                    "accuracy": acc,
-                })
+                providers.append(
+                    {
+                        "name": name,
+                        "accuracy": acc,
+                    }
+                )
 
             dto = ProvidersResponseDTO(
                 providers=providers,
@@ -209,7 +202,7 @@ class DashboardAPI:
             raise DashboardError(
                 message="Failed to retrieve provider data",
                 details={"error": str(e)},
-            )
+            ) from e
 
     def get_incidents(self, limit: int = 50) -> dict[str, Any]:
         try:
@@ -241,7 +234,7 @@ class DashboardAPI:
             raise DashboardError(
                 message="Failed to retrieve incidents",
                 details={"error": str(e)},
-            )
+            ) from e
 
     def get_responses(self, limit: int = 50) -> dict[str, Any]:
         try:
@@ -266,7 +259,7 @@ class DashboardAPI:
             raise DashboardError(
                 message="Failed to retrieve response data",
                 details={"error": str(e)},
-            )
+            ) from e
 
     def get_policies(self) -> dict[str, Any]:
         try:
@@ -290,27 +283,26 @@ class DashboardAPI:
             raise DashboardError(
                 message="Failed to retrieve policy data",
                 details={"error": str(e)},
-            )
+            ) from e
 
     def get_plugins(self) -> dict[str, Any]:
         try:
             plugins: list[dict[str, Any]] = []
             total = 0
 
-            if self._plugin_registry is not None:
-                if hasattr(self._plugin_registry, "list_plugins"):
-                    raw_plugins = self._plugin_registry.list_plugins()
-                    for plugin in raw_plugins:
-                        if isinstance(plugin, dict):
-                            plugins.append(self._serializer.serialize_plugin(plugin))
-                        else:
-                            plugin_dict = {
-                                "name": getattr(plugin, "name", str(plugin)),
-                                "version": getattr(plugin, "version", ""),
-                                "description": getattr(plugin, "description", ""),
-                            }
-                            plugins.append(self._serializer.serialize_plugin(plugin_dict))
-                    total = len(plugins)
+            if self._plugin_registry is not None and hasattr(self._plugin_registry, "list_plugins"):
+                raw_plugins = self._plugin_registry.list_plugins()
+                for plugin in raw_plugins:
+                    if isinstance(plugin, dict):
+                        plugins.append(self._serializer.serialize_plugin(plugin))
+                    else:
+                        plugin_dict = {
+                            "name": getattr(plugin, "name", str(plugin)),
+                            "version": getattr(plugin, "version", ""),
+                            "description": getattr(plugin, "description", ""),
+                        }
+                        plugins.append(self._serializer.serialize_plugin(plugin_dict))
+                total = len(plugins)
 
             dto = PluginsResponseDTO(
                 plugins=plugins,
@@ -324,7 +316,7 @@ class DashboardAPI:
             raise DashboardError(
                 message="Failed to retrieve plugin data",
                 details={"error": str(e)},
-            )
+            ) from e
 
     def get_alerts(self) -> dict[str, Any]:
         try:
@@ -357,7 +349,7 @@ class DashboardAPI:
             raise DashboardError(
                 message="Failed to retrieve alert data",
                 details={"error": str(e)},
-            )
+            ) from e
 
     def get_snapshot(self) -> dict[str, Any]:
         try:
@@ -402,7 +394,7 @@ class DashboardAPI:
             raise DashboardError(
                 message="Failed to retrieve dashboard snapshot",
                 details={"error": str(e)},
-            )
+            ) from e
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -423,10 +415,9 @@ class DashboardAPI:
                 return False
             if key == "unit" and metric_dict.get("unit") != value:
                 return False
-            if key == "labels":
-                if isinstance(value, dict):
-                    metric_labels = metric_dict.get("labels", {})
-                    for lk, lv in value.items():
-                        if metric_labels.get(lk) != lv:
-                            return False
+            if key == "labels" and isinstance(value, dict):
+                metric_labels = metric_dict.get("labels", {})
+                for lk, lv in value.items():
+                    if metric_labels.get(lk) != lv:
+                        return False
         return True

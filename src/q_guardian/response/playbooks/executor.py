@@ -2,14 +2,15 @@
 
 from __future__ import annotations
 
-import time
-from typing import Any, Callable
+from typing import TYPE_CHECKING, Any
 
 import structlog
 
-from q_guardian.response.data import PlaybookDefinition, PlaybookExecution
 from q_guardian.response.engine.orchestration_engine import OrchestrationEngine
 from q_guardian.response.exceptions import PlaybookError
+
+if TYPE_CHECKING:
+    from q_guardian.response.data import PlaybookDefinition, PlaybookExecution
 
 logger = structlog.get_logger(__name__)
 
@@ -34,9 +35,7 @@ class PlaybookExecutor:
         if not playbook.steps:
             raise PlaybookError(f"Playbook '{playbook.name}' has no steps")
 
-        execution = self._engine.execute_playbook(
-            playbook, context, correlation_id=correlation_id
-        )
+        execution = self._engine.execute_playbook(playbook, context, correlation_id=correlation_id)
         self._executions.append(execution)
         return execution
 

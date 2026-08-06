@@ -65,8 +65,8 @@ class StatisticsEngine:
         if n == 1:
             return sorted_vals[0]
         rank = (p / 100.0) * (n - 1)
-        lower_idx = int(math.floor(rank))
-        upper_idx = int(math.ceil(rank))
+        lower_idx = math.floor(rank)
+        upper_idx = math.ceil(rank)
         if lower_idx == upper_idx:
             return float(sorted_vals[lower_idx])
         fraction = rank - lower_idx
@@ -101,7 +101,7 @@ class StatisticsEngine:
         n = len(x_values)
         sum_x = sum(x_values)
         sum_y = sum(y_values)
-        sum_xy = sum(x * y for x, y in zip(x_values, y_values))
+        sum_xy = sum(x * y for x, y in zip(x_values, y_values, strict=False))
         sum_x_sq = sum(x * x for x in x_values)
         denominator = n * sum_x_sq - sum_x * sum_x
         if denominator == 0:
@@ -114,8 +114,7 @@ class StatisticsEngine:
             r_squared = 0.0
         else:
             ss_res = sum(
-                (y - (slope * x + intercept)) ** 2
-                for x, y in zip(x_values, y_values)
+                (y - (slope * x + intercept)) ** 2 for x, y in zip(x_values, y_values, strict=False)
             )
             r_squared = 1.0 - (ss_res / ss_tot)
         return slope, intercept, r_squared
@@ -132,9 +131,7 @@ class StatisticsEngine:
         return result
 
     @staticmethod
-    def exponential_moving_average(
-        values: list[float], alpha: float = 0.3
-    ) -> list[float]:
+    def exponential_moving_average(values: list[float], alpha: float = 0.3) -> list[float]:
         if not values:
             return []
         result: list[float] = [values[0]]

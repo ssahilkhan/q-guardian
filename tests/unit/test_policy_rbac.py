@@ -2,9 +2,9 @@
 
 import pytest
 
-from q_guardian.policy.rbac import RBACManager
 from q_guardian.policy.enums import Permission
 from q_guardian.policy.exceptions import RBACError
+from q_guardian.policy.rbac import RBACManager
 
 
 class TestRBACManager:

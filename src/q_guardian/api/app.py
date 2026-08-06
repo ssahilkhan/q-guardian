@@ -7,7 +7,7 @@ exception handlers, routes, and lifecycle events.
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator
+from typing import TYPE_CHECKING
 
 import structlog
 from fastapi import FastAPI
@@ -24,6 +24,9 @@ from q_guardian.middleware.exception import ExceptionLoggingMiddleware
 from q_guardian.middleware.timing import ResponseTimingMiddleware
 from q_guardian.security.cors import get_cors_middleware
 from q_guardian.security.headers import SecurityHeadersMiddleware
+
+if TYPE_CHECKING:
+    from collections.abc import AsyncGenerator
 
 logger = structlog.get_logger("app")
 
@@ -89,7 +92,7 @@ def create_app() -> FastAPI:
     Returns:
         Configured FastAPI application instance.
     """
-    settings = get_settings()
+    get_settings()
 
     app = FastAPI(
         title=APP_TITLE,

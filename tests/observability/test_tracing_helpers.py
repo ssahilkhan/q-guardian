@@ -1,6 +1,5 @@
-from datetime import UTC, datetime
-
 import pytest
+from pydantic import ValidationError
 
 from q_guardian.observability.data import Span, SpanStatus
 from q_guardian.observability.enums import SpanKind
@@ -158,6 +157,7 @@ class TestCorrelationManagerLinkTrace:
 class TestCorrelationManagerThreadSafety:
     def test_thread_local_isolation(self):
         import threading
+
         mgr = CorrelationManager()
 
         def set_and_get():
@@ -213,11 +213,13 @@ class TestTraceContextToDict:
 
 class TestTraceContextFromDict:
     def test_from_dict(self):
-        ctx = TraceContext.from_dict({
-            "trace_id": "trace-1",
-            "correlation_id": "corr-1",
-            "span_id": "span-1",
-        })
+        ctx = TraceContext.from_dict(
+            {
+                "trace_id": "trace-1",
+                "correlation_id": "corr-1",
+                "span_id": "span-1",
+            }
+        )
         assert ctx.trace_id == "trace-1"
         assert ctx.correlation_id == "corr-1"
         assert ctx.current_span_id == "span-1"
@@ -232,5 +234,5 @@ class TestTraceContextFromDict:
 class TestTraceContextProperties:
     def test_trace_context_is_frozen(self):
         ctx = TraceContext(trace_id="trace-1")
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             ctx.trace_id = "new-trace"

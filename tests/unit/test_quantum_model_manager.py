@@ -2,15 +2,15 @@
 
 from __future__ import annotations
 
-import pytest
 import numpy as np
+import pytest
 
-from q_guardian.quantum.models.manager import QuantumModelManager, ModelRegistration
-from q_guardian.quantum.models.qsvm import QSVMModel
-from q_guardian.quantum.feature_maps.angle_encoding import AngleEncodingMap
-from q_guardian.quantum.kernels.quantum_kernel import QuantumKernelEstimator
 from q_guardian.quantum.backends.simulator import LocalSimulatorBackend
 from q_guardian.quantum.enums import QuantumModelType
+from q_guardian.quantum.feature_maps.angle_encoding import AngleEncodingMap
+from q_guardian.quantum.kernels.quantum_kernel import QuantumKernelEstimator
+from q_guardian.quantum.models.manager import QuantumModelManager
+from q_guardian.quantum.models.qsvm import QSVMModel
 
 
 @pytest.fixture
@@ -46,10 +46,10 @@ def qsvm2(kernel: QuantumKernelEstimator, feature_map: AngleEncodingMap) -> QSVM
 @pytest.fixture
 def trained_qsvm(kernel: QuantumKernelEstimator, feature_map: AngleEncodingMap) -> QSVMModel:
     rng = np.random.default_rng(42)
-    X = rng.uniform(-np.pi, np.pi, size=(20, 4)).tolist()
+    x = rng.uniform(-np.pi, np.pi, size=(20, 4)).tolist()
     y = [0 if i < 10 else 1 for i in range(20)]
     qsvm = QSVMModel(kernel=kernel, feature_map=feature_map, name="qsvm-trained")
-    qsvm.train(X, y)
+    qsvm.train(x, y)
     return qsvm
 
 
@@ -119,7 +119,9 @@ class TestManagerListModels:
         assert "qsvm-1" in names
         assert "qsvm-2" in names
 
-    def test_list_trained_only(self, manager: QuantumModelManager, qsvm: QSVMModel, trained_qsvm: QSVMModel):
+    def test_list_trained_only(
+        self, manager: QuantumModelManager, qsvm: QSVMModel, trained_qsvm: QSVMModel
+    ):
         manager.register(qsvm)
         manager.register(trained_qsvm)
         result = manager.list_models(trained_only=True)

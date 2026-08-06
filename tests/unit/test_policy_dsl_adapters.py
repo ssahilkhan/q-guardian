@@ -1,13 +1,14 @@
 """Tests for DSL Adapters (Rego, Cedar, YAML, JSON)."""
 
 import json
+
 import pytest
 
 from q_guardian.policy.adapters import (
-    RegoAdapter,
     CedarAdapter,
-    YAMLAdapter,
     JSONAdapter,
+    RegoAdapter,
+    YAMLAdapter,
     get_adapter,
 )
 from q_guardian.policy.data import AdvancedPolicyDefinition, AdvancedRule, Condition
@@ -51,9 +52,7 @@ block {
             rules=[
                 AdvancedRule(
                     name="block-high",
-                    condition=Condition(
-                        field="score", operator=ComparisonOperator.GTE, value=0.9
-                    ),
+                    condition=Condition(field="score", operator=ComparisonOperator.GTE, value=0.9),
                     action="block",
                 )
             ],
@@ -98,9 +97,7 @@ class TestCedarAdapter:
             name="cedar-export",
             rules=[
                 AdvancedRule(
-                    condition=Condition(
-                        field="risk", operator=ComparisonOperator.GT, value=0.5
-                    ),
+                    condition=Condition(field="risk", operator=ComparisonOperator.GT, value=0.5),
                     action="allow",
                 )
             ],
@@ -144,9 +141,7 @@ rules:
             rules=[
                 AdvancedRule(
                     name="test-rule",
-                    condition=Condition(
-                        field="score", operator=ComparisonOperator.GT, value=0.5
-                    ),
+                    condition=Condition(field="score", operator=ComparisonOperator.GT, value=0.5),
                     action="block",
                 )
             ],
@@ -193,9 +188,7 @@ class TestJSONAdapter:
             rules=[
                 AdvancedRule(
                     name="test",
-                    condition=Condition(
-                        field="score", operator=ComparisonOperator.GT, value=0.5
-                    ),
+                    condition=Condition(field="score", operator=ComparisonOperator.GT, value=0.5),
                     action="block",
                 )
             ],

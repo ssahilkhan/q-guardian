@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
-from q_guardian.response.data import QuarantineRecord
+from typing import TYPE_CHECKING
+
 from q_guardian.response.enums import QuarantineType
-from q_guardian.response.quarantine.quarantine_manager import QuarantineManager
+
+if TYPE_CHECKING:
+    from q_guardian.response.data import QuarantineRecord
+    from q_guardian.response.quarantine.quarantine_manager import QuarantineManager
 
 
 class PluginQuarantine:
@@ -14,7 +18,10 @@ class PluginQuarantine:
         self._manager = manager
 
     def quarantine_plugin(
-        self, plugin_id: str, reason: str = "", correlation_id: str = "",
+        self,
+        plugin_id: str,
+        reason: str = "",
+        correlation_id: str = "",
         duration_seconds: float | None = None,
     ) -> QuarantineRecord:
         return self._manager.quarantine(

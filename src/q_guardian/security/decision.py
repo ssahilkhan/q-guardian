@@ -6,10 +6,12 @@ Currently rule-based only; ML integration is a future extension point.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING
 
 from q_guardian.security.enums import PromptDecision, PromptSeverity
-from q_guardian.security.models import PromptAnalysis, PromptFinding
+
+if TYPE_CHECKING:
+    from q_guardian.security.models import PromptAnalysis, PromptFinding
 
 
 class SecurityDecisionEngine:
@@ -80,7 +82,7 @@ class SecurityDecisionEngine:
         critical = severity_counts.get(PromptSeverity.CRITICAL, 0)
         high = severity_counts.get(PromptSeverity.HIGH, 0)
         medium = severity_counts.get(PromptSeverity.MEDIUM, 0)
-        low = severity_counts.get(PromptSeverity.LOW, 0)
+        severity_counts.get(PromptSeverity.LOW, 0)
 
         # Compute risk score (0-1)
         analysis.risk_score = self._compute_risk_score(findings)
@@ -88,35 +90,23 @@ class SecurityDecisionEngine:
         # Decision cascade
         if self._block_on_critical and critical > 0:
             analysis.decision = PromptDecision.BLOCK
-            analysis.recommendation = (
-                f"BLOCK: {critical} critical severity finding(s) detected."
-            )
+            analysis.recommendation = f"BLOCK: {critical} critical severity finding(s) detected."
         elif high >= self._block_on_high_count:
             analysis.decision = PromptDecision.BLOCK
-            analysis.recommendation = (
-                f"BLOCK: {high} high severity finding(s) exceed threshold."
-            )
+            analysis.recommendation = f"BLOCK: {high} high severity finding(s) exceed threshold."
         elif high >= self._review_on_high_count:
             analysis.decision = PromptDecision.REVIEW
-            analysis.recommendation = (
-                f"REVIEW: {high} high severity finding(s) require review."
-            )
+            analysis.recommendation = f"REVIEW: {high} high severity finding(s) require review."
         elif medium >= self._warn_on_medium_count:
             analysis.decision = PromptDecision.WARN
-            analysis.recommendation = (
-                f"WARN: {medium} medium severity finding(s) detected."
-            )
+            analysis.recommendation = f"WARN: {medium} medium severity finding(s) detected."
         else:
             analysis.decision = PromptDecision.ALLOW
-            analysis.recommendation = (
-                "ALLOW: Findings are low severity; prompt is likely safe."
-            )
+            analysis.recommendation = "ALLOW: Findings are low severity; prompt is likely safe."
 
         return analysis
 
-    def _count_by_severity(
-        self, findings: list[PromptFinding]
-    ) -> dict[PromptSeverity, int]:
+    def _count_by_severity(self, findings: list[PromptFinding]) -> dict[PromptSeverity, int]:
         """Count findings by severity level.
 
         Args:
@@ -158,7 +148,6 @@ class SecurityDecisionEngine:
             total += weight * f.confidence
 
         # Normalize to 0-1 using diminishing returns (log scale)
-        import math
 
         raw = total / len(findings)
         # Apply sigmoid-like scaling for better distribution

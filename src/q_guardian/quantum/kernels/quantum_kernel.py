@@ -2,19 +2,46 @@
 
 from __future__ import annotations
 
-import math
-from typing import Any
+import asyncio
+import threading
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import structlog
 
-from q_guardian.quantum.backends.base import QuantumBackend
 from q_guardian.quantum.data import QuantumCircuitInfo
 from q_guardian.quantum.enums import CircuitType
-from q_guardian.quantum.feature_maps.base import QuantumFeatureMap
 from q_guardian.quantum.kernels.base import QuantumKernel
 
+if TYPE_CHECKING:
+    from q_guardian.quantum.backends.base import QuantumBackend
+    from q_guardian.quantum.feature_maps.base import QuantumFeatureMap
+
 logger = structlog.get_logger("quantum.kernel")
+
+# Process-wide background event loop used to run the (async) backend from
+# synchronous kernel calls. Creating a fresh event loop per kernel
+# evaluation exhausts Windows event-loop resources and deadlocks after
+# thousands of evaluations (observed during K-fold benchmark ablation), so
+# a single background loop is shared for the lifetime of the process.
+_KERNEL_LOOP_LOCK = threading.Lock()
+_KERNEL_LOOP: asyncio.AbstractEventLoop | None = None
+_KERNEL_THREAD: threading.Thread | None = None
+
+
+def _kernel_loop() -> asyncio.AbstractEventLoop:
+    """Return the shared background event loop, starting it on demand."""
+    global _KERNEL_LOOP, _KERNEL_THREAD
+    with _KERNEL_LOOP_LOCK:
+        if _KERNEL_LOOP is None or _KERNEL_LOOP.is_closed():
+            _KERNEL_LOOP = asyncio.new_event_loop()
+            _KERNEL_THREAD = threading.Thread(
+                target=_KERNEL_LOOP.run_forever,
+                name="quantum-kernel-loop",
+                daemon=True,
+            )
+            _KERNEL_THREAD.start()
+        return _KERNEL_LOOP
 
 
 class QuantumKernelEstimator(QuantumKernel):
@@ -58,20 +85,20 @@ class QuantumKernelEstimator(QuantumKernel):
 
     def compute_kernel_matrix(
         self,
-        X1: list[list[float]],
-        X2: list[list[float]] | None = None,
+        x1: list[list[float]],
+        x2: list[list[float]] | None = None,
     ) -> list[list[float]]:
-        symmetric = X2 is None
-        if X2 is None:
-            X2 = X1
+        symmetric = x2 is None
+        if x2 is None:
+            x2 = x1
 
-        n1, n2 = len(X1), len(X2)
+        n1, n2 = len(x1), len(x2)
         matrix = np.zeros((n1, n2), dtype=np.float64)
 
         for i in range(n1):
             start = i if symmetric else 0
             for j in range(start, n2):
-                k_val = self.evaluate(X1[i], X2[j])
+                k_val = self.evaluate(x1[i], x2[j])
                 matrix[i][j] = k_val
                 if symmetric and i != j:
                     matrix[j][i] = k_val
@@ -79,8 +106,10 @@ class QuantumKernelEstimator(QuantumKernel):
         return matrix.tolist()
 
     def evaluate(self, x1: list[float], x2: list[float]) -> float:
-        cache_key = (id(x1) if len(x1) < 50 else hash(tuple(x1)),
-                     id(x2) if len(x2) < 50 else hash(tuple(x2)))
+        cache_key = (
+            id(x1) if len(x1) < 50 else hash(tuple(x1)),
+            id(x2) if len(x2) < 50 else hash(tuple(x2)),
+        )
         if cache_key in self._cache:
             return self._cache[cache_key]
 
@@ -114,11 +143,15 @@ class QuantumKernelEstimator(QuantumKernel):
 
         for gate in circuit1.get("gates", []):
             new_qubits = [q + 1 for q in gate["qubits"]]
-            gates.append({"type": gate["type"], "qubits": new_qubits, "params": gate.get("params", [])})
+            gates.append(
+                {"type": gate["type"], "qubits": new_qubits, "params": gate.get("params", [])}
+            )
 
         for gate in circuit2.get("gates", []):
             new_qubits = [q + 1 + n for q in gate["qubits"]]
-            gates.append({"type": gate["type"], "qubits": new_qubits, "params": gate.get("params", [])})
+            gates.append(
+                {"type": gate["type"], "qubits": new_qubits, "params": gate.get("params", [])}
+            )
 
         # Swap test: H on ancilla, controlled-swap between the two
         # registers, then H on ancilla again.
@@ -134,22 +167,9 @@ class QuantumKernelEstimator(QuantumKernel):
         }
 
     def _execute_kernel_circuit(self, circuit: dict[str, Any]) -> dict[str, float]:
-        import asyncio
-
-        try:
-            loop = asyncio.get_running_loop()
-            import concurrent.futures
-            with concurrent.futures.ThreadPoolExecutor() as pool:
-                future = pool.submit(
-                    asyncio.run,
-                    self._backend.execute_circuit(circuit, shots=self._shots),
-                )
-                result = future.result(timeout=30.0)
-        except RuntimeError:
-            result = asyncio.run(
-                self._backend.execute_circuit(circuit, shots=self._shots)
-            )
-
+        coro = self._backend.execute_circuit(circuit, shots=self._shots)
+        future = asyncio.run_coroutine_threadsafe(coro, _kernel_loop())
+        result = future.result(timeout=30.0)
         return result.probabilities
 
     def get_circuit_info(self) -> QuantumCircuitInfo:

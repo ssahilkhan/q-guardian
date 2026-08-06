@@ -7,7 +7,7 @@ and PluginConfig that all framework plugins must implement.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from enum import Enum
+from enum import StrEnum
 from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -16,7 +16,7 @@ if TYPE_CHECKING:
     from q_guardian.framework.context import FrameworkContext
 
 
-class PluginStatus(str, Enum):
+class PluginStatus(StrEnum):
     """Lifecycle status of a plugin."""
 
     REGISTERED = "registered"
@@ -40,9 +40,7 @@ class PluginMetadata(BaseModel):
     version: str = Field(description="Plugin version string")
     author: str = Field(default="", description="Plugin author")
     description: str = Field(default="", description="Plugin description")
-    dependencies: list[str] = Field(
-        default_factory=list, description="Required plugin names"
-    )
+    dependencies: list[str] = Field(default_factory=list, description="Required plugin names")
     status: PluginStatus = Field(
         default=PluginStatus.REGISTERED, description="Current plugin status"
     )

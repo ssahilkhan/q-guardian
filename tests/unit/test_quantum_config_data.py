@@ -3,18 +3,8 @@
 from __future__ import annotations
 
 import pytest
+from pydantic import ValidationError
 
-from q_guardian.quantum.enums import (
-    BackendStatus,
-    CircuitType,
-    EncodingType,
-    ExecutionStatus,
-    FusionStrategyType,
-    MeasurementBasis,
-    OptimizerType,
-    QuantumBackendType,
-    QuantumModelType,
-)
 from q_guardian.quantum.config import (
     QuantumBackendConfig,
     QuantumConfig,
@@ -32,6 +22,17 @@ from q_guardian.quantum.data import (
     QuantumModelMetadata,
     QuantumTrainingResult,
 )
+from q_guardian.quantum.enums import (
+    BackendStatus,
+    CircuitType,
+    EncodingType,
+    ExecutionStatus,
+    FusionStrategyType,
+    MeasurementBasis,
+    OptimizerType,
+    QuantumBackendType,
+    QuantumModelType,
+)
 from q_guardian.quantum.exceptions import (
     BackendError,
     BackendNotAvailableError,
@@ -43,8 +44,8 @@ from q_guardian.quantum.exceptions import (
     KernelError,
     ModelNotTrainedError,
     QuantumError,
-    TranspilationError,
     TrainingError,
+    TranspilationError,
 )
 
 
@@ -152,9 +153,9 @@ class TestQuantumConfig:
         assert "feature_map" in data
 
     def test_backend_config_validation(self) -> None:
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             QuantumBackendConfig(num_qubits=0)
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             QuantumBackendConfig(shots=0)
 
 

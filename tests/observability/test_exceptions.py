@@ -1,6 +1,4 @@
-import pytest
-
-from q_guardian.exceptions.base import ApplicationException
+from q_guardian.exceptions.base import ApplicationError
 from q_guardian.observability.exceptions import (
     AlertError,
     AnalyticsError,
@@ -35,7 +33,7 @@ class TestObservabilityError:
         assert d["error"]["details"] == {"x": 1}
 
     def test_is_application_exception(self) -> None:
-        assert isinstance(ObservabilityError(), ApplicationException)
+        assert isinstance(ObservabilityError(), ApplicationError)
 
     def test_is_exception(self) -> None:
         assert isinstance(ObservabilityError(), Exception)

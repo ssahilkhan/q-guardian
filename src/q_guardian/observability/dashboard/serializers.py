@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from typing import Any, Callable
+from typing import TYPE_CHECKING, Any
 
 import structlog
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 logger = structlog.get_logger("observability.dashboard.serializers")
 
@@ -22,9 +25,7 @@ class DashboardSerializer:
             "labels": metric.get("labels", {}),
             "latest_value": metric.get("latest_value"),
             "point_count": metric.get("point_count", 0),
-            "points": [
-                self._serialize_metric_point(p) for p in metric.get("points", [])
-            ],
+            "points": [self._serialize_metric_point(p) for p in metric.get("points", [])],
         }
 
     def serialize_health(self, health: dict[str, Any]) -> dict[str, Any]:
@@ -81,9 +82,7 @@ class DashboardSerializer:
             "start_time": self.format_timestamp(trace["start_time"])
             if trace.get("start_time")
             else None,
-            "end_time": self.format_timestamp(trace["end_time"])
-            if trace.get("end_time")
-            else None,
+            "end_time": self.format_timestamp(trace["end_time"]) if trace.get("end_time") else None,
             "duration_ms": trace.get("duration_ms"),
             "span_count": trace.get("span_count", 0),
             "labels": trace.get("labels", {}),
@@ -111,9 +110,7 @@ class DashboardSerializer:
             "top_policies": analytics.get("top_policies", []),
             "most_active_sessions": analytics.get("most_active_sessions", []),
             "most_active_agents": analytics.get("most_active_agents", []),
-            "forecasts": [
-                self._serialize_forecast(f) for f in analytics.get("forecasts", [])
-            ],
+            "forecasts": [self._serialize_forecast(f) for f in analytics.get("forecasts", [])],
             "summary": analytics.get("summary", {}),
         }
 
@@ -139,9 +136,7 @@ class DashboardSerializer:
             "health": snapshot.get("health", {}),
             "resources": snapshot.get("resources", {}),
             "active_alerts_count": snapshot.get("active_alerts_count", 0),
-            "recent_alerts": [
-                self.serialize_alert(a) for a in snapshot.get("recent_alerts", [])
-            ],
+            "recent_alerts": [self.serialize_alert(a) for a in snapshot.get("recent_alerts", [])],
             "top_metrics": snapshot.get("top_metrics", []),
             "metadata": snapshot.get("metadata", {}),
         }

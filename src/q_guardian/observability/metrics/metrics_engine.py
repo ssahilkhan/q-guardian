@@ -11,14 +11,12 @@ import structlog
 from q_guardian.observability.data import (
     AggregatedMetric,
     Metric,
-    MetricPoint,
     TimeWindow,
 )
 from q_guardian.observability.enums import AggregationType, MetricType, MetricUnit
 from q_guardian.observability.exceptions import MetricError
 from q_guardian.observability.metrics.aggregators import MetricAggregator
 from q_guardian.utils.datetime_utils import get_utc_now
-from q_guardian.utils.uuid_utils import generate_uuid
 
 logger = structlog.get_logger("observability.metrics.engine")
 
@@ -68,7 +66,7 @@ class MetricsEngine:
 
     def _trim_points(self, metric: Metric) -> None:
         if len(metric.points) > self._max_points:
-            metric.points = metric.points[-self._max_points:]
+            metric.points = metric.points[-self._max_points :]
 
     def _get_or_create_histogram_buffer(self, name: str) -> deque[float]:
         if name not in self._histogram_buffers:
@@ -88,7 +86,7 @@ class MetricsEngine:
             merged_labels = {**metric.labels, **(labels or {})}
             if not metric.labels:
                 metric.labels = merged_labels
-            point = metric.add_point(value, labels)
+            metric.add_point(value, labels)
             self._trim_points(metric)
             logger.debug(
                 "counter_recorded",
@@ -109,7 +107,7 @@ class MetricsEngine:
             merged_labels = {**metric.labels, **(labels or {})}
             if not metric.labels:
                 metric.labels = merged_labels
-            point = metric.add_point(value, labels)
+            metric.add_point(value, labels)
             self._trim_points(metric)
             logger.debug("gauge_recorded", name=name, value=value)
 
@@ -125,7 +123,7 @@ class MetricsEngine:
             merged_labels = {**metric.labels, **(labels or {})}
             if not metric.labels:
                 metric.labels = merged_labels
-            point = metric.add_point(value, labels)
+            metric.add_point(value, labels)
             self._trim_points(metric)
             buffer = self._get_or_create_histogram_buffer(name)
             buffer.append(value)
@@ -148,7 +146,7 @@ class MetricsEngine:
             merged_labels = {**metric.labels, **(labels or {})}
             if not metric.labels:
                 metric.labels = merged_labels
-            point = metric.add_point(duration_ms, labels)
+            metric.add_point(duration_ms, labels)
             self._trim_points(metric)
             buffer = self._get_or_create_histogram_buffer(name)
             buffer.append(duration_ms)
@@ -228,9 +226,7 @@ class MetricsEngine:
                 return None
             if labels is not None:
                 filtered = [
-                    p
-                    for p in metric.points
-                    if all(p.labels.get(k) == v for k, v in labels.items())
+                    p for p in metric.points if all(p.labels.get(k) == v for k, v in labels.items())
                 ]
                 if not filtered:
                     return None
@@ -288,9 +284,7 @@ class MetricsEngine:
                     and all(p.labels.get(k) == v for k, v in labels.items())
                 ]
             else:
-                values = [
-                    p.value for p in metric.points if window.contains(p.timestamp)
-                ]
+                values = [p.value for p in metric.points if window.contains(p.timestamp)]
             return MetricAggregator.aggregate_rate(values, window_seconds)
 
     def reset(self, name: str | None = None) -> None:

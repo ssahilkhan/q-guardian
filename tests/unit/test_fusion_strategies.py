@@ -2,17 +2,17 @@
 
 from __future__ import annotations
 
-import pytest
 import numpy as np
+import pytest
 
-from q_guardian.quantum.fusion.prediction import ThreatPrediction
-from q_guardian.quantum.fusion.strategies.base import FusedPrediction
-from q_guardian.quantum.fusion.strategies.weighted_voting import WeightedVotingStrategy
-from q_guardian.quantum.fusion.strategies.confidence import ConfidenceFusionStrategy
-from q_guardian.quantum.fusion.strategies.adaptive import AdaptiveFusionStrategy
-from q_guardian.quantum.fusion.strategies.stacking import StackingFusionStrategy
-from q_guardian.quantum.fusion.strategies.bayesian import BayesianFusionStrategy
 from q_guardian.quantum.exceptions import FusionError
+from q_guardian.quantum.fusion.prediction import ThreatPrediction
+from q_guardian.quantum.fusion.strategies.adaptive import AdaptiveFusionStrategy
+from q_guardian.quantum.fusion.strategies.base import FusedPrediction
+from q_guardian.quantum.fusion.strategies.bayesian import BayesianFusionStrategy
+from q_guardian.quantum.fusion.strategies.confidence import ConfidenceFusionStrategy
+from q_guardian.quantum.fusion.strategies.stacking import StackingFusionStrategy
+from q_guardian.quantum.fusion.strategies.weighted_voting import WeightedVotingStrategy
 
 
 def _pred(pid: str, label: str, confidence: float, risk: float = 0.0) -> ThreatPrediction:
@@ -91,10 +91,12 @@ class TestWeightedVotingStrategy:
 
     def test_partial_invalid(self):
         s = WeightedVotingStrategy()
-        result = s.fuse([
-            _pred("a", "benign", 0.8),
-            _invalid_pred("b"),
-        ])
+        result = s.fuse(
+            [
+                _pred("a", "benign", 0.8),
+                _invalid_pred("b"),
+            ]
+        )
         assert result.predicted_label == "benign"
         assert result.num_providers == 1
         assert result.num_failed == 1

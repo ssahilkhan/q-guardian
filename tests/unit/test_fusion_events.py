@@ -2,14 +2,12 @@
 
 from __future__ import annotations
 
-import pytest
-
 from q_guardian.quantum.events import (
+    ConfidenceCalibrationApplied,
     FusionEngineInitialized,
     FusionStrategySwitched,
-    ProviderRegistered,
     ProviderFailed,
-    ConfidenceCalibrationApplied,
+    ProviderRegistered,
 )
 
 

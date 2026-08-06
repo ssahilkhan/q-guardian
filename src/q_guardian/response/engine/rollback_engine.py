@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 import time
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import structlog
 
 from q_guardian.response.data import Checkpoint, RollbackResult
-from q_guardian.response.enums import RollbackTarget
-from q_guardian.response.exceptions import RollbackError
+
+if TYPE_CHECKING:
+    from q_guardian.response.enums import RollbackTarget
 
 logger = structlog.get_logger(__name__)
 
@@ -43,11 +44,7 @@ class RollbackEngine:
         self._checkpoints[checkpoint.checkpoint_id] = checkpoint
 
         # Enforce max checkpoints per target
-        target_checkpoints = [
-            c
-            for c in self._checkpoints.values()
-            if c.target == target
-        ]
+        target_checkpoints = [c for c in self._checkpoints.values() if c.target == target]
         if len(target_checkpoints) > self._max_checkpoints:
             oldest = target_checkpoints[0]
             del self._checkpoints[oldest.checkpoint_id]
@@ -92,11 +89,7 @@ class RollbackEngine:
 
     def rollback_latest(self, target: RollbackTarget) -> RollbackResult:
         """Rollback to the most recent checkpoint for a given target."""
-        target_checkpoints = [
-            c
-            for c in self._checkpoints.values()
-            if c.target == target
-        ]
+        target_checkpoints = [c for c in self._checkpoints.values() if c.target == target]
         if not target_checkpoints:
             return RollbackResult(
                 success=False,
@@ -108,9 +101,7 @@ class RollbackEngine:
     def get_checkpoint(self, checkpoint_id: str) -> Checkpoint | None:
         return self._checkpoints.get(checkpoint_id)
 
-    def list_checkpoints(
-        self, target: RollbackTarget | None = None
-    ) -> list[Checkpoint]:
+    def list_checkpoints(self, target: RollbackTarget | None = None) -> list[Checkpoint]:
         if target:
             return [c for c in self._checkpoints.values() if c.target == target]
         return list(self._checkpoints.values())
@@ -123,11 +114,7 @@ class RollbackEngine:
 
     def clear(self, target: RollbackTarget | None = None) -> None:
         if target:
-            to_remove = [
-                cid
-                for cid, c in self._checkpoints.items()
-                if c.target == target
-            ]
+            to_remove = [cid for cid, c in self._checkpoints.items() if c.target == target]
             for cid in to_remove:
                 del self._checkpoints[cid]
         else:

@@ -7,12 +7,11 @@ from typing import Any
 import pytest
 
 from q_guardian.quantum.backends.base import QuantumBackend
-from q_guardian.quantum.backends.simulator import LocalSimulatorBackend, _LocalCircuit
 from q_guardian.quantum.backends.manager import BackendManager
-from q_guardian.quantum.config import QuantumBackendConfig
-from q_guardian.quantum.enums import BackendStatus, QuantumBackendType
+from q_guardian.quantum.backends.simulator import LocalSimulatorBackend
 from q_guardian.quantum.data import BackendInfo, CircuitResult
-from q_guardian.quantum.exceptions import BackendNotAvailableError, CircuitExecutionError
+from q_guardian.quantum.enums import BackendStatus, QuantumBackendType
+from q_guardian.quantum.exceptions import BackendNotAvailableError
 
 
 class DummyQuantumBackend(QuantumBackend):

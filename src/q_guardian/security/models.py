@@ -40,8 +40,12 @@ class PromptFeatures(BaseModel):
     markdown_usage: bool = Field(default=False, description="Whether markdown syntax is present")
     repeated_patterns: list[str] = Field(default_factory=list, description="Repeated substrings")
     entropy: float = Field(default=0.0, description="Shannon entropy estimate (0-5)")
-    suspicious_keywords: list[str] = Field(default_factory=list, description="Matched suspicious keywords")
-    has_unicode_escaped: bool = Field(default=False, description="Contains unicode escape sequences")
+    suspicious_keywords: list[str] = Field(
+        default_factory=list, description="Matched suspicious keywords"
+    )
+    has_unicode_escaped: bool = Field(
+        default=False, description="Contains unicode escape sequences"
+    )
     has_html_tags: bool = Field(default=False, description="Contains HTML/XML tags")
     uppercase_ratio: float = Field(default=0.0, description="Ratio of uppercase characters")
     digit_ratio: float = Field(default=0.0, description="Ratio of digit characters")
@@ -60,12 +64,8 @@ class PromptFinding(BaseModel):
     finding_id: str = Field(default_factory=generate_uuid, description="Unique finding ID")
     rule_id: str = Field(default="", description="Rule that produced this finding")
     rule_name: str = Field(default="", description="Human-readable rule name")
-    category: PromptCategory = Field(
-        default=PromptCategory.UNKNOWN, description="Finding category"
-    )
-    severity: PromptSeverity = Field(
-        default=PromptSeverity.LOW, description="Finding severity"
-    )
+    category: PromptCategory = Field(default=PromptCategory.UNKNOWN, description="Finding category")
+    severity: PromptSeverity = Field(default=PromptSeverity.LOW, description="Finding severity")
     description: str = Field(default="", description="Description of the finding")
     matched_text: str = Field(default="", description="The text that triggered the match")
     confidence: float = Field(default=0.0, ge=0.0, le=1.0, description="Detection confidence")
@@ -87,12 +87,8 @@ class PromptRule(BaseModel):
     rule_id: str = Field(default_factory=generate_uuid, description="Unique rule ID")
     name: str = Field(description="Rule name")
     description: str = Field(default="", description="Rule description")
-    category: PromptCategory = Field(
-        default=PromptCategory.UNKNOWN, description="Rule category"
-    )
-    severity: PromptSeverity = Field(
-        default=PromptSeverity.MEDIUM, description="Default severity"
-    )
+    category: PromptCategory = Field(default=PromptCategory.UNKNOWN, description="Rule category")
+    severity: PromptSeverity = Field(default=PromptSeverity.MEDIUM, description="Default severity")
     patterns: list[str] = Field(default_factory=list, description="Regex patterns to match")
     keywords: list[str] = Field(default_factory=list, description="Case-insensitive keywords")
     enabled: bool = Field(default=True, description="Whether rule is active")
@@ -117,12 +113,14 @@ class PromptAnalysis(BaseModel):
     validation_status: ValidationStatus = Field(
         default=ValidationStatus.VALID, description="Validation status"
     )
-    validation_errors: list[str] = Field(default_factory=list, description="Validation error messages")
-    features: PromptFeatures = Field(default_factory=PromptFeatures, description="Extracted features")
-    findings: list[PromptFinding] = Field(default_factory=list, description="Detection findings")
-    decision: PromptDecision = Field(
-        default=PromptDecision.ALLOW, description="Security decision"
+    validation_errors: list[str] = Field(
+        default_factory=list, description="Validation error messages"
     )
+    features: PromptFeatures = Field(
+        default_factory=PromptFeatures, description="Extracted features"
+    )
+    findings: list[PromptFinding] = Field(default_factory=list, description="Detection findings")
+    decision: PromptDecision = Field(default=PromptDecision.ALLOW, description="Security decision")
     risk_score: float = Field(default=0.0, ge=0.0, le=1.0, description="Computed risk score")
     recommendation: str = Field(default="", description="Human-readable recommendation")
     processing_time_ms: float = Field(default=0.0, description="Total processing time in ms")
@@ -140,9 +138,7 @@ class PromptAnalysis(BaseModel):
     def high_severity_count(self) -> int:
         """Return the number of high/critical severity findings."""
         return sum(
-            1
-            for f in self.findings
-            if f.severity in (PromptSeverity.HIGH, PromptSeverity.CRITICAL)
+            1 for f in self.findings if f.severity in (PromptSeverity.HIGH, PromptSeverity.CRITICAL)
         )
 
     def to_security_dict(self) -> dict[str, Any]:

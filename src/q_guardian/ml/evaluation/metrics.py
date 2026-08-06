@@ -33,10 +33,10 @@ class BenchmarkMetrics:
         if not y_true or not y_pred:
             return EvaluationMetrics()
 
-        tp = sum(1 for t, p in zip(y_true, y_pred) if t == p and t == 1)
-        tn = sum(1 for t, p in zip(y_true, y_pred) if t == p and t == 0)
-        fp = sum(1 for t, p in zip(y_true, y_pred) if t != p and p == 1)
-        fn = sum(1 for t, p in zip(y_true, y_pred) if t != p and p == 0)
+        tp = sum(1 for t, p in zip(y_true, y_pred, strict=False) if t == p and t == 1)
+        tn = sum(1 for t, p in zip(y_true, y_pred, strict=False) if t == p and t == 0)
+        fp = sum(1 for t, p in zip(y_true, y_pred, strict=False) if t != p and p == 1)
+        fn = sum(1 for t, p in zip(y_true, y_pred, strict=False) if t != p and p == 0)
 
         total = len(y_true)
         accuracy = (tp + tn) / total if total > 0 else 0.0
@@ -51,15 +51,21 @@ class BenchmarkMetrics:
         labels = sorted(set(y_true) | set(y_pred))
         n_labels = max(len(labels), max(labels) + 1 if labels else 2)
         matrix = [[0] * n_labels for _ in range(n_labels)]
-        for t, p in zip(y_true, y_pred):
+        for t, p in zip(y_true, y_pred, strict=False):
             matrix[t][p] += 1
 
         # Per-class metrics
         per_class: dict[str, dict[str, float]] = {}
         for label in labels:
-            label_tp = sum(1 for t, p in zip(y_true, y_pred) if t == label and p == label)
-            label_fp = sum(1 for t, p in zip(y_true, y_pred) if t != label and p == label)
-            label_fn = sum(1 for t, p in zip(y_true, y_pred) if t == label and p != label)
+            label_tp = sum(
+                1 for t, p in zip(y_true, y_pred, strict=False) if t == label and p == label
+            )
+            label_fp = sum(
+                1 for t, p in zip(y_true, y_pred, strict=False) if t != label and p == label
+            )
+            label_fn = sum(
+                1 for t, p in zip(y_true, y_pred, strict=False) if t == label and p != label
+            )
 
             l_precision = label_tp / (label_tp + label_fp) if (label_tp + label_fp) > 0 else 0.0
             l_recall = label_tp / (label_tp + label_fn) if (label_tp + label_fn) > 0 else 0.0
@@ -91,9 +97,7 @@ class BenchmarkMetrics:
             per_class_metrics=per_class,
         )
 
-    def _approximate_auc_roc(
-        self, y_true: list[int], y_pred: list[int]
-    ) -> float:
+    def _approximate_auc_roc(self, y_true: list[int], y_pred: list[int]) -> float:
         """Simple AUC-ROC approximation from binary predictions."""
         if not y_true:
             return 0.0
@@ -124,10 +128,10 @@ class BenchmarkMetrics:
         if not y_true_anomaly:
             return {}
 
-        tp = sum(1 for t, p in zip(y_true_anomaly, y_pred_anomaly) if t and p)
-        fp = sum(1 for t, p in zip(y_true_anomaly, y_pred_anomaly) if not t and p)
-        fn = sum(1 for t, p in zip(y_true_anomaly, y_pred_anomaly) if t and not p)
-        tn = sum(1 for t, p in zip(y_true_anomaly, y_pred_anomaly) if not t and not p)
+        tp = sum(1 for t, p in zip(y_true_anomaly, y_pred_anomaly, strict=False) if t and p)
+        fp = sum(1 for t, p in zip(y_true_anomaly, y_pred_anomaly, strict=False) if not t and p)
+        fn = sum(1 for t, p in zip(y_true_anomaly, y_pred_anomaly, strict=False) if t and not p)
+        tn = sum(1 for t, p in zip(y_true_anomaly, y_pred_anomaly, strict=False) if not t and not p)
 
         total = len(y_true_anomaly)
         detection_rate = tp / max(sum(y_true_anomaly), 1)
@@ -164,8 +168,8 @@ class ResearchMetrics:
         # Map labels to integers for standard metrics
         all_labels = sorted(set(y_true_labels) | set(y_pred_labels))
         label_map = {label: i for i, label in enumerate(all_labels)}
-        y_true_int = [label_map[l] for l in y_true_labels]
-        y_pred_int = [label_map[l] for l in y_pred_labels]
+        y_true_int = [label_map[label] for label in y_true_labels]
+        y_pred_int = [label_map[label] for label in y_pred_labels]
 
         base_metrics = benchmark.compute_classification_metrics(
             y_true_int, y_pred_int, class_names=all_labels
@@ -176,19 +180,20 @@ class ResearchMetrics:
         # Severity-weighted accuracy
         if y_true_severity and y_pred_severity:
             severity_weights = {
-                "info": 0.1, "low": 0.2, "medium": 0.5,
-                "high": 0.8, "critical": 1.0,
+                "info": 0.1,
+                "low": 0.2,
+                "medium": 0.5,
+                "high": 0.8,
+                "critical": 1.0,
             }
             weighted_correct = 0.0
             total_weight = 0.0
-            for t, p, s in zip(y_true_labels, y_pred_labels, y_true_severity):
+            for t, p, s in zip(y_true_labels, y_pred_labels, y_true_severity, strict=False):
                 w = severity_weights.get(s, 0.5)
                 total_weight += w
                 if t == p:
                     weighted_correct += w
 
-            result["severity_weighted_accuracy"] = (
-                weighted_correct / max(total_weight, 1e-10)
-            )
+            result["severity_weighted_accuracy"] = weighted_correct / max(total_weight, 1e-10)
 
         return result
