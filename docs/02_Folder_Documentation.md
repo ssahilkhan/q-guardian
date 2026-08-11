@@ -162,11 +162,17 @@ The package contains all production code (314 Python files). Top-level subdirect
 - **Purpose:** `BenchmarkSample`/`PromptBenchmarkDataset`, pure-Python detection metrics (ROC/PR AUC, ECE, Brier, confusion-matrix metrics), `HybridEvaluator`, `DetectionBenchmark.run` (K-fold CV + provider ablation), JSON/Markdown report rendering.
 - **Files:** `dataset.py`, `metrics.py`, `pipeline.py`, `benchmark.py`, `report.py`, `__init__.py`.
 
+### 3.31 `training/` — Dataset prep + training + evaluation pipeline (V2.0 M1c)
+- **Purpose:** production-grade, reproducible dataset preparation + training + evaluation for the injection detector. Reuses the benchmark registry (`docs/19`) and the existing `HybridEvaluator` — no second training framework. Groups are `datasets.train` / `validation` / `test` / `external_eval` (configurable, never hard-coded); seeded stratified splits, official-test routing, exact + normalized dedup, and train↔eval leakage removal are enforced before training.
+- **Files:** `schema.py` (`DatasetRecord`), `normalize.py` (`DatasetRecordPreprocessor`), `config.py` (`TrainingPipelineConfig`, pydantic, JSON), `dedup.py` (`normalized_text`/`exact_hash`/`text_hash`, `dedup_records`, `detect_leakage`), `splitting.py` (`assign_groups`, `split_by_label`, `split_train_pool`, `cap_records`), `manifest.py` (`DatasetManifest`), `prepare.py` (`DatasetPreparationPipeline`), `train.py` (`TrainingPipeline` → `HybridEvaluator` checkpoint), `evaluate.py` (`EvaluationPipeline` → `evaluation.json`/`.md`).
+- **CLI:** `cli.py` (`q-guardian` entry point in `pyproject.toml`): `dataset prepare/validate`, `model train/evaluate`, `benchmark`.
+- **Detailed in:** `21_Training_Pipeline_Documentation.md`.
+
 ## 4. `tests/` — Test suite
 
 | Subdirectory | Files | Focus |
 |---|---|---|
-| `tests/unit/` | 88 test files | Component-level tests (config, events, hooks, plugins, ml, policy, quantum, risk, runtime, sdk, security, utils, fusion, benchmark, embeddings) |
+| `tests/unit/` | 98 test files | Component-level tests (config, events, hooks, plugins, ml, policy, quantum, risk, runtime, sdk, security, utils, fusion, benchmark, embeddings, training pipeline) |
 | `tests/observability/` | 24 test files | Metrics, tracing, health, analytics, alerts, dashboard, exporters, integrations |
 | `tests/response/` | 9 test files | Engines, evidence, playbooks, quarantine, notifications, integrations, plugin/storage |
 | `tests/integration/` | 2 test files | API endpoints, Guardian lifecycle + plugin hooks |

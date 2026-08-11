@@ -1,7 +1,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/version-1.1.0-blue.svg" alt="Version">
   <img src="https://img.shields.io/badge/python-3.12+-blue.svg" alt="Python">
-  <img src="https://img.shields.io/badge/tests-2650%20passing-brightgreen.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/tests-2751%20passing-brightgreen.svg" alt="Tests">
   <img src="https://img.shields.io/badge/build-passing-brightgreen.svg" alt="Build">
   <img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License">
   <img src="https://img.shields.io/badge/status-release-brightgreen.svg" alt="Status">
@@ -109,6 +109,10 @@ Q-Guardian follows **Clean Architecture** with strict separation of concerns. Th
 ```
 q-guardian/
 ├── src/q_guardian/
+│   ├── benchmark/           # Third-party dataset ingestion + benchmarking
+│   ├── evaluation/          # HybridEvaluator detector + metrics
+│   ├── training/            # Dataset prep + training + evaluation pipeline
+│   ├── cli.py               # q-guardian CLI (dataset prepare/validate, model train/evaluate, benchmark)
 │   ├── api/                 # FastAPI routes, endpoints, application factory
 │   ├── core/                # Framework state machine and lifecycle
 │   ├── events/              # Async event bus and standard events
@@ -175,6 +179,7 @@ Full documentation index (technical documentation set in [`docs/`](docs/)):
 | 19 | [`docs/19_Benchmark_Platform_Documentation.md`](docs/19_Benchmark_Platform_Documentation.md) | Benchmark platform |
 | 20 | [`docs/20_Embedding_Pipeline.md`](docs/20_Embedding_Pipeline.md) | Embedding pipeline |
 | 21 | [`docs/21_Web_Console_UI.md`](docs/21_Web_Console_UI.md) | Web console architecture & API |
+| 22 | [`docs/21_Training_Pipeline_Documentation.md`](docs/21_Training_Pipeline_Documentation.md) | Dataset prep + training + evaluation pipeline |
 
 `docs/` also contains 17 user-facing guides: `user-guide.md`, `architecture-guide.md`,
 `configuration-guide.md`, `deployment-guide.md`, `developer-guide.md`, `event-system.md`,
@@ -474,7 +479,7 @@ class MySecurityPlugin(Plugin):
 ## Testing
 
 ```bash
-# Run all 2,650 tests
+# Run all 2,751 tests
 pytest tests/ -v
 
 # Run with coverage
@@ -486,11 +491,11 @@ pytest tests/unit/test_fusion_strategies.py -v
 
 | Test Suite | Files | Tests |
 |-----------|-------|-------|
-| `tests/unit` — Modules 1–8 (Enterprise → Risk/Policy, incl. quantum + fusion, benchmark, evaluation, embeddings) | 88 | ~2,080 |
+| `tests/unit` — Modules 1–8 (Enterprise → Risk/Policy, incl. quantum + fusion, benchmark, evaluation, embeddings, training pipeline) | 98 | ~2,181 |
 | `tests/response` — Module 9 (Response & Recovery) | 9 | ~168 |
 | `tests/observability` — Module 10 (Observability) | 24 | ~390 |
 | `tests/integration` | 2 | 12 |
-| **Total** | **123** | **2,650** |
+| **Total** | **133** | **2,751** |
 
 ---
 
@@ -510,6 +515,7 @@ pytest tests/unit/test_fusion_strategies.py -v
 | v0.10.0 | Observability & Operations (pre-release path) | Complete |
 | v1.0.0 | Public Release | Released |
 | v1.1.0 | Benchmark Platform, Evaluation Toolkit & Embeddings | Released |
+| v1.2.0 | Training Pipeline & `q-guardian` CLI (dataset prep, leakage checks, checkpointing) | In progress |
 
 **Future work:** research paper publication, PyPI distribution, live-service integration tests, and fusion-calibration hardening on real-world threat corpora.
 

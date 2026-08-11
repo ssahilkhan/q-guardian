@@ -17,14 +17,14 @@
  ├── integration\            (2 files: FastAPI app + Guardian lifecycle)
  ├── response\               (9 files: engines, evidence, quarantine, playbooks, ...)
  ├── observability\          (24 files: metrics, tracing, health, alerts, dashboard, ...)
- └── unit\                   (88 files: config, events, framework, fusion, hooks, ml,
+  └── unit\                   (98 files: config, events, framework, fusion, hooks, ml,
                              plugins, policy, quantum, risk, runtime, sdk, security, utils,
-                             benchmark, embeddings)
+                             benchmark, embeddings, training pipeline)
 ```
 
 | Category | Count |
 |---|---|
-| Total test functions | **2,650** |
+| Total test functions | **2,751** |
 | — synchronous (`def test_`) | 2,415 |
 | — asynchronous (`async def test_`) | 235 |
 | `@pytest.mark.asyncio` markers | 160 |
@@ -42,8 +42,8 @@ fixtures return `"asyncio"`.
 | `tests\integration\` | 2 | FastAPI app + Guardian lifecycle |
 | `tests\observability\` | 24 | alerting, metrics, tracing, health, dashboard, storage, exporters, plugin |
 | `tests\response\` | 9 | engines, evidence, integrations, notifications, orchestration, playbooks, plugin/storage, quarantine, response engine |
-| `tests\unit\` | 88 | config, events, framework, fusion, hooks, ml, plugins, policy (9), quantum (13), risk (7), runtime (5), sdk, security (4), utils, benchmark (5), embeddings (10) |
-| **Total** | **123 test files + 2 conftest** | |
+| `tests\unit\` | 98 | config, events, framework, fusion, hooks, ml, plugins, policy (9), quantum (13), risk (7), runtime (5), sdk, security (4), utils, benchmark (5), embeddings (10), training (10) |
+| **Total** | **133 test files + 2 conftest** | |
 
 ---
 

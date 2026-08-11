@@ -167,3 +167,4 @@ The currently exposed HTTP surface is minimal: `GET /health` (liveness + DB heal
 | `18_Tests_Scripts_Examples_Documentation.md` | tests, scripts, examples |
 | `19_Benchmark_Platform_Documentation.md` | V2.0 benchmark platform (M1a) |
 | `20_Embedding_Pipeline.md` | V2.0 semantic embedding pipeline (M3) |
+| `21_Training_Pipeline_Documentation.md` | V2.0 dataset prep + training + evaluation pipeline + `q-guardian` CLI |

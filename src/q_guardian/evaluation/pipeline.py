@@ -11,6 +11,8 @@ threat score, enabling per-component comparison and ablation.
 from __future__ import annotations
 
 import asyncio
+import json
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
@@ -146,24 +148,6 @@ class HybridEvaluator:
         self.anomaly.train(x_scaled)
         self.rf.train(x_scaled, y)
 
-        self._providers = {
-            RULE_PROVIDER: (
-                RuleEngineProvider(
-                    rule_engine=self.rule_engine,
-                    normalizer=self.normalizer,
-                ),
-                self.provider_weights.get(RULE_PROVIDER, 0.15),
-            ),
-            ANOMALY_PROVIDER: (
-                ClassicalModelProvider(self.anomaly, provider_id=ANOMALY_PROVIDER),
-                self.provider_weights.get(ANOMALY_PROVIDER, 0.15),
-            ),
-            CLASSIFIER_PROVIDER: (
-                ClassicalModelProvider(self.rf, provider_id=CLASSIFIER_PROVIDER),
-                self.provider_weights.get(CLASSIFIER_PROVIDER, 0.55),
-            ),
-        }
-
         if self.quantum:
             q_x = np.array(x_scaled, dtype=np.float64)
             q_x = q_x[:, : self.quantum_feature_count].tolist()
@@ -183,10 +167,106 @@ class HybridEvaluator:
             )
             self.qsvm = QSVMModel(kernel=kernel, feature_map=feature_map)
             self.qsvm.train(q_x, q_y)
+
+        self._setup_providers()
+
+    def _setup_providers(self) -> None:
+        """Build the provider registry from the trained components."""
+        if self.scaler is None or self.anomaly is None or self.rf is None:
+            msg = "scaler, anomaly and random-forest must be fitted first"
+            raise RuntimeError(msg)
+        self._providers = {
+            RULE_PROVIDER: (
+                RuleEngineProvider(
+                    rule_engine=self.rule_engine,
+                    normalizer=self.normalizer,
+                ),
+                self.provider_weights.get(RULE_PROVIDER, 0.15),
+            ),
+            ANOMALY_PROVIDER: (
+                ClassicalModelProvider(self.anomaly, provider_id=ANOMALY_PROVIDER),
+                self.provider_weights.get(ANOMALY_PROVIDER, 0.15),
+            ),
+            CLASSIFIER_PROVIDER: (
+                ClassicalModelProvider(self.rf, provider_id=CLASSIFIER_PROVIDER),
+                self.provider_weights.get(CLASSIFIER_PROVIDER, 0.55),
+            ),
+        }
+        if self.qsvm is not None:
             self._providers[QUANTUM_PROVIDER] = (
                 QuantumModelProvider(self.qsvm),
                 self.provider_weights.get(QUANTUM_PROVIDER, 0.15),
             )
+
+    # ── Persistence ───────────────────────────────────────────────────
+
+    def save_state(self, directory: str | Path) -> Path:
+        """Persist the fitted pipeline components (joblib checkpoint).
+
+        Args:
+            directory: Target directory; the checkpoint is written as
+                ``hybrid_evaluator.joblib`` plus a human-readable
+                ``params.json``.
+
+        Returns:
+            The directory the checkpoint was written to.
+        """
+        import joblib
+
+        path = Path(directory)
+        path.mkdir(parents=True, exist_ok=True)
+        state: dict[str, Any] = {
+            "params": {
+                "quantum": self.quantum,
+                "quantum_shots": self.quantum_shots,
+                "quantum_feature_count": self.quantum_feature_count,
+                "quantum_cap": self.quantum_cap,
+                "n_estimators": self.n_estimators,
+                "contamination": self.contamination,
+                "provider_weights": dict(self.provider_weights),
+                "random_state": self.random_state,
+            },
+            "scaler": self.scaler,
+            "anomaly": self.anomaly,
+            "rf": self.rf,
+            "qsvm": self.qsvm,
+        }
+        joblib.dump(state, path / "hybrid_evaluator.joblib")
+        with open(path / "params.json", "w", encoding="utf-8") as f:
+            json.dump(state["params"], f, indent=2)
+        return path
+
+    @classmethod
+    def load_state(cls, directory: str | Path) -> HybridEvaluator:
+        """Load a pipeline checkpoint written by ``save_state``."""
+        import joblib
+
+        path = Path(directory)
+        state: Any = joblib.load(path / "hybrid_evaluator.joblib")
+        evaluator = cls(**state["params"])
+        evaluator.scaler = state.get("scaler")
+        evaluator.anomaly = state.get("anomaly")
+        evaluator.rf = state.get("rf")
+        evaluator.qsvm = state.get("qsvm")
+        evaluator._setup_providers()
+        return evaluator
+
+    def score_texts(self, texts: list[str]) -> list[float]:
+        """Return the fused threat score for each prompt (no labels needed).
+
+        Args:
+            texts: Prompt texts to score.
+
+        Returns:
+            A ``fusion`` risk score per input (higher = more threat).
+        """
+        fusion = self._build_fusion(include_providers=None)
+
+        async def _run() -> list[dict[str, float]]:
+            results = await asyncio.gather(*[self._score_one(text, fusion) for text in texts])
+            return list(results)
+
+        return [row["fusion"] for row in asyncio.run(_run())]
 
     # ── Scoring ────────────────────────────────────────────────────────
 

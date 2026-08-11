@@ -72,6 +72,9 @@ dev = [
     "types-PyYAML>=6.0.12",
 ]
 
+[project.scripts]
+q-guardian = "q_guardian.cli:main"
+
 [project.urls]
 Homepage = "https://github.com/ssahilkhan/q-guardian"
 Documentation = "https://github.com/ssahilkhan/q-guardian"

@@ -109,3 +109,54 @@ class TestEvaluator:
         result = evaluator.evaluate(data)
         assert "qsvm" in result
         assert result["fusion"]["roc_auc"] >= 0.0
+
+
+class TestEvaluatorPersistence:
+    def test_save_load_round_trip(self, tmp_path):
+        data = _dataset()
+        evaluator = HybridEvaluator(quantum=False, n_estimators=20)
+        evaluator.fit(data.texts(), data.labels())
+        checkpoint = tmp_path / "model"
+        saved = evaluator.save_state(checkpoint)
+
+        assert saved == checkpoint
+        assert (checkpoint / "hybrid_evaluator.joblib").exists()
+        assert (checkpoint / "params.json").exists()
+
+        loaded = HybridEvaluator.load_state(checkpoint)
+        assert loaded.provider_ids() == evaluator.provider_ids()
+        assert loaded.n_estimators == evaluator.n_estimators
+
+    def test_loaded_evaluator_scores_match(self, tmp_path):
+        data = _dataset()
+        evaluator = HybridEvaluator(quantum=False, n_estimators=20)
+        evaluator.fit(data.texts(), data.labels())
+        checkpoint = tmp_path / "model"
+        evaluator.save_state(checkpoint)
+        loaded = HybridEvaluator.load_state(checkpoint)
+
+        original = evaluator.score_texts(data.texts())
+        reloaded = loaded.score_texts(data.texts())
+        assert len(reloaded) == len(data)
+        assert reloaded == pytest.approx(original)
+
+    def test_quantum_state_persists(self, tmp_path):
+        pytest.importorskip("sklearn")
+        data = _dataset()
+        evaluator = HybridEvaluator(quantum=True, quantum_shots=64, n_estimators=20)
+        evaluator.fit(data.texts(), data.labels())
+        checkpoint = tmp_path / "model"
+        evaluator.save_state(checkpoint)
+        loaded = HybridEvaluator.load_state(checkpoint)
+
+        assert "qsvm" in loaded.provider_ids()
+
+    def test_score_texts_returns_one_score_per_text(self, tmp_path):
+        data = _dataset()
+        evaluator = HybridEvaluator(quantum=False, n_estimators=20)
+        evaluator.fit(data.texts(), data.labels())
+        texts = data.texts()[:5]
+
+        scores = evaluator.score_texts(texts)
+        assert len(scores) == 5
+        assert all(0.0 <= score <= 1.0 for score in scores)

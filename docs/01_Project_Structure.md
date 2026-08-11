@@ -521,6 +521,18 @@ Q_Gaudrail/
 │       ├── services/
 │       │   ├── __init__.py
 │       │   └── base.py
+│       ├── training/
+│       │   ├── __init__.py
+│       │   ├── artifacts.py
+│       │   ├── config.py
+│       │   ├── dedup.py
+│       │   ├── evaluate.py
+│       │   ├── manifest.py
+│       │   ├── normalize.py
+│       │   ├── prepare.py
+│       │   ├── schema.py
+│       │   ├── splitting.py
+│       │   └── train.py
 │       └── utils/
 │           ├── __init__.py
 │           ├── datetime_utils.py
@@ -578,17 +590,19 @@ The package is organized into 12 top-level capability domains plus infrastructur
 | Runtime | `src/q_guardian/runtime/` | Runtime models, context, managers, events |
 | SDK | `src/q_guardian/sdk/` | `Guardian` public SDK |
 | Security | `src/q_guardian/security/` | Security pipeline, decision engine, auth, headers, CORS |
+| Training | `src/q_guardian/training/` | Dataset prep + training + evaluation pipeline (schema, normalize, config, dedup, splitting, manifest, prepare, train, evaluate) |
+| CLI | `src/q_guardian/cli.py` | `q-guardian` CLI (`dataset prepare/validate`, `model train/evaluate`, `benchmark`) |
 | Utils | `src/q_guardian/utils/` | datetime/env/helpers/json/uuid utilities |
 
 ## 4. Directory Counts (files per top-level directory)
 
 | Directory | Non-`.pyc` files |
 |---|---|
-| `src/q_guardian/` | 326 Python files (306 pre-existing + 8 `benchmark/` + 12 `embeddings/` files) |
-| `tests/` | 131 files (123 `test_*.py` + 6 `__init__.py` + 2 conftest) |
+| `src/q_guardian/` | 338 Python files (306 pre-existing + 8 `benchmark/` + 12 `embeddings/` + 11 `training/` + `cli.py`) |
+| `tests/` | 141 files (133 `test_*.py` + 6 `__init__.py` + 2 conftest) |
 | `scripts/` | 29 files (23 `.py` + 6 `.json`) |
 | `examples/` | 13 files |
-| `docs/` | 38 `.md` files (17 pre-existing guides + 00-20 numbered docs, incl. `19_Benchmark_Platform_Documentation.md` + `20_Embedding_Pipeline.md`) |
+| `docs/` | 39 `.md` files (17 pre-existing guides + 00-21 numbered docs, incl. `19_Benchmark_Platform_Documentation.md`, `20_Embedding_Pipeline.md`, `21_Training_Pipeline_Documentation.md`) |
 | root files | 14 |
 | `.github/workflows/` | 3 |
 | `docker/` | 1 |

@@ -1,0 +1,45 @@
+{
+  "datasets": {
+    "train": ["deepset-prompt-injections", "dolly-benign"],
+    "validation": ["deepset-prompt-injections"],
+    "test": ["deepset-prompt-injections"],
+    "external_eval": [
+      "jbb-behaviors",
+      "jailbreakbench-attacks",
+      "wildjailbreak",
+      "harmbench-behaviors",
+      "advbench",
+      "hex-phi",
+      "pal",
+      "agentdojo",
+      "cyberseceval-prompt-injections"
+    ]
+  },
+  "caps": {
+    "dolly-benign": 2000,
+    "wildjailbreak": 5000
+  },
+  "seed": 42,
+  "validation_ratio": 0.2,
+  "max_samples_per_class": null,
+  "dedup": {
+    "enabled": true,
+    "exact": true,
+    "normalized": true,
+    "keep_first": true
+  },
+  "model": {
+    "quantum": false,
+    "quantum_shots": 128,
+    "quantum_feature_count": 5,
+    "quantum_cap": null,
+    "n_estimators": 50,
+    "contamination": 0.2,
+    "provider_weights": null
+  },
+  "eval": {
+    "threshold": 0.5,
+    "threshold_sweep": [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
+  },
+  "output_dir": "artifacts/training"
+}

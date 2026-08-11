@@ -2,7 +2,7 @@
 
 > **Document index:** this is document 05 of the Q-Gaudrail technical documentation set.
 >
-> **Coverage:** every test file under `tests/` (123 `test_*.py` + `conftest.py`/`__init__.py`), one entry each. **2,650 test functions** in total (per the current CI test run).
+> **Coverage:** every test file under `tests/` (133 `test_*.py` + `conftest.py`/`__init__.py`), one entry each. **2,751 test functions** in total (per the current CI test run).
 
 ## 1. Suite Overview
 
@@ -11,8 +11,8 @@
 | `tests/integration/` | 2 | 12 | FastAPI app endpoints, Guardian lifecycle |
 | `tests/observability/` | 24 | ~390 | alerts, metrics, tracing, health, analytics, dashboard, exporters, integrations |
 | `tests/response/` | 9 | ~168 | response engines, evidence, playbooks, quarantine, notifications, integrations |
-| `tests/unit/` | 88 | ~2,080 | policy, quantum, risk, ml, fusion, runtime, sdk, security, core, benchmark, embeddings |
-| **Total** | **123 `test_*.py`** | **2,650** | |
+| `tests/unit/` | 98 | ~2,181 | policy, quantum, risk, ml, fusion, runtime, sdk, security, core, benchmark, embeddings, training pipeline |
+| **Total** | **133 `test_*.py`** | **2,751** | |
 
 Global conventions (see §5 below): class-based `TestXxx` grouping, module-level `_`-prefixed helper factories, local module-scope fixtures, explicit `@pytest.mark.asyncio`, seeded RNG (`np.random.default_rng(42)`), tempfile isolation, no `@pytest.mark.parametrize`.
 
@@ -217,7 +217,22 @@ Package-local duplicate of the root conftest fixtures (same semantics).
 | `test_evaluation_dataset.py` | `evaluation.dataset` | 10 | `PromptBenchmarkDataset` construction, columns, serialization |
 | `test_evaluation_metrics.py` | `evaluation.metrics` | 21 | Probability-based detection metrics (AUC, precision/recall, thresholds, aggregates) |
 | `test_evaluation_benchmark.py` | `evaluation.benchmark` | 6 | Cross-validation benchmark and report rendering |
-| `test_evaluation_pipeline.py` | `evaluation.pipeline` | 5 | Hybrid pipeline evaluator (classical path) |
+| `test_evaluation_pipeline.py` | `evaluation.pipeline` | 9 | Hybrid pipeline evaluator (classical path); `save_state`/`load_state` checkpoint round-trip + `score_texts` persistence |
+
+### 6.11 Training pipeline (`tests/unit/test_training_*.py`, 10 files)
+
+| File | Module under test | Tests | Coverage |
+|---|---|---|---|
+| `test_training_schema.py` | `training.schema` | 4 | `DatasetRecord` (defaults, `to_dict`/`from_dict` round-trip, metadata) |
+| `test_training_normalize.py` | `training.normalize` | 6 | `DatasetRecordPreprocessor`: label mapping, split-derived labels, `malicious` fallback category, bad-row dropping, source/category preservation |
+| `test_training_config.py` | `training.config` | 11 | Defaults use registry ids; JSON file round-trip/missing → raise; token masking in `as_dict`; `evaluator_kwargs`; seed validation |
+| `test_training_dedup.py` | `training.dedup` | 20 | `normalized_text` (NFKC/control-char stripping), `exact_hash`/`text_hash`, `dedup_records` (exact/normalized, keep-first/last), `detect_leakage`, `remove_leaked` |
+| `test_training_splitting.py` | `training.splitting` | 12 | Seeded stratified `split_by_label`, `assign_groups` official-test routing + unlisted → external, `split_train_pool`, `cap_records` |
+| `test_training_artifacts.py` | `training.artifacts` | 4 | Pretty JSON writes, label/category distributions, `write_json`/`read_splits` round-trip, missing-split skip |
+| `test_training_prepare.py` | `training.prepare` | 8 | End-to-end local-dataset prepare (pools + artifacts + valid JSONL), external leakage removal, required-unavailable → raise, optional-unavailable skipped, include-only |
+| `test_training_train.py` | `training.train` | 5 | Real `HybridEvaluator` fit + checkpoint + metrics, evaluator kwargs, per-class cap, no-data raise, validation threshold |
+| `test_training_evaluate.py` | `training.evaluate` | 7 | Matrix (test/validation/external + `available: false` rows), threshold analysis, artifacts, empty-test skip, no-evaluator raise, per-category rows |
+| `test_training_cli.py` | `cli` | 20 | Parser per subcommand, `_load_config` overrides + file, `_resolve_token`, `dataset prepare/validate`, `model train` (prepare-on-missing / reuse splits), `model evaluate` no-checkpoint exit, `benchmark` reports + defaults |
 
 ## 7. Shared Test Infrastructure
 
