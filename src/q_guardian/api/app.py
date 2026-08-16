@@ -7,11 +7,13 @@ exception handlers, routes, and lifecycle events.
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import structlog
 from fastapi import FastAPI
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from q_guardian.api.v1.router import api_v1_router
 from q_guardian.config.settings import get_settings
@@ -157,3 +159,19 @@ def _register_routes(app: FastAPI) -> None:
         }
 
     app.include_router(api_v1_router, prefix=API_V1_PREFIX)
+
+    _register_ui(app)
+
+
+def _register_ui(app: FastAPI) -> None:
+    """Mount the console static UI.
+
+    The console is a dependency-free single-page app (HTML/CSS/JS) shipped
+    as package data and served by the same application that runs the API.
+
+    Args:
+        app: The FastAPI application instance.
+    """
+    static_dir = Path(__file__).resolve().parent.parent / "ui" / "static"
+    if static_dir.is_dir():
+        app.mount("/ui", StaticFiles(directory=static_dir, html=True), name="ui")

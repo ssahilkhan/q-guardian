@@ -73,6 +73,36 @@ Response model: `ResponseSchema[dict[str, str]]`; returns `{"status": "operation
 - `ErrorResponseSchema`: `success=false`, `error{...}`, `timestamp`, `correlation_id`.
 - `VersionResponseSchema`: `application`, `version`, `environment`, `python_version`, `timestamp`.
 
+### 1.6a Console API — analysis & console routers
+
+The web console (`/ui`, see `docs/21_Web_Console_UI.md`) adds two v1 routers.
+All run through the shared `AnalysisService` facade over the existing
+`ThreatAnalysisPlugin`; no detection logic is reimplemented.
+
+**Analysis** (`/api/v1/analysis`, `endpoints/analysis.py`):
+
+| Endpoint | Request | Response | Notes |
+|---|---|---|---|
+| `POST /analysis/scan` | `ScanRequestSchema {prompt}` (1–100 000 chars) | `ResponseSchema[AnalysisItemSchema]` | Runs the full pipeline; result appended to in-memory history (bounded, 200). |
+| `GET /analysis` | query `limit` (1–200) | `PaginatedResponseSchema[AnalysisItemSchema]` | Most recent first. |
+| `GET /analysis/{analysis_id}` | — | `ResponseSchema[AnalysisItemSchema]` | `404` if unknown. |
+
+`AnalysisItemSchema` (in `schemas/console.py`) summarizes `analysis_id`,
+`decision`, `risk_score`, `is_valid`, `finding_count`, `high_severity_count`,
+`processing_time_ms`, `timestamp`, plus the full `payload` (the pipeline's
+`PromptAnalysis` dump: findings, features, normalized prompt, recommendation…).
+
+**Console** (`/api/v1/console`, `endpoints/console.py`) — read-only:
+
+| Endpoint | Data |
+|---|---|
+| `GET /console/rules` | Registered detection rules (`list[dict]`). |
+| `GET /console/models` | ML model registry status + quantum backend availability (`ml`, `quantum`). |
+| `GET /console/components` | Pipeline stage inventory with live status. |
+| `GET /console/configuration` | Sanitized configuration. **Never** returns `secret_key`, tokens, passwords, credentialed URLs, or `*_path` / `*_dir` keys. |
+| `GET /console/summary` | Landing-page aggregates (components, rules, ml, quantum, history). |
+| `GET /console/research` | Read-only research artifact snapshot via `q_guardian/api/services/research.py`: `datasets`, `model_artifacts` (metadata only), `evaluation`, `benchmarks`, `loadtests`. Bounded reads of known on-disk files; binary models never deserialized. |
+
 ### 1.7 Middleware behavior
 
 Request chain (outer→inner): **CorrelationID → ResponseTiming → ExceptionLogging → SecurityHeaders → CORS → TrustedHost (dev only)**. See `06_Architecture_Documentation.md` §5.

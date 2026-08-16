@@ -16,6 +16,8 @@ Single source of truth for package build and tooling config (142 lines).
 | `[project.optional-dependencies]` | `ml` (scikit-learn, numpy), `ml-xgboost` (xgboost), `datasets` (datasets), `quantum` (qiskit, qiskit-machine-learning, qiskit-aer, numpy), `quantum-pennylane` (pennylane, pennylane-lightning), `dev` (pytest, pytest-asyncio, pytest-cov, ruff, mypy, pre-commit, mongomock) |
 | `[project.urls]` | Homepage/Documentation/Repository/Issues (GitHub / ReadTheDocs) |
 | `[tool.setuptools.packages.find]` | `where = ["src"]` — src layout |
+| `[tool.setuptools.package-data]` | `q_guardian = ["ui/static/**"]` — ships the console UI (HTML/CSS/JS) inside the wheel |
+| `[tool.ruff.lint.flake8-type-checking]` | `runtime-evaluated-base-classes = ["q_guardian.schemas.base.BaseSchema"]` — keeps pydantic field annotations runtime-resolvable |
 | `[tool.ruff]` | target `py312`, line-length 100, src `["src","tests"]` |
 | `[tool.ruff.lint]` | select E, W, F, I, N, UP, B, A, C4, T20, SIM, TCH, RUF; ignore `T201`; isort known-first-party `q_guardian` |
 | `[tool.mypy]` | strict, Python 3.12, pydantic.mypy plugin; `tests.*` override relaxes `disallow_untyped_defs` |
@@ -75,6 +77,27 @@ Documented template for `src/q_guardian/config/settings.py`:
 
 - `.dockerignore` — excludes build-noise from the Docker context (venv, caches, logs, etc.).
 - `.gitignore` — ignores `__pycache__/`, `*.pyc`, `.env`, virtualenvs, caches (`.pytest_cache`, `.mypy_cache`, `.ruff_cache`), `htmlcov/`, `coverage.xml`, `dist/`, `build/`, `*.egg-info`, `models/ml/*`, and runtime logs.
+
+### 6.1 Console UI Static Assets — `src/q_guardian/ui/static/`
+
+The web console is a dependency-free single-page app (HTML/CSS/JS) shipped as
+package data:
+
+- `index.html` — application shell (sidebar navigation grouped into
+  Overview / Analysis / Research / System, topbar breadcrumbs, app view).
+- `favicon.svg` — console mark (blue rounded square with shield).
+- `css/console.css` — professional light enterprise theme; white surfaces,
+  blue accent, traffic-light status colours.
+- `js/api.js` — fetch-based API client and envelope helpers.
+- `js/ui.js` — shared rendering helpers (badges, cards, tables, toasts).
+- `js/views/*.js` — one module per page (dashboard, scanner, detection,
+  pipeline, rules, models, quantum, training, evaluation, benchmarks, audit,
+  configuration, documentation).
+- `js/console.js` — hash router, sidebar navigation and system status polling.
+
+Mounted read-only by FastAPI at `/ui` (see `src/q_guardian/api/app.py`), so the
+same `uvicorn src.q_guardian.main:app` process serves both the API and the
+console. The console calls only the existing v1 API; see `docs/21_Web_Console_UI.md`.
 
 ## 7. GitHub Actions Workflows
 

@@ -81,6 +81,9 @@ Issues = "https://github.com/ssahilkhan/q-guardian/issues"
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.setuptools.package-data]
+q_guardian = ["ui/static/**"]
+
 [tool.ruff]
 target-version = "py312"
 line-length = 100
@@ -103,6 +106,9 @@ select = [
     "RUF",  # ruff-specific
 ]
 ignore = ["T201"]
+
+[tool.ruff.lint.flake8-type-checking]
+runtime-evaluated-base-classes = ["q_guardian.schemas.base.BaseSchema"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["q_guardian"]

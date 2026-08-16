@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
-from q_guardian.api.v1.endpoints import health, system
+from q_guardian.api.v1.endpoints import analysis, console, health, system
 
 api_v1_router = APIRouter()
 
@@ -21,6 +21,16 @@ api_v1_router.include_router(
     system.router,
     tags=["System"],
     prefix="/system",
+)
+api_v1_router.include_router(
+    analysis.router,
+    tags=["Analysis"],
+    prefix="/analysis",
+)
+api_v1_router.include_router(
+    console.router,
+    tags=["Console"],
+    prefix="/console",
 )
 
 # =============================================================================
