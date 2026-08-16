@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Q-Guardian Console</title>
+  <meta name="description" content="Q-Guardian web console — hybrid quantum-classical runtime security for autonomous AI agents." />
+  <link rel="stylesheet" href="css/console.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <div class="brand-text">
+        <h1>Q-Guardian</h1>
+        <p>Runtime Security Console</p>
+      </div>
+    </div>
+    <nav class="tabs" aria-label="Console sections">
+      <a href="#/overview" data-tab="overview" class="tab active">Overview</a>
+      <a href="#/scanner" data-tab="scanner" class="tab">Scanner</a>
+      <a href="#/history" data-tab="history" class="tab">History</a>
+      <a href="#/rules" data-tab="rules" class="tab">Rules</a>
+      <a href="#/models" data-tab="models" class="tab">Models</a>
+      <a href="#/configuration" data-tab="configuration" class="tab">Configuration</a>
+      <a href="#/about" data-tab="about" class="tab">About</a>
+    </nav>
+    <div class="sys-status">
+      <span class="pulse" id="statusDot" aria-hidden="true"></span>
+      <span id="statusText">checking…</span>
+    </div>
+  </header>
+
+  <main class="content">
+    <!-- ============================== OVERVIEW ============================== -->
+    <section id="view-overview" class="view active" data-view="overview">
+      <div class="hero">
+        <h2>Hybrid Quantum-Classical Threat Analysis</h2>
+        <p>
+          Normalize, validate, feature-extract, rule-match and (optionally) run
+          ML + quantum fusion over every prompt at runtime. This console drives
+          the existing <code>ThreatAnalysisPlugin</code> pipeline.
+        </p>
+      </div>
+
+      <div class="quick-scan card">
+        <h3>Quick Scan</h3>
+        <form id="quickScanForm">
+          <textarea id="quickScanInput" rows="3" maxlength="100000"
+            placeholder="Paste a prompt to analyze with the full Q-Guardian pipeline…"></textarea>
+          <div class="row end">
+            <button type="submit" class="btn primary" id="quickScanBtn">Analyze Prompt</button>
+          </div>
+        </form>
+        <div id="quickScanError" class="banner hidden" role="alert"></div>
+      </div>
+
+      <div id="overviewStats" class="stats grid"></div>
+      <div id="overviewComponents" class="card"><h3>Pipeline Components</h3><div id="componentsList"></div></div>
+    </section>
+
+    <!-- ============================== SCANNER ============================== -->
+    <section id="view-scanner" class="view" data-view="scanner">
+      <div class="card">
+        <h2>Prompt Scanner</h2>
+        <form id="scanForm">
+          <label for="scanInput">Prompt to analyze</label>
+          <textarea id="scanInput" rows="8" maxlength="100000"
+            placeholder="Enter a prompt. Q-Guardian normalizes, validates, extracts features, applies rules and (when configured) ML/quantum analysis."></textarea>
+          <div class="row end">
+            <button type="submit" class="btn primary">Run Analysis</button>
+          </div>
+        </form>
+        <div id="scanError" class="banner hidden" role="alert"></div>
+      </div>
+      <div id="resultPanel"></div>
+    </section>
+
+    <!-- ============================== HISTORY ============================== -->
+    <section id="view-history" class="view" data-view="history">
+      <div class="card">
+        <div class="row between">
+          <h2>Scan History</h2>
+          <button type="button" class="btn ghost" id="refreshHistory">Refresh</button>
+        </div>
+        <div id="historyTable" class="table-wrap"></div>
+      </div>
+    </section>
+
+    <!-- ============================== RULES ============================== -->
+    <section id="view-rules" class="view" data-view="rules">
+      <div class="card">
+        <div class="row between">
+          <h2>Detection Rules</h2>
+          <button type="button" class="btn ghost" id="refreshRules">Refresh</button>
+        </div>
+        <div id="rulesList"></div>
+      </div>
+    </section>
+
+    <!-- ============================== MODELS ============================== -->
+    <section id="view-models" class="view" data-view="models">
+      <div class="row between">
+        <h2>Models &amp; Backends</h2>
+        <button type="button" class="btn ghost" id="refreshModels">Refresh</button>
+      </div>
+      <div class="card" id="mlModelsCard"><h3>Classical ML Models</h3><div id="mlModelsList"></div></div>
+      <div class="card" id="quantumCard"><h3>Quantum Backends</h3><div id="quantumList"></div></div>
+      <div class="card" id="fusionCard"><h3>Hybrid Fusion Strategies</h3><div id="fusionList"></div></div>
+    </section>
+
+    <!-- ============================== CONFIG ============================== -->
+    <section id="view-configuration" class="view" data-view="configuration">
+      <div class="card">
+        <div class="row between">
+          <h2>Configuration</h2>
+          <button type="button" class="btn ghost" id="refreshConfig">Refresh</button>
+        </div>
+        <p class="muted">Sanitized view — secrets and internal paths are never exposed.</p>
+        <div id="configContent"></div>
+      </div>
+    </section>
+
+    <!-- ============================== ABOUT ============================== -->
+    <section id="view-about" class="view" data-view="about">
+      <div class="card">
+        <h2>About Q-Guardian</h2>
+        <p>
+          Q-Guardian is a <strong>hybrid quantum-classical framework</strong> for runtime
+          security of autonomous AI agents. This console is a control plane over the
+          existing detection pipeline:
+        </p>
+        <ul>
+          <li><strong>Normalization</strong> — Unicode NFKC, hidden-character stripping, whitespace collapsing.</li>
+          <li><strong>Validation</strong> — length, line, encoding and structural input limits.</li>
+          <li><strong>Feature extraction</strong> — statistical, keyword and structural features.</li>
+          <li><strong>Rule engine</strong> — built-in and custom detection rules.</li>
+          <li><strong>Classical ML</strong> — Isolation Forest, Random Forest, XGBoost detectors (when models are loaded).</li>
+          <li><strong>Quantum</strong> — local simulator and optional Qiskit backends for hybrid fusion.</li>
+          <li><strong>Decision</strong> — ALLOW / WARN / REVIEW / BLOCK cascade with risk scoring.</li>
+        </ul>
+        <p>API documentation is available at <a href="/docs">/docs</a> and <a href="/redoc">/redoc</a>.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <span id="versionInfo">Q-Guardian</span>
+    <span>—</span>
+    <a href="/docs">API Docs</a>
+  </footer>
+
+  <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+  <script src="js/console.js"></script>
+</body>
+</html>

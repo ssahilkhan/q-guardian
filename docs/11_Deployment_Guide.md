@@ -131,6 +131,26 @@ docker-compose down
 
 (Or `make docker-build` / `make docker-up` / `make docker-down`.)
 
+### 4.3 Web Console UI
+
+The API process also serves the Q-Guardian **Web Console** — a dependency-free
+single-page app shipped as package data (`src/q_guardian/ui/static/`, mounted at
+`/ui` by the FastAPI app factory):
+
+- No build step, no Node toolchain, no extra service. The console is served by
+  the same `uvicorn src.q_guardian.main:app` process as the API, in both the
+  Docker image and local dev.
+- Open `http://<host>:8000/ui/` for the console. It drives the existing v1 API
+  only (`/api/v1/analysis/scan`, `/api/v1/console/*`, …). Interactive docs stay
+  at `/docs` / `/redoc`.
+- The console is **read-only** except for submitting prompts to the scan
+  pipeline; secrets, internal paths and raw logs are never returned by the
+  console endpoints (see `docs/21_Web_Console_UI.md`).
+- Deployment hardening: the console currently inherits the application's
+  unauthenticated API surface. Behind a public reverse proxy, protect `/ui` and
+  `/api` with your existing authentication/rate-limiting layer until the app's
+  built-in auth lands.
+
 ---
 
 ## 5. CI / CD Pipelines — `.github\workflows\`

@@ -131,6 +131,7 @@ q-guardian/
 │   ├── schemas/             # API request/response schemas
 │   ├── repositories/        # Data access layer
 │   ├── services/            # Business logic layer
+│   ├── ui/                  # Web console static assets (served at /ui)
 │   ├── middleware/          # HTTP middleware
 │   ├── dependencies/        # Dependency injection
 │   ├── logging/             # Structured logging (structlog)
@@ -171,6 +172,9 @@ Full documentation index (technical documentation set in [`docs/`](docs/)):
 | 16 | [`docs/16_Response_Recovery_Documentation.md`](docs/16_Response_Recovery_Documentation.md) | Response / recovery engines |
 | 17 | [`docs/17_Observability_Operations_Documentation.md`](docs/17_Observability_Operations_Documentation.md) | Observability subsystem |
 | 18 | [`docs/18_Tests_Scripts_Examples_Documentation.md`](docs/18_Tests_Scripts_Examples_Documentation.md) | Tests, scripts, examples |
+| 19 | [`docs/19_Benchmark_Platform_Documentation.md`](docs/19_Benchmark_Platform_Documentation.md) | Benchmark platform |
+| 20 | [`docs/20_Embedding_Pipeline.md`](docs/20_Embedding_Pipeline.md) | Embedding pipeline |
+| 21 | [`docs/21_Web_Console_UI.md`](docs/21_Web_Console_UI.md) | Web console architecture & API |
 
 `docs/` also contains 17 user-facing guides: `user-guide.md`, `architecture-guide.md`,
 `configuration-guide.md`, `deployment-guide.md`, `developer-guide.md`, `event-system.md`,
@@ -340,6 +344,27 @@ async def main():
 
 asyncio.run(main())
 ```
+
+### Web Console UI
+
+Q-Guardian ships a dependency-free web console that drives the same pipeline
+from the browser (no Node toolchain or build step — plain HTML/CSS/JS served by
+the FastAPI app):
+
+```bash
+uvicorn src.q_guardian.main:app --host 0.0.0.0 --port 8000
+```
+
+Then open <http://localhost:8000/ui/>. The console provides:
+
+- **Scanner** — submit prompts through the full normalization → validation →
+  feature extraction → rule → (optional ML/quantum) → decision pipeline.
+- **History** — browse past analyses (bounded, in-memory) with full drill-down.
+- **Rules / Models / Configuration** — read-only views of the live rule engine,
+  ML model and quantum backend status, and a sanitized configuration view
+  (secrets never exposed).
+
+See `docs/21_Web_Console_UI.md` for the architecture and API surface.
 
 ### Prompt Security Analysis
 
