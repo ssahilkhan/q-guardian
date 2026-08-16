@@ -2,9 +2,15 @@
 
 from __future__ import annotations
 
+import importlib.util
 from typing import TYPE_CHECKING
 
 import pytest
+
+from q_guardian.quantum.fusion.strategies import (
+    IMPLEMENTED_STRATEGIES,
+    INTERFACE_ONLY_STRATEGIES,
+)
 
 if TYPE_CHECKING:
     from httpx import AsyncClient
@@ -114,6 +120,21 @@ class TestConsoleEndpoints:
         ids = {c["id"] for c in data}
         assert {"normalize", "validate", "rules", "decision"}.issubset(ids)
 
+    async def test_models_fusion_strategies_match_registry(self, client: AsyncClient) -> None:
+        """Verify quantum fusion strategies reflect the implemented registry.
+
+        Phantom strategies (``max_confidence``) and interface-only stubs
+        (``bayesian``) must not be advertised as implemented.
+        """
+        response = await client.get("/api/v1/console/models")
+        assert response.status_code == 200
+        quantum = response.json()["data"]["quantum"]
+        strategies = quantum["fusion_strategies"]
+        assert set(strategies) == set(IMPLEMENTED_STRATEGIES)
+        assert "max_confidence" not in strategies
+        assert "bayesian" not in strategies
+        assert quantum["fusion_interface_only"] == list(INTERFACE_ONLY_STRATEGIES)
+
     async def test_configuration_redacts_secrets(self, client: AsyncClient) -> None:
         """Verify the configuration endpoint never exposes secrets."""
         response = await client.get("/api/v1/console/configuration")
@@ -131,6 +152,16 @@ class TestConsoleEndpoints:
         assert response.status_code == 200
         data = response.json()["data"]
         assert "ml_model_path" not in data["prompt_security"]
+
+    async def test_configuration_xgboost_availability_is_runtime_probe(
+        self, client: AsyncClient
+    ) -> None:
+        """Verify XGBoost availability is a live runtime probe, not a config default."""
+        response = await client.get("/api/v1/console/configuration")
+        assert response.status_code == 200
+        available = response.json()["data"]["ml"]["xgboost_available"]
+        expected = importlib.util.find_spec("xgboost") is not None
+        assert available is expected
 
     async def test_summary(self, client: AsyncClient) -> None:
         """Verify the summary endpoint returns overview aggregates."""
