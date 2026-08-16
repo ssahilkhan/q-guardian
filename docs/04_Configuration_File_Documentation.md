@@ -84,7 +84,8 @@ Documented template for `src/q_guardian/config/settings.py`:
 
 ### 7.2 `.github/workflows/release.yml` — Release
 - Trigger: push of `v*` tags.
-- Build + validate, create GitHub release with `dist/*` via `softprops/action-gh-release`, publish to PyPI via `pypa/gh-action-pypi-publish` (env `release`).
+- Job `release` — build + validate, upload `dist/` artifact, create GitHub release with `dist/*` via `softprops/action-gh-release`.
+- Job `publish` (needs `release`, env `release`) — download `dist/` artifact, publish to PyPI via `pypa/gh-action-pypi-publish` (trusted publishing, `id-token: write`).
 
 ### 7.3 `.github/workflows/benchmark.yml` — Benchmarks
 - Trigger: push to `main` + `workflow_dispatch`.
