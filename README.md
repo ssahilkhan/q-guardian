@@ -357,12 +357,19 @@ uvicorn src.q_guardian.main:app --host 0.0.0.0 --port 8000
 
 Then open <http://localhost:8000/ui/>. The console provides:
 
+- **Dashboard** — live posture: pipeline stage status, rule/model/quantum
+  counts, decision distribution, recent scans, quick scan.
 - **Scanner** — submit prompts through the full normalization → validation →
-  feature extraction → rule → (optional ML/quantum) → decision pipeline.
-- **History** — browse past analyses (bounded, in-memory) with full drill-down.
-- **Rules / Models / Configuration** — read-only views of the live rule engine,
-  ML model and quantum backend status, and a sanitized configuration view
-  (secrets never exposed).
+  feature extraction → rule → (optional ML) → decision pipeline.
+- **Detection** — browse past analyses (bounded, in-memory) with full
+  drill-down into findings, features and metadata.
+- **Pipeline / Rules / Models / Quantum** — read-only views of the live
+  pipeline, rule engine, ML model registry and quantum research backends.
+- **Training / Evaluation / Benchmarks** — research artifacts read from disk
+  (datasets, trained model storage, evaluation report, load tests).
+- **Audit / Configuration / Documentation** — security posture, a sanitized
+  configuration view (secrets and internal paths never exposed), and a
+  reference for the console API.
 
 See `docs/21_Web_Console_UI.md` for the architecture and API surface.
 

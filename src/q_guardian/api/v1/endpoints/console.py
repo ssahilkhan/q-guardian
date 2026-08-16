@@ -112,3 +112,25 @@ async def summary(request: Request) -> ResponseSchema[dict[str, Any]]:
         message="Summary retrieved successfully",
         data=data,
     )
+
+
+@router.get("/research", response_model=ResponseSchema[dict[str, Any]])
+async def research(request: Request) -> ResponseSchema[dict[str, Any]]:
+    """Return a read-only snapshot of research artifacts on disk.
+
+    Reads existing datasets, trained model storage, evaluation reports,
+    benchmark suites and load-test results. Nothing is re-run and no
+    binary model contents are deserialized.
+
+    Args:
+        request: Incoming request.
+
+    Returns:
+        Bounded, structured research artifact inventory.
+    """
+    data = service.research()
+    return ResponseSchema(
+        success=True,
+        message="Research artifacts retrieved successfully",
+        data=data,
+    )

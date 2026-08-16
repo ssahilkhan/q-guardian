@@ -16,10 +16,12 @@ from collections import deque
 from functools import lru_cache
 from typing import TYPE_CHECKING, Any
 
+from q_guardian.api.services.research import research_snapshot
 from q_guardian.config.settings import SecuritySettings, get_settings
 from q_guardian.ml.config import MLConfig
 from q_guardian.ml.plugin import ThreatAnalysisPlugin
 from q_guardian.security.config import PromptSecurityConfig
+from q_guardian.security.enums import PromptDecision
 
 if TYPE_CHECKING:
     from q_guardian.security.pipeline import RuleEngine
@@ -269,12 +271,16 @@ class AnalysisService:
             "quantum": self.models_status()["quantum"],
             "history": {
                 "total": len(history),
-                "blocked": decisions.count("BLOCK"),
-                "review": decisions.count("REVIEW"),
-                "warn": decisions.count("WARN"),
-                "allowed": decisions.count("ALLOW"),
+                "blocked": decisions.count(PromptDecision.BLOCK.value),
+                "review": decisions.count(PromptDecision.REVIEW.value),
+                "warn": decisions.count(PromptDecision.WARN.value),
+                "allowed": decisions.count(PromptDecision.ALLOW.value),
             },
         }
+
+    def research(self) -> dict[str, Any]:
+        """Return a read-only snapshot of research artifacts on disk."""
+        return research_snapshot()
 
     @property
     def _ml_active(self) -> bool:
@@ -330,5 +336,14 @@ def _safe_value(value: Any) -> Any:
 
 
 def _is_safe_key(key: str) -> bool:
+    """Return False for keys that must never be exposed.
+
+    Drops secret-bearing keys (secret key, tokens, passwords, …) as well as
+    keys that represent internal filesystem paths (``*_path`` / ``*_dir``),
+    matching the documented promise that paths are only surfaced as
+    presence/absence booleans.
+    """
     lowered = key.lower()
-    return not any(redacted in lowered for redacted in _REDACTED_KEYS)
+    is_secret = any(redacted in lowered for redacted in _REDACTED_KEYS)
+    is_path = lowered in {"path", "dir"} or lowered.endswith(("_path", "_dir"))
+    return not is_secret and not is_path

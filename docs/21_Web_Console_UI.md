@@ -49,7 +49,12 @@ reimplemented:
 1. **`AnalysisService`** (`q_guardian/api/services/analysis.py`) — a singleton
    facade over `ThreatAnalysisPlugin` (the existing orchestrator) plus a
    bounded in-memory scan history. This is the only new service code.
-2. **New v1 endpoints** (registered in `api/v1/router.py`):
+2. **`ResearchArtifactReader`** (`q_guardian/api/services/research.py`) — a
+   bounded, read-only reader for on-disk research artifacts (JSONL datasets,
+   trained model storage metadata, evaluation reports, benchmark suites and
+   load-test results). Every read is size-capped and binary model files are
+   listed by metadata only.
+3. **New v1 endpoints** (registered in `api/v1/router.py`):
    - `POST /api/v1/analysis/scan` — run the existing pipeline on a prompt.
    - `GET /api/v1/analysis` / `GET /api/v1/analysis/{id}` — scan history.
    - `GET /api/v1/console/rules` — enabled detection rules.
@@ -57,20 +62,31 @@ reimplemented:
    - `GET /api/v1/console/components` — pipeline stage inventory.
    - `GET /api/v1/console/configuration` — sanitized configuration.
    - `GET /api/v1/console/summary` — overview aggregates for the landing page.
+   - `GET /api/v1/console/research` — read-only research artifact snapshot
+     (datasets, model artifacts, evaluation, benchmarks, loadtests).
 
 ## 3. Information Architecture
 
-Single-page application with tab navigation (no router library):
+Professional **light enterprise** theme (white surfaces, blue accent,
+traffic-light status colors). Single-page application with a hash router and
+sidebar navigation grouped into four sections. The UI is a dependency-free
+vanilla HTML/CSS/JS SPA:
 
-| Page | Purpose | Backing endpoint(s) |
-|---|---|---|
-| **Overview** | System status, pipeline stage status, model/rule counts, recent scans, quick-scan entry | `/api/v1/system/status`, `/api/v1/system/version`, `/api/v1/console/summary`, `/api/v1/analysis` |
-| **Scanner** | Primary workflow: submit prompt → run pipeline → inspect decision, findings, features, normalized text, timing | `POST /api/v1/analysis/scan` |
-| **History** | Browsable table of past scans, drill into any result | `GET /api/v1/analysis`, `GET /api/v1/analysis/{id}` |
-| **Rules** | Read-only catalog of active detection rules | `GET /api/v1/console/rules` |
-| **Models** | Read-only ML model registry + quantum backend availability | `GET /api/v1/console/models` |
-| **Configuration** | Read-only, sanitized application + security configuration | `GET /api/v1/console/configuration` |
-| **About** | Architecture explanation, links to `/docs`, repository | — (static) |
+| Section | Page | Purpose | Backing endpoint(s) |
+|---|---|---|---|
+| **Overview** | Dashboard | System status, stage/rule/model/quantum counts, decision distribution, recent scans, quick-scan entry | `/api/v1/system/status`, `/api/v1/system/version`, `/api/v1/console/summary`, `/api/v1/analysis` |
+| **Overview** | Scanner | Primary workflow: submit prompt → run pipeline → inspect verdict, findings, features, normalized text, timing | `POST /api/v1/analysis/scan` |
+| **Analysis** | Detection | Browsable history list, drill into any scan record with full report (verdict banner, risk bar, findings, features, metadata, prompts) | `GET /api/v1/analysis`, `GET /api/v1/analysis/{id}` |
+| **Analysis** | Pipeline | Stage inventory with live availability + truthful execution order (quantum is a research layer, not in the default path) | `GET /api/v1/console/components` |
+| **Analysis** | Rules | Read-only catalog of active detection rules | `GET /api/v1/console/rules` |
+| **Analysis** | Models | Read-only classical ML registry and health | `GET /api/v1/console/models` |
+| **Analysis** | Quantum | Research-layer fusion strategies + backend availability | `GET /api/v1/console/models` |
+| **Research** | Training | On-disk JSONL datasets + trained model storage (metadata only) | `GET /api/v1/console/research` |
+| **Research** | Evaluation | Cross-validation report from `docs/output/evaluation/report.json` | `GET /api/v1/console/research` |
+| **Research** | Benchmarks | Benchmark suites + load-test results saved by the scripts | `GET /api/v1/console/research` |
+| **System** | Audit | Security posture (redacted config flags), decision distribution, pipeline health, recent activity trail | `/api/v1/console/summary`, `/api/v1/console/configuration`, `/api/v1/analysis` |
+| **System** | Configuration | Read-only, sanitized application + security configuration | `GET /api/v1/console/configuration` |
+| **System** | Documentation | About + endpoint reference + research-data semantics | `/api/v1/system/version` |
 
 ### Primary user workflow
 
@@ -96,8 +112,13 @@ Single-page application with tab navigation (no router library):
 | Rule catalog | `RuleEngine` | `rule_engine.list_rules()` | none | `GET /api/v1/console/rules` |
 | Model status | `ModelManager` | `model_manager.health()` / `list_models()` | dict mapping | `GET /api/v1/console/models` |
 | Quantum status | `q_guardian.quantum.backends` | backend class inventory + optional SDK import checks | availability flags | `GET /api/v1/console/models` |
-| Config view | `get_settings()`, `PromptSecurityConfig`, `MLConfig` | `model_dump()` | **redaction** of secrets | `GET /api/v1/console/configuration` |
+| Config view | `get_settings()`, `PromptSecurityConfig`, `MLConfig` | `model_dump()` | **redaction** of secrets and `*_path` / `*_dir` values | `GET /api/v1/console/configuration` |
 | Overview aggregates | all of the above | service summary() | counts + status | `GET /api/v1/console/summary` |
+| Research datasets | `data/*.jsonl` | `_read_datasets()` | bounded row/field inventory (≤ 100 MB each) | `GET /api/v1/console/research` |
+| Trained model storage | `models/ml/**` | `_read_model_artifacts()` | name/kind/size/modified metadata only; contents never deserialized | `GET /api/v1/console/research` |
+| Evaluation report | `docs/output/evaluation/report.json` | `_read_evaluation()` | parsed report (≤ 4 MB) + `scores.csv`/`report.md` presence flags | `GET /api/v1/console/research` |
+| Benchmark suites | `scripts/benchmarks/results_*.json` | `_read_benchmarks()` | summarised per-row timing keys | `GET /api/v1/console/research` |
+| Load-test results | `scripts/loadtest/results/*.json` | `_read_loadtests()` | scenario summary keys | `GET /api/v1/console/research` |
 
 No duplicate source of truth is created: the console reads live state from the
 existing pipeline objects.
@@ -109,7 +130,10 @@ existing pipeline objects.
   explicitly redacted at the source.
 - **Sensitive paths**: internal filesystem paths (log dirs, model storage
   paths) are surfaced only as present/absent flags where relevant, not as
-  full absolute paths on the configuration page.
+  full absolute paths. The configuration redaction drops any `*_path` /
+  `*_dir` key recursively, matching that documented promise. The research
+  reader lists artifact file *names relative to their known directory*
+  (never absolute paths) and never deserializes binary model files.
 - **No arbitrary code execution / command execution**: the console exposes no
   shell, no eval, no file operations, no write endpoints except submitting a
   prompt to the existing scan pipeline.
@@ -141,8 +165,10 @@ existing pipeline objects.
 - New integration tests (`tests/integration/test_console_api.py`) cover:
   scan of a benign prompt, scan of a suspicious prompt, scan of invalid input
   (empty/oversized), history listing and lookup, rules catalog, models
-  status, configuration redaction, component inventory, summary, and static
-  UI file serving.
+  status, configuration redaction (including internal-path keys), the
+  lowercase decision counts in the summary, the research artifact snapshot
+  (datasets/load-tests/evaluation structure, model artifacts returned as
+  metadata only), component inventory, summary, and static UI file serving.
 - Existing `tests/integration/test_api.py` must continue to pass unchanged.
 - `ruff check` / `ruff format --check` / `mypy` (strict) must pass for all new
   modules; `python -m build` + `twine check` must still pass.

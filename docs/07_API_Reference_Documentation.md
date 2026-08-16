@@ -99,8 +99,9 @@ All run through the shared `AnalysisService` facade over the existing
 | `GET /console/rules` | Registered detection rules (`list[dict]`). |
 | `GET /console/models` | ML model registry status + quantum backend availability (`ml`, `quantum`). |
 | `GET /console/components` | Pipeline stage inventory with live status. |
-| `GET /console/configuration` | Sanitized configuration. **Never** returns `secret_key`, tokens, passwords, or credentialed URLs. |
+| `GET /console/configuration` | Sanitized configuration. **Never** returns `secret_key`, tokens, passwords, credentialed URLs, or `*_path` / `*_dir` keys. |
 | `GET /console/summary` | Landing-page aggregates (components, rules, ml, quantum, history). |
+| `GET /console/research` | Read-only research artifact snapshot via `q_guardian/api/services/research.py`: `datasets`, `model_artifacts` (metadata only), `evaluation`, `benchmarks`, `loadtests`. Bounded reads of known on-disk files; binary models never deserialized. |
 
 ### 1.7 Middleware behavior
 

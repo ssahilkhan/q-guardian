@@ -1,536 +1,251 @@
-/* Q-Guardian Console — application logic (vanilla JS, no dependencies). */
-
+/* Q-Guardian Console — shell, navigation and router.
+ * Renders the sidebar navigation, topbar breadcrumbs and system status,
+ * then routes hash URLs (#/view, #/detection/:id) to the view modules.
+ */
 (function () {
   "use strict";
 
-  var API = "/api/v1";
+  var QG = window.QG || (window.QG = {});
+  var U = QG.ui;
 
-  /* ---------------------------------------------------------- utilities */
+  var ICONS = {
+    dashboard:
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>',
+    scanner:
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>',
+    detection:
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>',
+    pipeline:
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>',
+    rules:
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>',
+    models:
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="5" width="14" height="14" rx="2"/><rect x="9" y="9" width="6" height="6"/></svg>',
+    quantum:
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="2"/><ellipse cx="12" cy="12" rx="10" ry="4.5"/><ellipse cx="12" cy="12" rx="10" ry="4.5" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="4.5" transform="rotate(120 12 12)"/></svg>',
+    training:
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>',
+    evaluation:
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>',
+    benchmarks:
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>',
+    audit:
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>',
+    configuration:
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>',
+    documentation:
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>',
+  };
 
-  function escapeHtml(value) {
-    return String(value == null ? "" : value).replace(/[&<>"']/g, function (ch) {
-      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch];
-    });
-  }
+  var NAV = [
+    {
+      group: "Overview",
+      items: [
+        { id: "dashboard", label: "Dashboard", icon: ICONS.dashboard },
+        { id: "scanner", label: "Scanner", icon: ICONS.scanner },
+      ],
+    },
+    {
+      group: "Analysis",
+      items: [
+        { id: "detection", label: "Detection", icon: ICONS.detection },
+        { id: "pipeline", label: "Pipeline", icon: ICONS.pipeline },
+        { id: "rules", label: "Rules", icon: ICONS.rules },
+        { id: "models", label: "Models", icon: ICONS.models },
+        { id: "quantum", label: "Quantum", icon: ICONS.quantum },
+      ],
+    },
+    {
+      group: "Research",
+      items: [
+        { id: "training", label: "Training", icon: ICONS.training },
+        { id: "evaluation", label: "Evaluation", icon: ICONS.evaluation },
+        { id: "benchmarks", label: "Benchmarks", icon: ICONS.benchmarks },
+      ],
+    },
+    {
+      group: "System",
+      items: [
+        { id: "audit", label: "Audit", icon: ICONS.audit },
+        { id: "configuration", label: "Configuration", icon: ICONS.configuration },
+        { id: "documentation", label: "Documentation", icon: ICONS.documentation },
+      ],
+    },
+  ];
 
-  function truncate(value, max) {
-    var text = String(value == null ? "" : value);
-    if (text.length <= max) return text;
-    return text.slice(0, max) + "…";
-  }
+  var VIEWS = (QG.views = QG.views || {});
+  var appView = null;
+  var currentRoute = null;
 
-  function fmtTime(value) {
-    if (!value) return "—";
-    var d = new Date(value);
-    return isNaN(d.getTime()) ? String(value) : d.toLocaleString();
-  }
-
-  function fmtNumber(value, digits) {
-    var n = Number(value);
-    if (!isFinite(n)) return "—";
-    return n.toFixed(digits == null ? 2 : digits);
-  }
-
-  function elem(html) {
-    var tpl = document.createElement("template");
-    tpl.innerHTML = html.trim();
-    return tpl.content.firstElementChild;
-  }
-
-  function showToast(message) {
-    var toast = document.getElementById("toast");
-    toast.textContent = message;
-    toast.classList.remove("hidden");
-    clearTimeout(showToast._timer);
-    showToast._timer = setTimeout(function () {
-      toast.classList.add("hidden");
-    }, 3200);
-  }
-
-  function decisionClass(decision) {
-    var d = String(decision || "").toUpperCase();
-    if (d === "ALLOW") return "allow";
-    if (d === "WARN") return "warn";
-    if (d === "REVIEW") return "review";
-    if (d === "BLOCK") return "block";
-    return "invalid";
-  }
-
-  function severityClass(severity) {
-    return "sev-" + String(severity || "info").toLowerCase();
-  }
-
-  function badgeClass(decision) {
-    var d = String(decision || "").toUpperCase();
-    if (d === "ALLOW") return "green";
-    if (d === "WARN") return "amber";
-    if (d === "REVIEW") return "orange";
-    if (d === "BLOCK") return "red";
-    return "muted";
-  }
-
-  async function api(path, options) {
-    var response = await fetch(API + path, options);
-    var body = await response.json().catch(function () { return null; });
-    if (!response.ok || !body || body.success === false) {
-      var detail = body && (body.detail || (body.error && (body.error.message || body.error)));
-      if (typeof detail === "object") detail = JSON.stringify(detail);
-      throw new Error(detail || ("Request failed with status " + response.status));
-    }
-    return body.data;
-  }
-
-  /* ---------------------------------------------------------- routing */
-
-  var routes = ["overview", "scanner", "history", "rules", "models", "configuration", "about"];
-
-  function navigate() {
-    var hash = window.location.hash.replace(/^#\/?/, "");
-    var name = routes.indexOf(hash) !== -1 ? hash : "overview";
-    routes.forEach(function (r) {
-      var view = document.getElementById("view-" + r);
-      if (view) view.classList.toggle("active", r === name);
-      var tab = document.querySelector('.tab[data-tab="' + r + '"]');
-      if (tab) tab.classList.toggle("active", r === name);
-    });
-    window.scrollTo(0, 0);
-    loadView(name);
-  }
-
-  function loadView(name) {
-    if (name === "overview") loadOverview();
-    if (name === "history") loadHistory();
-    if (name === "rules") loadRules();
-    if (name === "models") loadModels();
-    if (name === "configuration") loadConfiguration();
-  }
-
-  window.addEventListener("hashchange", navigate);
-
-  /* ---------------------------------------------------------- status */
-
-  async function refreshStatus() {
-    try {
-      var data = await api("/system/status");
-      var ok = data && data.status === "operational";
-      document.getElementById("statusDot").className = "pulse " + (ok ? "ok" : "down");
-      document.getElementById("statusText").textContent = ok ? "Operational" : "Degraded";
-    } catch (err) {
-      document.getElementById("statusDot").className = "pulse down";
-      document.getElementById("statusText").textContent = "Offline";
-    }
-  }
-
-  async function refreshVersion() {
-    try {
-      var data = await api("/system/version");
-      document.getElementById("versionInfo").textContent =
-        (data ? data.application : "Q-Guardian") + " v" + (data ? data.version : "?");
-    } catch (e) {
-      document.getElementById("versionInfo").textContent = "Q-Guardian";
-    }
-  }
-
-  /* ---------------------------------------------------------- renderers */
-
-  function renderDecisionBanner(item) {
-    var payload = item.payload || {};
-    var decision = String(item.decision || payload.decision || "UNKNOWN");
-    var cls = decisionClass(decision);
-    var recommendation = payload.recommendation || "No recommendation provided.";
-    var html =
-      '<div class="banner ' + cls + '">' +
-        '<div class="banner-title">' +
-          "<span>" + escapeHtml(decision) + "</span>" +
-          '<span class="badge">risk ' + fmtNumber(item.risk_score, 3) + "</span>" +
-        "</div>" +
-        "<p>" + escapeHtml(recommendation) + "</p>" +
-      "</div>";
-    return html;
-  }
-
-  function renderMeta(item) {
-    var payload = item.payload || {};
-    return (
-      '<div class="detail-list">' +
-        '<div class="detail-row"><span class="k">Analysis ID</span><span class="v">' + escapeHtml(item.analysis_id) + "</span></div>" +
-        '<div class="detail-row"><span class="k">Timestamp</span><span class="v">' + escapeHtml(fmtTime(item.timestamp || payload.timestamp)) + "</span></div>" +
-        '<div class="detail-row"><span class="k">Processing time</span><span class="v">' + fmtNumber(item.processing_time_ms, 2) + " ms</span></div>" +
-        '<div class="detail-row"><span class="k">Validation</span><span class="v">' + escapeHtml(payload.validation_status || (item.is_valid ? "valid" : "invalid")) + "</span></div>" +
-        '<div class="detail-row"><span class="k">Truncated</span><span class="v">' + (payload.truncated ? "yes" : "no") + "</span></div>" +
-      "</div>"
-    );
-  }
-
-  function renderFindings(findings) {
-    if (!findings || !findings.length) {
-      return '<p class="muted">No findings — input is considered safe.</p>';
-    }
-    var ordered = findings.slice().sort(function (a, b) {
-      var order = { critical: 0, high: 1, medium: 2, low: 3, info: 4 };
-      return (order[String(a.severity).toLowerCase()] ?? 5) - (order[String(b.severity).toLowerCase()] ?? 5);
-    });
-    var html = ordered.map(function (f) {
-      var sev = String(f.severity || "info").toUpperCase();
-      return (
-        '<div class="finding ' + severityClass(f.severity) + '">' +
-          '<div class="finding-head">' +
-            '<span class="sev">' + escapeHtml(sev) + "</span>" +
-            "<span>" + escapeHtml(f.category || "finding") + "</span>" +
-          "</div>" +
-          "<p>" + escapeHtml(f.description || "") + "</p>" +
-          (f.matched_text ? "<pre>" + escapeHtml(f.matched_text) + "</pre>" : "") +
-          '<div class="meta">confidence ' + fmtNumber(f.confidence, 3) +
-            (f.detected_at ? " · " + escapeHtml(fmtTime(f.detected_at)) : "") + "</div>" +
-        "</div>"
-      );
-    }).join("");
-    return html;
-  }
-
-  function renderFeatures(features) {
-    if (!features || !Object.keys(features).length) {
-      return '<p class="muted">No features extracted.</p>';
-    }
-    var items = Object.keys(features).sort().map(function (key) {
-      var value = features[key];
-      var display = typeof value === "object" ? JSON.stringify(value) : value;
-      return (
-        '<div class="feature-item">' +
-          '<div class="k">' + escapeHtml(key) + "</div>" +
-          '<div class="v">' + escapeHtml(display) + "</div>" +
-        "</div>"
-      );
-    }).join("");
-    return '<div class="feature-grid">' + items + "</div>";
-  }
-
-  function renderFullResult(item) {
-    var payload = item.payload || {};
-    return (
-      renderDecisionBanner(item) +
-      '<div class="card">' +
-        "<h3>Overview</h3>" + renderMeta(item) +
-      "</div>" +
-      '<div class="card">' +
-        "<h3>Findings (" + item.finding_count + ")</h3>" + renderFindings(payload.findings) +
-      "</div>" +
-      '<div class="card">' +
-        "<h3>Features</h3>" + renderFeatures(payload.features) +
-      "</div>" +
-      '<div class="card">' +
-        "<h3>Normalized Prompt</h3>" +
-        "<pre>" + escapeHtml(payload.normalized_prompt || payload.prompt || "(empty)") + "</pre>" +
-      "</div>"
-    );
-  }
-
-  function renderStat(label, value, cls) {
-    return (
-      '<div class="stat">' +
-        '<div class="stat-label">' + escapeHtml(label) + "</div>" +
-        '<div class="stat-value ' + (cls || "") + '">' + escapeHtml(value) + "</div>" +
-      "</div>"
-    );
-  }
-
-  /* ---------------------------------------------------------- scanner */
-
-  async function runScan(prompt, resultTargetId, errorTargetId, buttonId) {
-    var button = document.getElementById(buttonId);
-    var errorBox = document.getElementById(errorTargetId);
-    if (button) button.disabled = true;
-    if (errorBox) errorBox.classList.add("hidden");
-
-    try {
-      if (!prompt || !prompt.trim()) {
-        throw new Error("Please enter a prompt to analyze.");
+  function findNavItem(id) {
+    for (var i = 0; i < NAV.length; i += 1) {
+      for (var j = 0; j < NAV[i].items.length; j += 1) {
+        if (NAV[i].items[j].id === id) return NAV[i].items[j];
       }
-      var item = await api("/analysis/scan", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: prompt }),
-      });
-      var target = document.getElementById(resultTargetId);
-      if (target) target.innerHTML = renderFullResult(item);
-      showToast("Analysis complete: " + (item.decision || "done"));
-    } catch (err) {
-      if (errorBox) {
-        errorBox.textContent = err.message;
-        errorBox.classList.remove("hidden");
-      } else {
-        showToast(err.message);
-      }
-    } finally {
-      if (button) button.disabled = false;
     }
+    return null;
   }
 
-  /* ---------------------------------------------------------- overview */
-
-  async function loadOverview() {
-    try {
-      var summary = await api("/console/summary");
-      var history = summary.history || {};
-      var ml = summary.ml || {};
-
-      var stats = [
-        renderStat("Pipeline Status", "Operational", "ok"),
-        renderStat("Components Active", summary.components ? summary.components.filter(function (c) { return c.status === "active"; }).length + " / " + summary.components.length : "—"),
-        renderStat("Rules Enabled", String(summary.rules ? summary.rules.enabled : "—") + " / " + (summary.rules ? summary.rules.total : "—")),
-        renderStat("ML Detectors", String(ml.detector_count || 0)),
-        renderStat("Models Loaded", String(ml.loaded_models || 0)),
-        renderStat("Scans (session)", String(history.total || 0)),
-        renderStat("Blocked", String(history.blocked || 0), history.blocked ? "danger" : "ok"),
-        renderStat("Quantum Backends", String(summary.quantum ? summary.quantum.backends.length : 0)),
-      ];
-      document.getElementById("overviewStats").innerHTML = stats.join("");
-
-      renderComponents(summary.components || []);
-    } catch (err) {
-      document.getElementById("overviewStats").innerHTML =
-        '<p class="empty-state">Failed to load overview: ' + escapeHtml(err.message) + "</p>";
-    }
-  }
-
-  function renderComponents(components) {
-    var html = components.map(function (c) {
-      var badge = c.status === "active"
-        ? '<span class="badge green">active</span>'
-        : c.status === "available"
-          ? '<span class="badge muted">available</span>'
-          : '<span class="badge amber">' + escapeHtml(c.status) + "</span>";
-      return (
-        '<div class="rule">' +
-          '<div class="rule-head"><span class="rule-id">' + escapeHtml(c.id) + "</span>" + badge + "</div>" +
-          '<p><strong>' + escapeHtml(c.name) + "</strong> — " + escapeHtml(c.detail) + "</p>" +
-        "</div>"
-      );
-    }).join("");
-    document.getElementById("componentsList").innerHTML = html || '<p class="empty-state">No components reported.</p>';
-  }
-
-  /* ---------------------------------------------------------- history */
-
-  async function loadHistory() {
-    var box = document.getElementById("historyTable");
-    try {
-      var items = await api("/analysis?limit=100");
-      if (!items || !items.length) {
-        box.innerHTML = '<p class="empty-state">No scans yet — run one from the Scanner.</p>';
-        return;
-      }
-      var rows = items.map(function (item) {
-        return (
-          "<tr data-id=\"" + escapeHtml(item.analysis_id) + "\">" +
-            "<td>" + escapeHtml(fmtTime(item.timestamp)) + "</td>" +
-            "<td><span class=\"badge " + badgeClass(item.decision) + "\">" + escapeHtml(item.decision) + "</span></td>" +
-            "<td>" + fmtNumber(item.risk_score, 3) + "</td>" +
-            "<td>" + item.finding_count + "</td>" +
-            "<td>" + item.high_severity_count + "</td>" +
-            "<td>" + fmtNumber(item.processing_time_ms, 2) + " ms</td>" +
-            "<td>" + escapeHtml(truncate(item.payload && item.payload.prompt, 70)) + "</td>" +
-          "</tr>"
-        );
-      }).join("");
-      box.innerHTML =
-        '<table><thead><tr>' +
-          "<th>Time</th><th>Decision</th><th>Risk</th><th>Findings</th><th>High</th><th>Latency</th><th>Prompt</th>" +
-        "</tr></thead><tbody>" + rows + "</tbody></table>";
-      box.querySelectorAll("tbody tr").forEach(function (tr) {
-        tr.classList.add("clickable");
-        tr.addEventListener("click", function () {
-          openHistoryDetail(tr.getAttribute("data-id"));
+  function parseHash(hash) {
+    var raw = (hash || "").replace(/^#/, "");
+    var parts = raw.split("/").filter(Boolean);
+    var query = {};
+    var last = parts[parts.length - 1];
+    if (last && last.indexOf("?") !== -1) {
+      var pieces = last.split("?");
+      parts[parts.length - 1] = pieces[0];
+      pieces.slice(1).forEach(function (chunk) {
+        chunk.split("&").forEach(function (pair) {
+          if (!pair) return;
+          var eq = pair.indexOf("=");
+          if (eq === -1) {
+            query[decodeURIComponent(pair)] = "";
+          } else {
+            query[decodeURIComponent(pair.slice(0, eq))] = decodeURIComponent(pair.slice(eq + 1));
+          }
         });
       });
-    } catch (err) {
-      box.innerHTML = '<p class="empty-state">Failed to load history: ' + escapeHtml(err.message) + "</p>";
     }
+    return { segments: parts, query: query };
   }
 
-  async function openHistoryDetail(id) {
-    try {
-      var item = await api("/analysis/" + encodeURIComponent(id));
-      document.getElementById("resultPanel").innerHTML =
-        '<h2 class="row between" style="justify-content:space-between;display:flex">' +
-          "<span>Analysis " + escapeHtml(id) + "</span>" +
-          '<button type="button" class="btn ghost" id="closeDetail">Close</button>' +
-        "</h2>" +
-        renderFullResult(item);
-      var close = document.getElementById("closeDetail");
-      if (close) close.addEventListener("click", function () {
-        document.getElementById("resultPanel").innerHTML = "";
-      });
-      document.getElementById("resultPanel").scrollIntoView({ behavior: "smooth" });
-    } catch (err) {
-      showToast(err.message);
+  function resolveRoute(route) {
+    var segments = route.segments;
+    var first = segments[0] || "dashboard";
+    var params = Object.assign({}, route.query);
+
+    if (first === "detection" && segments.length > 1) {
+      params.id = decodeURIComponent(segments[1]);
     }
+
+    var view = VIEWS[first];
+    if (!view) {
+      return { view: null, activeId: first };
+    }
+    return { view: view, activeId: first, params: params };
   }
 
-  /* ---------------------------------------------------------- rules */
-
-  async function loadRules() {
-    var box = document.getElementById("rulesList");
-    try {
-      var rules = await api("/console/rules");
-      if (!rules || !rules.length) {
-        box.innerHTML = '<p class="empty-state">No rules registered.</p>';
-        return;
-      }
-      var html = rules.map(function (rule) {
-        var enabled = rule.enabled !== false;
-        var badge = enabled
-          ? '<span class="badge green">enabled</span>'
-          : '<span class="badge muted">disabled</span>';
-        return (
-          '<div class="rule">' +
-            '<div class="rule-head">' +
-              '<span class="rule-id">' + escapeHtml(rule.rule_id || rule.name || "rule") + "</span>" +
-              badge +
-            "</div>" +
-            "<p>" + escapeHtml(rule.description || rule.pattern || rule.message || "") + "</p>" +
-            '<div class="rule-meta">' +
-              (rule.category ? "category " + escapeHtml(rule.category) + " · " : "") +
-              (rule.severity ? "severity " + escapeHtml(rule.severity) + " · " : "") +
-              "confidence " + fmtNumber(rule.confidence, 2) +
-            "</div>" +
-          "</div>"
-        );
-      }).join("");
-      box.innerHTML = html;
-    } catch (err) {
-      box.innerHTML = '<p class="empty-state">Failed to load rules: ' + escapeHtml(err.message) + "</p>";
-    }
-  }
-
-  /* ---------------------------------------------------------- models */
-
-  async function loadModels() {
-    try {
-      var data = await api("/console/models");
-      var ml = data.ml || {};
-      var quantum = data.quantum || {};
-
-      var mlRows = (ml.models || []).map(function (m) {
-        var badge = m.status === "loaded"
-          ? '<span class="badge green">loaded</span>'
-          : '<span class="badge muted">' + escapeHtml(m.status || "unloaded") + "</span>";
-        return (
-          "<tr><td>" + escapeHtml(m.name) + "</td>" +
-          "<td>" + escapeHtml(m.model_type) + "</td>" +
-          "<td>" + escapeHtml(m.backend) + "</td>" +
-          "<td>" + escapeHtml(m.version) + "</td>" +
-          "<td>" + badge + "</td>" +
-          "<td>" + escapeHtml(m.description || "") + "</td></tr>"
-        );
-      }).join("");
-      document.getElementById("mlModelsList").innerHTML =
-        '<div class="rule-meta" style="margin-bottom:10px">' +
-          "ML active: <strong>" + (ml.active ? "yes" : "no") + "</strong> · " +
-          "detectors: " + (ml.detector_count || 0) + " · classifiers: " + (ml.classifier_count || 0) + " · " +
-          "loaded: " + (ml.loaded_models || 0) + " / " + (ml.total_models || 0) +
-        "</div>" +
-        (mlRows
-          ? '<div class="table-wrap"><table><thead><tr>' +
-              "<th>Model</th><th>Type</th><th>Backend</th><th>Version</th><th>Status</th><th>Description</th>" +
-            "</tr></thead><tbody>" + mlRows + "</tbody></table></div>"
-          : '<p class="empty-state">No ML models registered. Models are optional — the rule engine alone protects prompts.</p>');
-
-      var qRows = (quantum.backends || []).map(function (b) {
-        var badge = b.installed
-          ? '<span class="badge green">installed</span>'
-          : '<span class="badge muted">not installed</span>';
-        return (
-          "<tr><td>" + escapeHtml(b.name) + "</td>" +
-          "<td>" + escapeHtml(b.description) + "</td>" +
-          "<td>" + (b.requires ? escapeHtml(b.requires) : "none") + "</td>" +
-          "<td>" + badge + "</td></tr>"
-        );
-      }).join("");
-      document.getElementById("quantumList").innerHTML = qRows
-        ? '<div class="table-wrap"><table><thead><tr>' +
-            "<th>Backend</th><th>Description</th><th>Required SDK</th><th>Availability</th>" +
-          "</tr></thead><tbody>" + qRows + "</tbody></table></div>"
-        : '<p class="empty-state">No quantum backends reported.</p>';
-
-      var fusion = (quantum.fusion_strategies || []).map(function (s) {
-        return '<span class="badge" style="margin:0 6px 6px 0">' + escapeHtml(s) + "</span>";
-      }).join("");
-      document.getElementById("fusionList").innerHTML =
-        fusion || '<p class="empty-state">No fusion strategies reported.</p>';
-    } catch (err) {
-      document.getElementById("mlModelsList").innerHTML =
-        '<p class="empty-state">Failed to load models: ' + escapeHtml(err.message) + "</p>";
-    }
-  }
-
-  /* ---------------------------------------------------------- configuration */
-
-  function renderConfigGroup(title, obj) {
-    if (!obj) return "";
-    var rows = Object.keys(obj).sort().map(function (key) {
-      var value = obj[key];
-      var display = typeof value === "object" ? JSON.stringify(value) : String(value);
+  function renderNav(activeId) {
+    var nav = document.getElementById("sideNav");
+    var html = NAV.map(function (group) {
+      var items = group.items
+        .map(function (item) {
+          return (
+            '<a class="nav-item' + (item.id === activeId ? " active" : "") + '" href="#/' + item.id + '">' +
+            '<span class="nav-icon" aria-hidden="true">' + item.icon + "</span>" +
+            '<span>' + U.text(item.label) + "</span>" +
+            "</a>"
+          );
+        })
+        .join("");
       return (
-        '<div class="detail-row"><span class="k">' + escapeHtml(key) + "</span>" +
-        '<span class="v">' + escapeHtml(display) + "</span></div>"
+        '<div class="nav-group">' +
+        '<span class="nav-group-label">' + U.text(group.group) + "</span>" +
+        items +
+        "</div>"
       );
     }).join("");
-    return (
-      '<div class="card"><h3>' + escapeHtml(title) + "</h3>" +
-      '<div class="detail-list">' + rows + "</div></div>"
-    );
+    nav.innerHTML = html;
   }
 
-  async function loadConfiguration() {
-    var box = document.getElementById("configContent");
-    try {
-      var config = await api("/console/configuration");
-      var groups = [
-        ["Application", config.application],
-        ["Database", config.database],
-        ["Security", config.security],
-        ["Prompt Security", config.prompt_security],
-        ["ML", config.ml],
-      ];
-      box.innerHTML = groups.map(function (pair) {
-        return renderConfigGroup(pair[0], pair[1]);
-      }).join("");
-    } catch (err) {
-      box.innerHTML = '<p class="empty-state">Failed to load configuration: ' + escapeHtml(err.message) + "</p>";
+  function renderCrumbs(view, params) {
+    var crumbs = document.getElementById("breadcrumbs");
+    var html =
+      '<a class="crumb" href="#/dashboard">Console</a>' +
+      '<span class="crumb-sep">/</span>';
+    if (view && view.crumb) {
+      html +=
+        '<a class="crumb" href="#/detection">' + U.text(view.title) + "</a>" +
+        '<span class="crumb-sep">/</span>' +
+        '<span class="crumb current">' + U.text(view.crumb(params)) + "</span>";
+    } else if (view) {
+      html += '<span class="crumb current">' + U.text(view.title) + "</span>";
+    } else {
+      html += '<span class="crumb current">Not found</span>';
+    }
+    crumbs.innerHTML = html;
+  }
+
+  function showError(message) {
+    if (appView) {
+      appView.innerHTML =
+        '<div class="page-head"><div><h2 class="page-title">Error</h2></div></div>' +
+        U.errorState(message || "Something went wrong while loading this view.");
     }
   }
 
-  /* ---------------------------------------------------------- wire-up */
+  function render() {
+    var route = parseHash(window.location.hash);
+    var resolved = resolveRoute(route);
 
-  function onReady() {
-    document.getElementById("scanForm").addEventListener("submit", function (ev) {
-      ev.preventDefault();
-      var input = document.getElementById("scanInput");
-      runScan(input.value, "resultPanel", "scanError", "scanSubmit");
-    });
+    renderNav(resolved.activeId);
 
-    document.getElementById("quickScanForm").addEventListener("submit", function (ev) {
-      ev.preventDefault();
-      var input = document.getElementById("quickScanInput");
-      runScan(input.value, "resultPanel", "quickScanError", "quickScanBtn").then(function () {
-        window.location.hash = "#/scanner";
+    if (!resolved.view) {
+      renderCrumbs(null, null);
+      showError("Unknown route: #/" + resolved.activeId);
+      return;
+    }
+
+    renderCrumbs(resolved.view, resolved.params);
+    appView = document.getElementById("appView");
+    if (!appView) return;
+
+    Promise.resolve()
+      .then(function () {
+        return resolved.view.render(appView, resolved.params);
+      })
+      .catch(function (err) {
+        showError(err && err.message ? err.message : "Unknown error.");
       });
-    });
+  }
 
-    document.getElementById("refreshHistory").addEventListener("click", loadHistory);
-    document.getElementById("refreshRules").addEventListener("click", loadRules);
-    document.getElementById("refreshModels").addEventListener("click", loadModels);
-    document.getElementById("refreshConfig").addEventListener("click", loadConfiguration);
+  function setStatus(state, text) {
+    var dot = document.getElementById("statusDot");
+    var label = document.getElementById("statusText");
+    if (dot) dot.className = "pulse " + (state || "");
+    if (label) label.textContent = text || "";
+  }
 
+  async function refreshStatus() {
+    setStatus("checking", "checking…");
+    try {
+      var payload = await QG.api.get(QG.api.endpoints.health);
+      var status = payload && payload.status ? payload.status : "operational";
+      if (status === "healthy") {
+        setStatus("ok", "operational");
+      } else if (status === "degraded") {
+        setStatus("degraded", "degraded");
+      } else {
+        setStatus("ok", String(status));
+      }
+    } catch (err) {
+      setStatus("down", "offline");
+    }
+  }
+
+  async function loadVersion() {
+    var el = document.getElementById("versionInfo");
+    if (!el) return;
+    try {
+      var payload = await QG.api.get(QG.api.endpoints.version);
+      var version = QG.api.data(payload);
+      el.textContent = "Q-Guardian v" + (version ? version.version : "—");
+    } catch (err) {
+      el.textContent = "Q-Guardian";
+    }
+  }
+
+  function boot() {
+    window.addEventListener("hashchange", render);
+    render();
+    loadVersion();
     refreshStatus();
-    refreshVersion();
-    navigate();
+    setInterval(refreshStatus, 20000);
   }
 
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", onReady);
+    document.addEventListener("DOMContentLoaded", boot);
   } else {
-    onReady();
+    boot();
   }
 })();

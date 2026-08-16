@@ -83,10 +83,17 @@ Documented template for `src/q_guardian/config/settings.py`:
 The web console is a dependency-free single-page app (HTML/CSS/JS) shipped as
 package data:
 
-- `index.html` — application shell with tabbed navigation (Overview, Scanner,
-  History, Rules, Models, Configuration, About).
-- `css/console.css` — dark console theme; decision/severity colour coding.
-- `js/console.js` — hash router, fetch-based API client, renderers.
+- `index.html` — application shell (sidebar navigation grouped into
+  Overview / Analysis / Research / System, topbar breadcrumbs, app view).
+- `favicon.svg` — console mark (blue rounded square with shield).
+- `css/console.css` — professional light enterprise theme; white surfaces,
+  blue accent, traffic-light status colours.
+- `js/api.js` — fetch-based API client and envelope helpers.
+- `js/ui.js` — shared rendering helpers (badges, cards, tables, toasts).
+- `js/views/*.js` — one module per page (dashboard, scanner, detection,
+  pipeline, rules, models, quantum, training, evaluation, benchmarks, audit,
+  configuration, documentation).
+- `js/console.js` — hash router, sidebar navigation and system status polling.
 
 Mounted read-only by FastAPI at `/ui` (see `src/q_guardian/api/app.py`), so the
 same `uvicorn src.q_guardian.main:app` process serves both the API and the

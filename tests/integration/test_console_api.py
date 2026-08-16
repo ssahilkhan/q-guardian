@@ -125,6 +125,13 @@ class TestConsoleEndpoints:
         assert "change-me-to-a-random-secret-key" not in response.text
         assert "secret_key_configured" in data["security"]
 
+    async def test_configuration_redacts_internal_paths(self, client: AsyncClient) -> None:
+        """Verify filesystem path fields are never exposed."""
+        response = await client.get("/api/v1/console/configuration")
+        assert response.status_code == 200
+        data = response.json()["data"]
+        assert "ml_model_path" not in data["prompt_security"]
+
     async def test_summary(self, client: AsyncClient) -> None:
         """Verify the summary endpoint returns overview aggregates."""
         response = await client.get("/api/v1/console/summary")
@@ -132,6 +139,62 @@ class TestConsoleEndpoints:
         data = response.json()["data"]
         for key in ("components", "rules", "ml", "quantum", "history"):
             assert key in data
+
+    async def test_summary_counts_lowercase_decisions(self, client: AsyncClient) -> None:
+        """Verify history aggregates reflect the lowercase decision values.
+
+        Decisions serialize as StrEnum values (``block``/``allow``/...), so
+        the summary counts must not compare against uppercase literals.
+        """
+        await client.post("/api/v1/analysis/scan", json={"prompt": SUSPICIOUS_PROMPT})
+        response = await client.get("/api/v1/console/summary")
+        assert response.status_code == 200
+        history = response.json()["data"]["history"]
+        assert history["blocked"] >= 1
+
+    async def test_research_artifacts(self, client: AsyncClient) -> None:
+        """Verify the research endpoint exposes the artifact inventory."""
+        response = await client.get("/api/v1/console/research")
+        assert response.status_code == 200
+        body = response.json()
+        assert body["success"] is True
+        data = body["data"]
+        for key in ("datasets", "model_artifacts", "evaluation", "benchmarks", "loadtests"):
+            assert key in data
+
+    async def test_research_datasets_inventory(self, client: AsyncClient) -> None:
+        """Verify on-disk JSONL datasets are inventoried with real metadata."""
+        response = await client.get("/api/v1/console/research")
+        datasets = response.json()["data"]["datasets"]
+        assert any(d["name"] == "prompt_injections.jsonl" for d in datasets)
+        sample = next(d for d in datasets if d["name"] == "prompt_injections.jsonl")
+        assert sample["rows"] is not None and sample["rows"] > 0
+        assert "text" in sample["fields"]
+        assert "label" in sample["fields"]
+
+    async def test_research_loadtests_inventory(self, client: AsyncClient) -> None:
+        """Verify shipped load-test results are listed with summary metrics."""
+        response = await client.get("/api/v1/console/research")
+        loadtests = response.json()["data"]["loadtests"]
+        assert len(loadtests) > 0
+        assert all("scenario_name" in item for item in loadtests)
+        assert any(item["scenario_name"] == "prompt_scan" for item in loadtests)
+
+    async def test_research_evaluation_structure(self, client: AsyncClient) -> None:
+        """Verify the evaluation entry reports presence and report payload."""
+        response = await client.get("/api/v1/console/research")
+        evaluation = response.json()["data"]["evaluation"]
+        assert "present" in evaluation
+        assert "report" in evaluation
+        assert "note" in evaluation
+
+    async def test_research_model_artifacts_never_serialized(self, client: AsyncClient) -> None:
+        """Verify model artifact listing is metadata only."""
+        response = await client.get("/api/v1/console/research")
+        artifacts = response.json()["data"]["model_artifacts"]
+        assert isinstance(artifacts, list)
+        for artifact in artifacts:
+            assert set(artifact.keys()) == {"name", "kind", "size", "modified"}
 
 
 @pytest.mark.asyncio
