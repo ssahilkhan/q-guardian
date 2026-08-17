@@ -20,6 +20,10 @@ from q_guardian.api.services.research import research_snapshot
 from q_guardian.config.settings import SecuritySettings, get_settings
 from q_guardian.ml.config import MLConfig
 from q_guardian.ml.plugin import ThreatAnalysisPlugin
+from q_guardian.quantum.fusion.strategies import (
+    IMPLEMENTED_STRATEGIES,
+    INTERFACE_ONLY_STRATEGIES,
+)
 from q_guardian.security.config import PromptSecurityConfig
 from q_guardian.security.enums import PromptDecision
 
@@ -203,14 +207,8 @@ class AnalysisService:
             },
             "quantum": {
                 "active": False,
-                "fusion_strategies": [
-                    "weighted_voting",
-                    "confidence_based",
-                    "stacking",
-                    "adaptive",
-                    "bayesian",
-                    "max_confidence",
-                ],
+                "fusion_strategies": list(IMPLEMENTED_STRATEGIES),
+                "fusion_interface_only": list(INTERFACE_ONLY_STRATEGIES),
                 "backends": quantum,
             },
         }
@@ -250,7 +248,7 @@ class AnalysisService:
                 "anomaly_threshold": ml_config.anomaly_threshold,
                 "classification_threshold": ml_config.classification_threshold,
                 "max_features": ml_config.max_features,
-                "xgboost_available": ml_config.xgboost_available,
+                "xgboost_available": self._sdk_installed("xgboost"),
                 "models_directory_configured": bool(str(ml_config.model_storage_path)),
             },
         }

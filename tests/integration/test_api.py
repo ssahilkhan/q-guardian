@@ -83,8 +83,27 @@ class TestStatusEndpoint:
         response = await client.get("/api/v1/system/status")
         assert response.status_code == 200
 
-    async def test_status_is_operational(self, client: AsyncClient) -> None:
-        """Verify status response indicates operational."""
+    async def test_status_response_structure(self, client: AsyncClient) -> None:
+        """Verify status response exposes status and dependency health."""
         response = await client.get("/api/v1/system/status")
-        data = response.json()
-        assert data["data"]["status"] == "operational"
+        data = response.json()["data"]
+        assert "status" in data
+        assert "database" in data
+
+    async def test_status_agrees_with_health(self, client: AsyncClient) -> None:
+        """Verify status never claims operational while a dependency is down.
+
+        /system/status must agree with /health: operational only when every
+        checked dependency is healthy, degraded otherwise. Dependency
+        failures are surfaced, never hidden.
+        """
+        status_response = await client.get("/api/v1/system/status")
+        health_response = await client.get("/api/v1/health")
+        status_data = status_response.json()["data"]
+        health_data = health_response.json()
+
+        assert status_data["status"] in {"operational", "degraded"}
+        db_status = health_data["database"]["status"]
+        assert status_data["database"]["status"] == db_status
+        expected = "operational" if db_status == "healthy" else "degraded"
+        assert status_data["status"] == expected

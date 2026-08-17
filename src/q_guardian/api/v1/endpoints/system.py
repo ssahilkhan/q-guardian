@@ -7,11 +7,13 @@ from __future__ import annotations
 
 import platform
 from datetime import UTC, datetime
+from typing import Any
 
 import structlog
 from fastapi import APIRouter, Request
 
 from q_guardian.config.settings import get_settings
+from q_guardian.database.health import check_database_health
 from q_guardian.schemas.base import ResponseSchema, VersionResponseSchema
 
 logger = structlog.get_logger("api.system")
@@ -41,15 +43,23 @@ async def get_version(request: Request) -> ResponseSchema[VersionResponseSchema]
     )
 
 
-@router.get("/status", response_model=ResponseSchema[dict[str, str]])
-async def get_status(request: Request) -> ResponseSchema[dict[str, str]]:
-    """Get application status.
+@router.get("/status", response_model=ResponseSchema[dict[str, Any]])
+async def get_status(request: Request) -> ResponseSchema[dict[str, Any]]:
+    """Get the real current application status.
+
+    Status is derived from live dependency health (MongoDB ping). It is
+    ``operational`` only when every checked dependency is healthy, and
+    ``degraded`` otherwise. Dependency failures are surfaced in the
+    ``database`` block — never hidden or suppressed.
 
     Returns:
-        ResponseSchema indicating the application is operational.
+        ResponseSchema containing the operational status and the
+        underlying dependency health snapshot.
     """
+    db_health = await check_database_health()
+    status = "operational" if db_health["status"] == "healthy" else "degraded"
     return ResponseSchema(
         success=True,
-        message="Application is operational",
-        data={"status": "operational"},
+        message=f"Application is {status}",
+        data={"status": status, "database": db_health},
     )
