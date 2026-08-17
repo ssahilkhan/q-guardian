@@ -159,7 +159,7 @@ single-page app shipped as package data (`src/q_guardian/ui/static/`, mounted at
 |----------|----------|------|
 | `ci.yml` | push/PR to `main` | `lint` (ruff check + format check), `typecheck` (mypy), `test` (pytest + coverage XML, matrix 3.12/3.13, uploads `coverage.xml` artifact), `package` (needs lint+test; `python -m build` + `python -m scripts.packaging.validate`, uploads `dist/`). |
 | `benchmark.yml` | push to `main`, manual | `benchmark` — `python -m scripts.benchmarks.run_benchmarks --iterations 10 --output-format json --output benchmark-results.json`, uploads results artifact. |
-| `release.yml` | tags `v*` | `release` (environment `release`) — build + validate, GitHub release via `softprops/action-gh-release` (attaches `dist/*`, auto release notes), then PyPI publish via `pypa/gh-action-pypi-publish` (trusted publishing, `id-token: write`). |
+| `release.yml` | tags `v*` | `release` — builds + validates and creates the GitHub release with `dist/*` (`softprops/action-gh-release`); `publish` (needs `release`, environment `release`) publishes the `dist/` artifact to PyPI via `pypa/gh-action-pypi-publish` (trusted publishing, `id-token: write`). |
 
 All jobs run on `ubuntu-latest` with Python 3.12 (`setup-python@v5`, pip cache).
 
@@ -182,7 +182,9 @@ python -m scripts.packaging.validate     # verify metadata, version match, expor
 4. Every `__all__` entry in `src/q_guardian/__init__.py` has a corresponding import.
 
 Release flow (mirrors `release.yml`): tag `vX.Y.Z` → CI builds/validates →
-GitHub Release with `dist/*` → publish to PyPI (trusted publishing).
+GitHub Release with `dist/*` → publish to PyPI (trusted publishing; requires a
+PyPI trusted publisher registered for `ssahilkhan/q-guardian`, workflow
+`release.yml`, environment `release`).
 
 ---
 
