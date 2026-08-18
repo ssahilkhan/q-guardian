@@ -58,10 +58,12 @@ class RandomForestThreatClassifier(PromptClassifier, BaseThreatModel):
         config: MLConfig | None = None,
         n_estimators: int = 100,
         max_depth: int | None = None,
+        class_weight: str | dict[str, float] | None = None,
     ) -> None:
         self._config = config or MLConfig()
         self._n_estimators = n_estimators
         self._max_depth = max_depth
+        self._class_weight = class_weight
         self._model: RandomForestClassifier | None = None
         self._classes: list[str] = list(THREAT_CATEGORIES)
         self._metadata = ModelMetadata(
@@ -107,6 +109,7 @@ class RandomForestThreatClassifier(PromptClassifier, BaseThreatModel):
             n_estimators=self._n_estimators,
             max_depth=self._max_depth,
             random_state=self._config.random_state,
+            class_weight=self._class_weight,
         )
         self._model.fit(x_arr, arr_y)
 

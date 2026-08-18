@@ -4,8 +4,8 @@ Builds the real Q-Guardian pipeline (normalizer -> feature extractor ->
 rule engine -> classical ML -> quantum QSVM -> hybrid fusion) using the
 framework's own provider adapters, fits it on a training set, and scores
 it on a test set. Every provider (rule engine, isolation forest, random
-forest, QSVM) and the fused result is measured with the same continuous
-threat score, enabling per-component comparison and ablation.
+forest, XGBoost, QSVM) and the fused result is measured with the same
+continuous threat score, enabling per-component comparison and ablation.
 """
 
 from __future__ import annotations
@@ -16,12 +16,16 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
+import structlog
 from sklearn.preprocessing import StandardScaler
 
 from q_guardian.evaluation.metrics import detection_metrics
 from q_guardian.ml.feature_pipeline import MLFeatureProvider
 from q_guardian.ml.models.anomaly import IsolationForestDetector
-from q_guardian.ml.models.classifier import RandomForestThreatClassifier
+from q_guardian.ml.models.classifier import (
+    RandomForestThreatClassifier,
+    XGBoostThreatClassifier,
+)
 from q_guardian.quantum.backends.simulator import LocalSimulatorBackend
 from q_guardian.quantum.feature_maps.angle_encoding import AngleEncodingMap
 from q_guardian.quantum.fusion.adapters import (
@@ -45,17 +49,23 @@ if TYPE_CHECKING:
     from q_guardian.evaluation.dataset import PromptBenchmarkDataset
     from q_guardian.quantum.fusion.providers import PredictionProvider
 
+logger = structlog.get_logger("evaluation.pipeline")
+
 # Provider identifiers as registered on the fusion engine.
 RULE_PROVIDER = "rule-engine"
 ANOMALY_PROVIDER = "isolation-forest"
 CLASSIFIER_PROVIDER = "random-forest"
+XGBOOST_PROVIDER = "xgboost"
 QUANTUM_PROVIDER = "qsvm"
 
-# Default fusion weights mirror the production harness configuration.
+# Default fusion weights mirror the production harness configuration. The
+# classical classifiers (random forest + xgboost) carry the bulk of the vote;
+# rule engine, isolation forest and the optional QSVM are supporting sources.
 DEFAULT_PROVIDER_WEIGHTS: dict[str, float] = {
     RULE_PROVIDER: 0.15,
-    ANOMALY_PROVIDER: 0.15,
-    CLASSIFIER_PROVIDER: 0.55,
+    ANOMALY_PROVIDER: 0.10,
+    CLASSIFIER_PROVIDER: 0.35,
+    XGBOOST_PROVIDER: 0.25,
     QUANTUM_PROVIDER: 0.15,
 }
 
@@ -63,6 +73,7 @@ ALL_PROVIDERS = [
     RULE_PROVIDER,
     ANOMALY_PROVIDER,
     CLASSIFIER_PROVIDER,
+    XGBOOST_PROVIDER,
     QUANTUM_PROVIDER,
 ]
 
@@ -114,6 +125,7 @@ class HybridEvaluator:
         self.scaler: StandardScaler | None = None
         self.anomaly: IsolationForestDetector | None = None
         self.rf: RandomForestThreatClassifier | None = None
+        self.xgb: XGBoostThreatClassifier | None = None
         self.qsvm: QSVMModel | None = None
         self._providers: dict[str, tuple[PredictionProvider, float]] = {}
 
@@ -147,6 +159,17 @@ class HybridEvaluator:
         self.rf = RandomForestThreatClassifier(n_estimators=self.n_estimators)
         self.anomaly.train(x_scaled)
         self.rf.train(x_scaled, y)
+
+        # XGBoost is part of the classical classifier stack. It trains on the
+        # same scaled features as Random Forest; if the optional dependency is
+        # not installed the classifier reports itself unavailable and the
+        # provider is skipped (graceful degradation, matching the ml module).
+        self.xgb = XGBoostThreatClassifier(n_estimators=self.n_estimators)
+        if self.xgb.is_available:
+            self.xgb.train(x_scaled, y)
+        else:
+            self.xgb = None
+            logger.warning("xgboost_provider_skipped_unavailable")
 
         if self.quantum:
             q_x = np.array(x_scaled, dtype=np.float64)
@@ -192,6 +215,11 @@ class HybridEvaluator:
                 self.provider_weights.get(CLASSIFIER_PROVIDER, 0.55),
             ),
         }
+        if self.xgb is not None:
+            self._providers[XGBOOST_PROVIDER] = (
+                ClassicalModelProvider(self.xgb, provider_id=XGBOOST_PROVIDER),
+                self.provider_weights.get(XGBOOST_PROVIDER, 0.25),
+            )
         if self.qsvm is not None:
             self._providers[QUANTUM_PROVIDER] = (
                 QuantumModelProvider(self.qsvm),
@@ -229,6 +257,7 @@ class HybridEvaluator:
             "scaler": self.scaler,
             "anomaly": self.anomaly,
             "rf": self.rf,
+            "xgb": self.xgb,
             "qsvm": self.qsvm,
         }
         joblib.dump(state, path / "hybrid_evaluator.joblib")
@@ -247,6 +276,7 @@ class HybridEvaluator:
         evaluator.scaler = state.get("scaler")
         evaluator.anomaly = state.get("anomaly")
         evaluator.rf = state.get("rf")
+        evaluator.xgb = state.get("xgb")
         evaluator.qsvm = state.get("qsvm")
         evaluator._setup_providers()
         return evaluator

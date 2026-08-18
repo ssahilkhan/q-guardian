@@ -140,6 +140,23 @@ class TestPreparationPipeline:
         leaked = prepared.manifest.datasets["local-ext"].leaked
         assert leaked == 2
 
+    def test_leakage_removed_even_when_dedup_disabled(self, tmp_path) -> None:
+        """``dedup.enabled=False`` keeps train duplicates but leakage still runs."""
+        config = _config()
+        config.dedup.enabled = False
+        config.datasets.external_eval = ["local-ext"]
+        ext_rows = [*_THREATS[:2], "Unique malicious A", "Unique malicious B"]
+        specs = [
+            _local_spec(tmp_path, "local-ds", benign=_BENIGN, malicious=_THREATS),
+            _local_spec(tmp_path, "local-ext", malicious=ext_rows),
+        ]
+        prepared = _pipeline(tmp_path, specs).prepare(config, tmp_path / "run")
+
+        assert len(prepared.train) + len(prepared.validation) == len(_BENIGN) + len(_THREATS)
+        assert prepared.manifest.datasets["local-ds"].deduplicated == 0
+        assert prepared.leakage_report.total_leaked == 2
+        assert len(prepared.external_eval) == 2
+
     def test_required_dataset_unavailable_raises(self, tmp_path) -> None:
         spec = _local_spec(tmp_path, "local-ds", benign=_BENIGN, malicious=_THREATS)
         broken = DatasetSpec(

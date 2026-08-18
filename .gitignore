@@ -62,6 +62,8 @@ Thumbs.db
 # Runtime artifacts
 examples/qg_memory.jsonl
 docs/output/
+artifacts/
+runs/
 
 # Generated documentation artifacts
 docs/*.pdf

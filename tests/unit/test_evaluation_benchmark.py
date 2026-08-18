@@ -5,6 +5,7 @@ from __future__ import annotations
 from q_guardian.evaluation.benchmark import DetectionBenchmark
 from q_guardian.evaluation.dataset import BenchmarkSample, PromptBenchmarkDataset
 from q_guardian.evaluation.report import to_markdown, write_json
+from q_guardian.ml.models.classifier import XGBoostThreatClassifier
 
 
 def _small_dataset() -> PromptBenchmarkDataset:
@@ -47,6 +48,8 @@ class TestDetectionBenchmark:
         assert len(report["cross_validation"]["folds"]) == 2
         metrics = report["cross_validation"]["metrics"]
         assert "fusion" in metrics
+        if XGBoostThreatClassifier().is_available:
+            assert "xgboost" in metrics
         for key in (
             "roc_auc",
             "f1_score",
@@ -66,7 +69,7 @@ class TestDetectionBenchmark:
         report = benchmark.run(data, k=2, seed=1, ablate=True)
 
         ablation = report["ablation"]
-        for provider in ["rule-engine", "isolation-forest", "random-forest"]:
+        for provider in ["rule-engine", "isolation-forest", "random-forest", "xgboost"]:
             assert provider in ablation
             assert "fusion_roc_auc" in ablation[provider]
             assert "fusion_f1_mean" in ablation[provider]

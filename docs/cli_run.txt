@@ -1,0 +1,2 @@
+D:\Projects\Quantum\Q_Gaudrail
+python scripts/prompt_cli.py

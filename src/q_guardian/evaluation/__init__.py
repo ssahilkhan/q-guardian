@@ -33,6 +33,7 @@ from q_guardian.evaluation.pipeline import (
     DEFAULT_PROVIDER_WEIGHTS,
     QUANTUM_PROVIDER,
     RULE_PROVIDER,
+    XGBOOST_PROVIDER,
     HybridEvaluator,
 )
 from q_guardian.evaluation.report import to_markdown, write_json, write_markdown
@@ -44,6 +45,7 @@ __all__ = [
     "DEFAULT_PROVIDER_WEIGHTS",
     "QUANTUM_PROVIDER",
     "RULE_PROVIDER",
+    "XGBOOST_PROVIDER",
     "BenchmarkSample",
     "DetectionBenchmark",
     "DetectionMetrics",

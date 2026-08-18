@@ -230,7 +230,11 @@ def detect_leakage(
         train: The final (deduplicated) training pool.
         eval_splits: Mapping of split name -> records, e.g.
             ``{"validation": [...], "test": [...], "external_eval": [...]}``.
-        config: Dedup settings that determine which hash families are checked.
+        config: Dedup settings that determine which hash families are checked
+            (``exact`` / ``normalized``). ``enabled`` is deliberately ignored
+            here: removing leaked evaluation rows is an integrity safeguard
+            that runs regardless of whether within-pool deduplication is
+            enabled (see ``DedupConfig``).
 
     Returns:
         A ``LeakageReport`` with per-split leaked samples.

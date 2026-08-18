@@ -29,8 +29,8 @@ datasets.external_eval ─── normalize,                     fit + metrics)  
 
 Stage 1 reuses the benchmark platform's ingestion (`docs/19_Benchmark_Platform_Documentation.md`).
 Stages 2–3 fit and score the framework's existing `HybridEvaluator`
-(`normalizer → features → rules → IsolationForest → RandomForest → optional QSVM →
-weighted-voting fusion`).
+(`normalizer → features → rules → IsolationForest → RandomForest → XGBoost →
+optional QSVM → weighted-voting fusion`).
 
 Canonical label space: **`0 = benign`**, **`1 = malicious`**. Rows without an
 explicit category that resolve to `malicious` are tagged with the generic
@@ -108,6 +108,12 @@ recorded in the manifest.
   (validation/test/external) is checked against the final training pool with
   both hash families. Leaked samples are removed from the eval pools and
   reported in `leakage_report.json` (kind, train source, eval source).
+- **`dedup.enabled` semantics (explicit)** — `enabled` is the master switch for
+  **within-pool deduplication only**. Setting `"enabled": false` leaves the
+  training pool untouched, but **does not** disable train↔eval leakage
+  detection: leaked evaluation rows are still removed and reported, so a
+  disabled dedup can never silently contaminate evaluation results.
+  `exact` / `normalized` select the hash families used by *both* mechanisms.
 
 ## 5. Run artifacts
 
@@ -211,3 +217,94 @@ q-guardian benchmark       --config configs/training.json --k 3
   limits (see `docs/19`).
 - Local `jsonl` sources (the benchmark downloader's pass-through) make the
   whole prepare→train→evaluate chain runnable offline in CI and in unit tests.
+
+## 11. XGBoost provider integration (real-data results)
+
+The classical classifier ensemble in `HybridEvaluator`
+(`src/q_guardian/evaluation/pipeline.py`) was extended to train, fuse,
+persist, and report the existing `XGBoostThreatClassifier`
+(`src/q_guardian/ml/models/classifier.py`) — previously implemented but never
+wired into the real-data training path. The provider:
+
+- joins `ALL_PROVIDERS` under `XGBOOST_PROVIDER = "xgboost"` and is exported by
+  `q_guardian.evaluation`;
+- is trained in `fit()` on the same scaled feature vectors as Random Forest;
+- is registered in `_setup_providers()` as a `ClassicalModelProvider` (weight
+  **0.25** in the default weights, alongside rule 0.15 / isolation-forest 0.10 /
+  random-forest 0.35 / qsvm 0.15);
+- round-trips through `save_state()` / `load_state()`;
+- is labelled `XGBoost` in `_PROVIDER_LABELS` (`report.py`) and surfaced in the
+  training log (`available=True/False`);
+- remains an **optional extra** (`pyproject.toml` → `ml-xgboost`): when the
+  dependency is missing it is skipped with a logged warning, never silently
+  disabled when installed.
+
+The fusion logs went from `num_providers=3` (rule, isolation-forest,
+random-forest) to `num_providers=4` once XGBoost joined the ensemble.
+
+### 11.1 Real-data run
+
+Re-ran the pipeline on the prepared real splits (2,425 train / 110 validation
+samples, `configs/training.json`, `quantum=false`) into
+`artifacts/training_xgboost_fix/`:
+
+- `model train` → `metrics.json`, `training_log.txt`, `model/hybrid_evaluator.joblib`
+- `model evaluate` → `evaluation.json` / `evaluation.md`
+- `scripts/evaluate_pipeline.py --dataset <test.jsonl> --k 5 --no-quantum`
+  → `benchmark/report.md`
+
+**Validation metrics** (`metrics.json`):
+
+| Provider | Accuracy | Precision | Recall | F1 | ROC-AUC |
+| --- | --- | --- | --- | --- | --- |
+| Hybrid Fusion | 0.8091 | 1.0000 | 0.4878 | 0.6557 | 0.9063 |
+| Rule Engine | 0.6818 | 1.0000 | 0.1463 | 0.2553 | 0.5732 |
+| Isolation Forest | 0.6727 | 0.5581 | 0.5854 | 0.5714 | 0.7529 |
+| Random Forest | 0.8455 | 1.0000 | 0.5854 | 0.7385 | 0.9145 |
+| **XGBoost** | **0.8273** | **0.9583** | **0.5610** | **0.7077** | **0.9194** |
+
+XGBoost achieved the highest individual ROC-AUC on the held-out validation set
+(0.9194), above Random Forest (0.9145).
+
+**5-fold cross-validation on the real test split** (116 samples, `benchmark/report.md`):
+
+| Provider | Accuracy | Precision | Recall | F1 | ROC-AUC | PR-AUC | ECE | Brier | MCC |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Hybrid Fusion | 0.8279 | 0.8895 | 0.7833 | 0.8253 | 0.9295 | 0.9456 | 0.2059 | 0.1334 | 0.6719 |
+| Rule Engine | 0.5598 | 1.0000 | 0.1500 | 0.2558 | 0.5750 | 0.4579 | 0.4616 | 0.4483 | 0.2754 |
+| Isolation Forest | 0.6551 | 0.9267 | 0.3667 | 0.5186 | 0.7258 | 0.7762 | 0.1544 | 0.2328 | 0.4115 |
+| Random Forest | 0.8109 | 0.8314 | 0.8333 | 0.8209 | 0.9379 | 0.9480 | 0.1618 | 0.1178 | 0.6382 |
+| **XGBoost** | **0.8196** | **0.8509** | **0.8167** | **0.8249** | **0.9106** | **0.9343** | **0.1491** | **0.1336** | **0.6510** |
+
+ROC-AUC ranking: Random Forest (0.9379) > Hybrid Fusion (0.9295) > XGBoost
+(0.9106) > Isolation Forest (0.7258) > Rule Engine (0.5750). XGBoost's F1
+(0.8249) and MCC (0.6510) are the best among individual providers and
+practically match the fused ensemble.
+
+**Ablation (fusion with one provider removed)**:
+
+| Removed provider | Fused ROC-AUC | Δ AUC | F1 | Δ F1 |
+| --- | --- | --- | --- | --- |
+| Rule Engine | 0.9295 | +0.0000 | 0.8282 | −0.0029 |
+| Isolation Forest | 0.9309 | −0.0014 | 0.8253 | +0.0000 |
+| Random Forest | 0.9116 | +0.0179 | 0.8220 | +0.0033 |
+| XGBoost | 0.9385 | −0.0090 | 0.7912 | +0.0342 |
+| Quantum QSVM | 0.9295 | +0.0000 | 0.8253 | +0.0000 |
+
+> Report recommendation: removing xgboost hurts the fused result most
+> (composite delta 0.0252); the fusion relies most on xgboost (its removal
+> lowers fused F1 by 0.0342, the largest drop of any provider). Removing
+> isolation-forest, qsvm, rule-engine neither lowers ROC-AUC nor F1; these
+> providers are candidates for weight reduction or removal.
+
+### 11.2 Regression coverage
+
+- New `test_xgboost_trained_and_in_fusion` in
+  `tests/unit/test_evaluation_pipeline.py` asserts XGBoost is trained,
+  registered in `provider_ids()`, and present in evaluation results when the
+  package is installed.
+- Provider-set assertions and the benchmark ablation/CV assertions are now
+  availability-aware, so a future regression that silently drops XGBoost is
+  caught by CI.
+- Verification for this change: **1,865 unit tests + 14 integration tests
+  pass**; `ruff check` and `mypy` clean.

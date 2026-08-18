@@ -1,7 +1,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/version-1.1.0-blue.svg" alt="Version">
   <img src="https://img.shields.io/badge/python-3.12+-blue.svg" alt="Python">
-  <img src="https://img.shields.io/badge/tests-2751%20passing-brightgreen.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/tests-2755%20passing-brightgreen.svg" alt="Tests">
   <img src="https://img.shields.io/badge/build-passing-brightgreen.svg" alt="Build">
   <img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License">
   <img src="https://img.shields.io/badge/status-release-brightgreen.svg" alt="Status">
@@ -290,31 +290,37 @@ The demo walks through 10 stages: user input → preprocessing (per-step before/
 - Python 3.12+
 - pip or Poetry
 
-### Core Installation
+### Install from PyPI
+
+```bash
+pip install q-guardian
+```
+
+The core install includes the classical ML security stack (scikit-learn, numpy, joblib) used by the public API. Optional capabilities are available via extras:
+
+```bash
+# XGBoost threat classifier
+pip install "q-guardian[ml-xgboost]"
+
+# Quantum computing (Qiskit)
+pip install "q-guardian[quantum]"
+
+# Quantum computing (PennyLane)
+pip install "q-guardian[quantum-pennylane]"
+
+# Hugging Face datasets
+pip install "q-guardian[datasets]"
+```
+
+> **Note:** the `ml` extra is kept for backward compatibility; scikit-learn and numpy are already part of the core installation.
+
+### Development Installation (from source)
 
 ```bash
 git clone https://github.com/ssahilkhan/q-guardian.git
 cd q-guardian
-pip install -e .
-```
-
-### With Optional Dependencies
-
-```bash
-# Classical ML support
-pip install -e ".[ml]"
-
-# XGBoost support
-pip install -e ".[ml,ml-xgboost]"
-
-# Quantum computing (Qiskit)
-pip install -e ".[quantum]"
-
-# Quantum computing (PennyLane)
-pip install -e ".[quantum-pennylane]"
-
-# Development (testing, linting, type checking)
-pip install -e ".[dev]"
+pip install -e .          # core framework
+pip install -e ".[dev]"   # testing, linting, type checking
 ```
 
 ---
@@ -479,7 +485,7 @@ class MySecurityPlugin(Plugin):
 ## Testing
 
 ```bash
-# Run all 2,751 tests
+# Run all 2,755 tests
 pytest tests/ -v
 
 # Run with coverage
@@ -491,11 +497,11 @@ pytest tests/unit/test_fusion_strategies.py -v
 
 | Test Suite | Files | Tests |
 |-----------|-------|-------|
-| `tests/unit` — Modules 1–8 (Enterprise → Risk/Policy, incl. quantum + fusion, benchmark, evaluation, embeddings, training pipeline) | 98 | ~2,181 |
+| `tests/unit` — Modules 1–8 (Enterprise → Risk/Policy, incl. quantum + fusion, benchmark, evaluation, embeddings, training pipeline) | 98 | ~2,185 |
 | `tests/response` — Module 9 (Response & Recovery) | 9 | ~168 |
 | `tests/observability` — Module 10 (Observability) | 24 | ~390 |
 | `tests/integration` | 2 | 12 |
-| **Total** | **133** | **2,751** |
+| **Total** | **133** | **2,755** |
 
 ---
 
@@ -517,7 +523,7 @@ pytest tests/unit/test_fusion_strategies.py -v
 | v1.1.0 | Benchmark Platform, Evaluation Toolkit & Embeddings | Released |
 | v1.2.0 | Training Pipeline & `q-guardian` CLI (dataset prep, leakage checks, checkpointing) | In progress |
 
-**Future work:** research paper publication, PyPI distribution, live-service integration tests, and fusion-calibration hardening on real-world threat corpora.
+**Future work:** research paper publication, live-service integration tests, and fusion-calibration hardening on real-world threat corpora.
 
 ---
 

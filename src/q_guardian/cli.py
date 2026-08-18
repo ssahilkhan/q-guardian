@@ -72,10 +72,10 @@ def _resolve_token(config: TrainingPipelineConfig) -> str | None:
 
 def _print_counts(counts: Any) -> None:
     print(
-        f"  {counts['source']:<30} requested={counts['requested']:<6} "
-        f"filtered={counts['filtered']:<4} loaded={counts['loaded']:<6} "
-        f"capped={counts['capped']:<4} dedup={counts['deduplicated']:<4} "
-        f"leaked={counts['leaked']:<4} final={counts['final']}"
+        f"  {counts.source:<30} requested={counts.requested:<6} "
+        f"filtered={counts.filtered:<4} loaded={counts.loaded:<6} "
+        f"capped={counts.capped:<4} dedup={counts.deduplicated:<4} "
+        f"leaked={counts.leaked:<4} final={counts.final}"
     )
 
 

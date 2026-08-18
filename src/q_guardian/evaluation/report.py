@@ -25,6 +25,7 @@ _PROVIDER_LABELS = {
     "rule-engine": "Rule Engine",
     "isolation-forest": "Isolation Forest",
     "random-forest": "Random Forest",
+    "xgboost": "XGBoost",
     "qsvm": "Quantum QSVM",
 }
 

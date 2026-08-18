@@ -9,8 +9,10 @@ from q_guardian.evaluation.pipeline import (
     ANOMALY_PROVIDER,
     CLASSIFIER_PROVIDER,
     RULE_PROVIDER,
+    XGBOOST_PROVIDER,
     HybridEvaluator,
 )
+from q_guardian.ml.models.classifier import XGBoostThreatClassifier
 
 _BENIGN = [
     "What is the capital of France?",
@@ -58,11 +60,10 @@ class TestEvaluator:
         evaluator.fit(data.texts(), data.labels())
         result = evaluator.evaluate(data, threshold=0.5)
 
-        assert set(evaluator.provider_ids()) == {
-            RULE_PROVIDER,
-            ANOMALY_PROVIDER,
-            CLASSIFIER_PROVIDER,
-        }
+        expected = {RULE_PROVIDER, ANOMALY_PROVIDER, CLASSIFIER_PROVIDER}
+        if XGBoostThreatClassifier().is_available:
+            expected.add(XGBOOST_PROVIDER)
+        assert set(evaluator.provider_ids()) == expected
         for key in ["fusion", RULE_PROVIDER, ANOMALY_PROVIDER, CLASSIFIER_PROVIDER]:
             assert key in result
             for metric in (
@@ -79,6 +80,21 @@ class TestEvaluator:
             assert "fusion" in row
             assert "label" in row
             assert "text" in row
+
+    def test_xgboost_trained_and_in_fusion(self):
+        """Regression: XGBoost must be trained and fused when available."""
+        pytest.importorskip("xgboost")
+        data = _dataset()
+        evaluator = HybridEvaluator(quantum=False, n_estimators=20)
+        evaluator.fit(data.texts(), data.labels())
+
+        assert evaluator.xgb is not None and evaluator.xgb.is_trained
+        assert XGBOOST_PROVIDER in evaluator.provider_ids()
+        result = evaluator.evaluate(data, threshold=0.5)
+        assert XGBOOST_PROVIDER in result
+        for row in result["scores"]:
+            assert XGBOOST_PROVIDER in row
+        assert result["fusion"]["roc_auc"] >= 0.0
 
     def test_fit_mismatched_lengths(self):
         with pytest.raises(ValueError):

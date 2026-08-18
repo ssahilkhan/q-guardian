@@ -61,6 +61,18 @@ class TestModelTrainer:
         assert len(result.cv_scores) > 0
         assert result.cv_mean > 0.0
 
+    def test_class_weight_passthrough(self) -> None:
+        default = RandomForestThreatClassifier()
+        assert default._class_weight is None
+
+        balanced = RandomForestThreatClassifier(class_weight="balanced")
+        assert balanced._class_weight == "balanced"
+        x, y = _make_training_data(60)
+        balanced.train(x, y)
+        assert balanced.is_trained
+        assert balanced.model is not None
+        assert balanced.model.class_weight == "balanced"
+
 
 class TestCrossValidator:
     def setup_method(self) -> None:

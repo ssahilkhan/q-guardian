@@ -29,6 +29,7 @@ import structlog
 
 from q_guardian.evaluation.dataset import BenchmarkSample, PromptBenchmarkDataset
 from q_guardian.evaluation.pipeline import HybridEvaluator
+from q_guardian.ml.models.classifier import XGBoostThreatClassifier
 from q_guardian.training.artifacts import label_distribution, write_json
 
 if TYPE_CHECKING:
@@ -209,6 +210,9 @@ class TrainingPipeline:
             f"model                : quantum={config.model.quantum} "
             f"n_estimators={config.model.n_estimators} "
             f"contamination={config.model.contamination}",
+            f"xgboost              : available={XGBoostThreatClassifier().is_available} "
+            "(classical classifier provider; skipped only if the optional "
+            "dependency is not installed)",
             f"train samples        : {len(train_records)}",
             f"validation samples   : {len(validation)}",
             f"elapsed              : {elapsed}s",

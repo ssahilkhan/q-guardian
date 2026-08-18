@@ -150,6 +150,13 @@ class TestLeakage:
 
         assert report.total_leaked == 0
 
+    def test_enabled_false_does_not_disable_leakage(self) -> None:
+        """``enabled`` governs within-pool dedup only; leakage detection still runs."""
+        train, eval_splits = self._train_and_eval()
+        report = detect_leakage(train, eval_splits, DedupConfig(enabled=False))
+
+        assert report.total_leaked == 2
+
     def test_report_serializes(self) -> None:
         train = [_record("Attack")]
         report = detect_leakage(

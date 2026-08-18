@@ -80,9 +80,16 @@ class DatasetGroupConfig(BaseModel):
 class DedupConfig(BaseModel):
     """Duplicate-detection settings.
 
+    ``enabled`` is the master switch for **within-pool deduplication** only
+    (``dedup_records``); when ``False`` no rows are removed from the training
+    pool. Train/evaluation **leakage detection** is intentionally *not*
+    controlled by ``enabled`` — it always runs so evaluation splits can never
+    be silently contaminated by training data.
+
     ``exact`` compares case-folded raw text; ``normalized`` compares
     Unicode/whitespace-normalized text so near-identical variants that differ
-    only in whitespace or invisible characters are caught too.
+    only in whitespace or invisible characters are caught too. Both flags
+    apply to deduplication and to leakage detection.
     """
 
     enabled: bool = True
