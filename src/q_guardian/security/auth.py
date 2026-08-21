@@ -23,19 +23,15 @@ import uuid as uuid_module
 from collections import defaultdict, deque
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
-from typing import Any
+from typing import Any, ClassVar
 
 import structlog
 from bcrypt import checkpw, gensalt, hashpw
 from jose import ExpiredSignatureError, JWTError, jwt
 
 from q_guardian.config.settings import get_settings
-# Exception classes were renamed in v1.1.0 (*Exception -> *Error); alias
-# them here so this module keeps working against the current names.
-from q_guardian.exceptions.base import (
-    AuthenticationError as AuthenticationException,
-    SecurityError as SecurityException,
-)
+from q_guardian.exceptions.base import AuthenticationError as AuthenticationException
+from q_guardian.exceptions.base import SecurityError as SecurityException
 
 logger = structlog.get_logger("security.auth")
 
@@ -157,9 +153,7 @@ class JWTService:
         Raises:
             AuthenticationException: If the payload is empty.
         """
-        minutes = (
-            expires_minutes if expires_minutes is not None else self._access_expires_minutes
-        )
+        minutes = expires_minutes if expires_minutes is not None else self._access_expires_minutes
         return self._encode(payload, timedelta(minutes=minutes), self.ACCESS_TOKEN_TYPE)
 
     async def create_refresh_token(
@@ -311,9 +305,7 @@ class AuthenticationService:
         """Check whether any users are provisioned."""
         return bool(self._users)
 
-    async def authenticate(
-        self, username: str, password: str
-    ) -> dict[str, Any] | None:
+    async def authenticate(self, username: str, password: str) -> dict[str, Any] | None:
         """Authenticate a user with credentials and issue a token pair.
 
         Args:
@@ -335,12 +327,8 @@ class AuthenticationService:
 
         roles = [str(r) for r in user.get("roles", [])]
         subject = username
-        access = await self._jwt_service.create_access_token(
-            {"sub": subject, "roles": roles}
-        )
-        refresh = await self._jwt_service.create_refresh_token(
-            {"sub": subject, "roles": roles}
-        )
+        access = await self._jwt_service.create_access_token({"sub": subject, "roles": roles})
+        refresh = await self._jwt_service.create_refresh_token({"sub": subject, "roles": roles})
         logger.info("authentication_succeeded", username=username)
         return {
             "username": username,
@@ -365,9 +353,7 @@ class AuthenticationService:
             return None
         subject = str(payload["sub"])
         roles = [str(r) for r in payload.get("roles", [])]
-        access = await self._jwt_service.create_access_token(
-            {"sub": subject, "roles": roles}
-        )
+        access = await self._jwt_service.create_access_token({"sub": subject, "roles": roles})
         return {
             "username": subject,
             "roles": roles,
@@ -388,7 +374,7 @@ class AuthorizationService:
     denied by default.
     """
 
-    DEFAULT_ROLE_PERMISSIONS: dict[str, list[str]] = {
+    DEFAULT_ROLE_PERMISSIONS: ClassVar[dict[str, list[str]]] = {
         "admin": ["*"],
         "analyst": ["analysis:read", "scan:create"],
         "service": ["scan:create", "analysis:read"],
@@ -426,9 +412,7 @@ class AuthorizationService:
         """
         return list(self._user_roles.get(user_id, []))
 
-    async def check_permission(
-        self, user_id: str, resource: str, action: str
-    ) -> bool:
+    async def check_permission(self, user_id: str, resource: str, action: str) -> bool:
         """Check if a user has permission for an action on a resource.
 
         Permission strings have the form ``resource:action``; the global
@@ -536,8 +520,10 @@ class APIKeyService:
             if not entry:
                 continue
             if entry.startswith(self.HASH_PREFIX):
-                key_hash = entry[len(self.HASH_PREFIX):].lower()
-                prefix = f"{self.KEY_PREFIX}{'*' * (self.DISPLAY_PREFIX_LENGTH - len(self.KEY_PREFIX))}"
+                key_hash = entry[len(self.HASH_PREFIX) :].lower()
+                prefix = (
+                    f"{self.KEY_PREFIX}{'*' * (self.DISPLAY_PREFIX_LENGTH - len(self.KEY_PREFIX))}"
+                )
             else:
                 key_hash = self._hash_key(entry)
                 prefix = entry[: self.DISPLAY_PREFIX_LENGTH]
@@ -584,9 +570,7 @@ class APIKeyService:
             Tuple ``(raw_key, record)``. The raw key is shown exactly once.
         """
         raw_key = f"{self.KEY_PREFIX}{secrets.token_hex(32)}"
-        expires_at = (
-            datetime.now(UTC) + timedelta(days=ttl_days) if ttl_days is not None else None
-        )
+        expires_at = datetime.now(UTC) + timedelta(days=ttl_days) if ttl_days is not None else None
         record = APIKeyRecord(
             key_id=uuid_module.uuid4().hex,
             key_hash=self._hash_key(raw_key),
@@ -684,9 +668,7 @@ class RateLimitService:
         """Initialize empty rate limit tracking state."""
         self._requests: dict[str, deque[float]] = defaultdict(deque)
 
-    async def check_rate_limit(
-        self, identifier: str, limit: int = 100, window: int = 60
-    ) -> bool:
+    async def check_rate_limit(self, identifier: str, limit: int = 100, window: int = 60) -> bool:
         """Record a request attempt and check it against the rate limit.
 
         Uses a monotonic-clock sliding window: attempts older than
@@ -707,9 +689,7 @@ class RateLimitService:
         while bucket and bucket[0] <= cutoff:
             bucket.popleft()
         if len(bucket) >= limit:
-            logger.warning(
-                "rate_limit_exceeded", identifier=identifier, limit=limit, window=window
-            )
+            logger.warning("rate_limit_exceeded", identifier=identifier, limit=limit, window=window)
             return False
         bucket.append(now)
         return True
@@ -755,9 +735,10 @@ def ensure_production_secret(secret_key: str) -> None:
         SecurityException: When the value equals the well-known placeholder
             and the runtime environment is production.
     """
-    if secret_key == "change-me-to-a-random-secret-key" and os.getenv(
-        "ENVIRONMENT"
-    ) == "production":
+    if (
+        secret_key == "change-me-to-a-random-secret-key"
+        and os.getenv("ENVIRONMENT") == "production"
+    ):
         msg = "SECRET_KEY must be changed in production!"
         raise SecurityException(msg)
 
@@ -779,7 +760,7 @@ def get_jwt_service() -> JWTService:
     Returns:
         The singleton JWTService instance.
     """
-    global _jwt_service_instance  # noqa: PLW0603
+    global _jwt_service_instance
     if _jwt_service_instance is None:
         _jwt_service_instance = JWTService()
     return _jwt_service_instance
@@ -791,7 +772,7 @@ def get_authentication_service() -> AuthenticationService:
     Returns:
         The singleton AuthenticationService instance.
     """
-    global _authentication_service_instance  # noqa: PLW0603
+    global _authentication_service_instance
     if _authentication_service_instance is None:
         _authentication_service_instance = AuthenticationService(get_jwt_service())
     return _authentication_service_instance
@@ -803,7 +784,7 @@ def get_authorization_service() -> AuthorizationService:
     Returns:
         The singleton AuthorizationService instance.
     """
-    global _authorization_service_instance  # noqa: PLW0603
+    global _authorization_service_instance
     if _authorization_service_instance is None:
         _authorization_service_instance = AuthorizationService()
     return _authorization_service_instance
@@ -815,7 +796,7 @@ def get_api_key_service() -> APIKeyService:
     Returns:
         The singleton APIKeyService instance.
     """
-    global _api_key_service_instance  # noqa: PLW0603
+    global _api_key_service_instance
     if _api_key_service_instance is None:
         _api_key_service_instance = APIKeyService()
     return _api_key_service_instance
@@ -827,7 +808,7 @@ def get_rate_limit_service() -> RateLimitService:
     Returns:
         The singleton RateLimitService instance.
     """
-    global _rate_limit_service_instance  # noqa: PLW0603
+    global _rate_limit_service_instance
     if _rate_limit_service_instance is None:
         _rate_limit_service_instance = RateLimitService()
     return _rate_limit_service_instance
@@ -835,11 +816,11 @@ def get_rate_limit_service() -> RateLimitService:
 
 def reset_auth_singletons() -> None:
     """Reset all auth singletons. Used in testing."""
-    global _jwt_service_instance  # noqa: PLW0603
-    global _authentication_service_instance  # noqa: PLW0603
-    global _authorization_service_instance  # noqa: PLW0603
-    global _api_key_service_instance  # noqa: PLW0603
-    global _rate_limit_service_instance  # noqa: PLW0603
+    global _jwt_service_instance
+    global _authentication_service_instance
+    global _authorization_service_instance
+    global _api_key_service_instance
+    global _rate_limit_service_instance
     _jwt_service_instance = None
     _authentication_service_instance = None
     _authorization_service_instance = None

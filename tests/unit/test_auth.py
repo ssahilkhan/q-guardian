@@ -9,7 +9,6 @@ Focused Phase 1 coverage:
 
 from __future__ import annotations
 
-import os
 from datetime import UTC, datetime, timedelta
 
 import pytest
@@ -125,9 +124,7 @@ class TestAuthenticationService:
         users = {username: {"password_hash": hash_password(password), "roles": roles}}
         monkeypatch.setenv("AUTH_USERS", json.dumps(users))
 
-    async def test_no_users_configured_returns_none(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    async def test_no_users_configured_returns_none(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.delenv("AUTH_USERS", raising=False)
         service = AuthenticationService()
 
@@ -135,9 +132,7 @@ class TestAuthenticationService:
         result = await service.authenticate("admin", "whatever")
         assert result is None
 
-    async def test_valid_credentials_return_tokens(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    async def test_valid_credentials_return_tokens(self, monkeypatch: pytest.MonkeyPatch) -> None:
         self._provision_user(monkeypatch, "analyst", "s3cret-password", ["analyst"])
         service = AuthenticationService()
 
@@ -154,9 +149,7 @@ class TestAuthenticationService:
         )
         assert access_claims["sub"] == "analyst"
 
-    async def test_invalid_password_returns_none(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    async def test_invalid_password_returns_none(self, monkeypatch: pytest.MonkeyPatch) -> None:
         self._provision_user(monkeypatch, "analyst", "s3cret-password", [])
         service = AuthenticationService()
 
@@ -167,9 +160,7 @@ class TestAuthenticationService:
 
         assert await service.authenticate("ghost", "nope") is None
 
-    async def test_invalid_auth_users_json_ignored(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    async def test_invalid_auth_users_json_ignored(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("AUTH_USERS", "{not valid json")
         service = AuthenticationService()
 
@@ -192,9 +183,7 @@ class TestAuthenticationService:
         )
         assert new_claims["sub"] == "svc"
 
-    async def test_refresh_with_access_token_fails(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    async def test_refresh_with_access_token_fails(self, monkeypatch: pytest.MonkeyPatch) -> None:
         self._provision_user(monkeypatch, "svc", "pw", [])
         service = AuthenticationService()
         first = await service.authenticate("svc", "pw")
@@ -372,9 +361,7 @@ class TestEnsureProductionSecret:
         with pytest.raises(SecurityError):
             ensure_production_secret(self.PLACEHOLDER)
 
-    def test_strong_secret_accepted_in_production(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_strong_secret_accepted_in_production(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("ENVIRONMENT", "production")
         ensure_production_secret("a-very-strong-random-secret")
 

@@ -47,19 +47,13 @@ class TestCors:
     """Verify CORS allows configured origins and rejects others."""
 
     async def test_allowed_origin_gets_cors_headers(self, client: AsyncClient) -> None:
-        response = await client.get(
-            "/api/v1/health", headers={"Origin": ALLOWED_ORIGIN}
-        )
+        response = await client.get("/api/v1/health", headers={"Origin": ALLOWED_ORIGIN})
         assert response.status_code == 200
         assert response.headers.get("access-control-allow-origin") == ALLOWED_ORIGIN
         assert response.headers.get("access-control-allow-credentials") == "true"
 
-    async def test_disallowed_origin_gets_no_cors_headers(
-        self, client: AsyncClient
-    ) -> None:
-        response = await client.get(
-            "/api/v1/health", headers={"Origin": DISALLOWED_ORIGIN}
-        )
+    async def test_disallowed_origin_gets_no_cors_headers(self, client: AsyncClient) -> None:
+        response = await client.get("/api/v1/health", headers={"Origin": DISALLOWED_ORIGIN})
         assert response.status_code == 200
         assert "access-control-allow-origin" not in response.headers
 
@@ -75,9 +69,7 @@ class TestCors:
         assert response.status_code == 200
         assert response.headers.get("access-control-allow-origin") == ALLOWED_ORIGIN
 
-    async def test_preflight_disallowed_origin_rejected(
-        self, client: AsyncClient
-    ) -> None:
+    async def test_preflight_disallowed_origin_rejected(self, client: AsyncClient) -> None:
         response = await client.options(
             "/api/v1/analysis/scan",
             headers={
@@ -92,9 +84,7 @@ class TestCors:
 class TestCorrelationIDPropagation:
     """Verify correlation IDs are generated and honored."""
 
-    async def test_correlation_id_generated_when_absent(
-        self, client: AsyncClient
-    ) -> None:
+    async def test_correlation_id_generated_when_absent(self, client: AsyncClient) -> None:
         first = await client.get("/")
         second = await client.get("/")
         id_first = first.headers["X-Correlation-ID"]
@@ -102,13 +92,9 @@ class TestCorrelationIDPropagation:
         assert id_first and id_second
         assert id_first != id_second
 
-    async def test_client_provided_correlation_id_preserved(
-        self, client: AsyncClient
-    ) -> None:
+    async def test_client_provided_correlation_id_preserved(self, client: AsyncClient) -> None:
         correlation_id = "test-corr-123456"
-        response = await client.get(
-            "/", headers={"X-Correlation-ID": correlation_id}
-        )
+        response = await client.get("/", headers={"X-Correlation-ID": correlation_id})
         assert response.headers["X-Correlation-ID"] == correlation_id
 
 
