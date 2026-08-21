@@ -30,7 +30,12 @@ from bcrypt import checkpw, gensalt, hashpw
 from jose import ExpiredSignatureError, JWTError, jwt
 
 from q_guardian.config.settings import get_settings
-from q_guardian.exceptions.base import AuthenticationException, SecurityException
+# Exception classes were renamed in v1.1.0 (*Exception -> *Error); alias
+# them here so this module keeps working against the current names.
+from q_guardian.exceptions.base import (
+    AuthenticationError as AuthenticationException,
+    SecurityError as SecurityException,
+)
 
 logger = structlog.get_logger("security.auth")
 
@@ -83,7 +88,8 @@ def verify_password(plain_password: str, password_hash: str) -> bool:
     """
     try:
         return checkpw(plain_password.encode("utf-8"), password_hash.encode("utf-8"))
-    except (ValueError, TypeError):
+    except (ValueError, TypeError, AttributeError):
+        # Fail closed on malformed credential material (e.g. non-str inputs).
         return False
 
 
@@ -186,7 +192,7 @@ class JWTService:
             AuthenticationException: If the token is malformed, has an
                 invalid signature, or has expired.
         """
-        if not token:
+        if not token or not isinstance(token, str):
             raise AuthenticationException(
                 message="Missing authentication token",
                 details={"reason": "token_missing"},
@@ -196,7 +202,9 @@ class JWTService:
                 token,
                 self._secret_key,
                 algorithms=[self._algorithm],
-                options={"require": ["exp", "sub"]},
+                # python-jose expects per-claim ``require_<claim>`` keys;
+                # a list-style "require" option is silently ignored.
+                options={"require_exp": True, "require_sub": True},
             )
         except ExpiredSignatureError as exc:
             logger.info("jwt_token_expired")
