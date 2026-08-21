@@ -73,6 +73,7 @@ dev = [
     "scikit-learn>=1.3.0",
     "xgboost>=2.0.0",
     "types-PyYAML>=6.0.12",
+    "types-python-jose>=3.3.0",
 ]
 
 [project.scripts]
@@ -131,10 +132,6 @@ no_implicit_optional = true
 explicit_package_bases = true
 mypy_path = "src"
 plugins = ["pydantic.mypy"]
-
-[[tool.mypy.overrides]]
-module = ["tests.*"]
-disallow_untyped_defs = false
 
 [[tool.mypy.overrides]]
 module = [
