@@ -67,7 +67,7 @@ USER root
 RUN pip install my-custom-package
 USER appuser
 
-CMD ["uvicorn", "src.q_guardian.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "q_guardian.main:app", "--host", "0.0.0.0", "--port", "8000"]
 ```
 
 ---

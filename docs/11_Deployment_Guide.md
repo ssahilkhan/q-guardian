@@ -101,7 +101,7 @@ The Makefile exposes equivalent targets: `install`, `dev`, `run`, `test`,
 - Runs as non-root user `appuser`.
 - Healthcheck every 30s (timeout 10s, start 5s, 3 retries):
   `httpx.get('http://localhost:8000/api/v1/health').raise_for_status()`.
-- `EXPOSE 8000`; `CMD ["uvicorn", "src.q_guardian.main:app", "--host", "0.0.0.0", "--port", "8000"]`.
+- `EXPOSE 8000`; `CMD ["uvicorn", "q_guardian.main:app", "--host", "0.0.0.0", "--port", "8000"]`.
 
 > Note: the image builds from `requirements.txt` pins, not the `[project.dependencies]`
 > extras. `orjson==3.10.13` is pinned in `requirements.txt` but commented out —
