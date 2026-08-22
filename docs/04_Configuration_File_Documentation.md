@@ -64,7 +64,7 @@ Documented template for `src/q_guardian/config/settings.py`:
 - Installs `gcc` (system dependency), copies `requirements.txt`, `pip install --no-cache-dir -r requirements.txt`, copies `src/` and `pyproject.toml`.
 - Creates non-root user `appuser`; runs as `appuser`.
 - `HEALTHCHECK` pings `http://localhost:8000/api/v1/health` via httpx.
-- `EXPOSE 8000`; `CMD ["uvicorn", "src.q_guardian.main:app", "--host", "0.0.0.0", "--port", "8000"]`.
+- `EXPOSE 8000`; `CMD ["uvicorn", "q_guardian.main:app", "--host", "0.0.0.0", "--port", "8000"]`.
 
 ## 5. `docker-compose.yml` — Local Orchestration
 

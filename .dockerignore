@@ -25,6 +25,4 @@ logs
 .htmlcov
 .coverage
 Makefile
-README.md
 LICENSE
-pyproject.toml
