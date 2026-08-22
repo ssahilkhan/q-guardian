@@ -8,10 +8,20 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
-from q_guardian.api.v1.endpoints import health, system
+from q_guardian.api.v1.endpoints import auth, health, system
 
 api_v1_router = APIRouter()
 
+api_v1_router.include_router(
+    auth.public_router,
+    tags=["Authentication"],
+    prefix="/auth",
+)
+api_v1_router.include_router(
+    auth.router,
+    tags=["Authentication"],
+    prefix="/auth",
+)
 api_v1_router.include_router(
     health.router,
     tags=["Health"],

@@ -106,16 +106,27 @@ class SecuritySettings(BaseSettings):
     jwt_expiration_minutes: int = Field(default=30, description="JWT token expiration")
     jwt_refresh_expiration_days: int = Field(default=7, description="JWT refresh expiration")
     api_key_header: str = Field(default="X-API-Key", description="API key header name")
+    admin_username: str = Field(default="admin", description="Admin username for token issuance")
+    admin_password: str = Field(
+        default="change-me-admin-password",
+        description="Admin password for token issuance",
+    )
 
-    @field_validator("secret_key")
+    # Rate limiting
+    rate_limit_enabled: bool = Field(default=True, description="Enable API rate limiting")
+    rate_limit_requests: int = Field(default=100, description="Max requests per window per client")
+    rate_limit_window_seconds: int = Field(default=60, description="Rate limit window in seconds")
+
+    @field_validator("secret_key", "admin_password")
     @classmethod
     def validate_secret_key(cls, value: str) -> str:
-        """Validate that the secret key has been changed from default."""
-        if value == "change-me-to-a-random-secret-key":
+        """Validate that insecure default credentials have been changed."""
+        insecure_defaults = ("change-me-to-a-random-secret-key", "change-me-admin-password")
+        if value in insecure_defaults:
             import os
 
             if os.getenv("ENVIRONMENT") == "production":
-                msg = "SECRET_KEY must be changed in production!"
+                msg = "SECRET_KEY and ADMIN_PASSWORD must be changed in production!"
                 raise ValueError(msg)
         return value
 
