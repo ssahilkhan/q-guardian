@@ -23,6 +23,7 @@ from q_guardian.exceptions.handlers import register_exception_handlers
 from q_guardian.logging.config import setup_logging
 from q_guardian.middleware.correlation import CorrelationIDMiddleware
 from q_guardian.middleware.exception import ExceptionLoggingMiddleware
+from q_guardian.middleware.rate_limit import RateLimitMiddleware
 from q_guardian.middleware.timing import ResponseTimingMiddleware
 from q_guardian.security.cors import get_cors_middleware
 from q_guardian.security.headers import SecurityHeadersMiddleware
@@ -129,6 +130,9 @@ def _register_middleware(app: FastAPI) -> None:
 
     get_cors_middleware(app)
 
+    # Registered before SecurityHeaders so 429 responses still flow back
+    # out through the security-header middleware.
+    app.add_middleware(RateLimitMiddleware)
     app.add_middleware(SecurityHeadersMiddleware)
     app.add_middleware(ExceptionLoggingMiddleware)
     app.add_middleware(ResponseTimingMiddleware)

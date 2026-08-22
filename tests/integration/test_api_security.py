@@ -28,8 +28,8 @@ SECURITY_HEADERS = {
 class TestSecurityHeaders:
     """Verify every response carries the standard security headers."""
 
-    async def test_headers_on_success_response(self, client: AsyncClient) -> None:
-        response = await client.get("/api/v1/health")
+    async def test_headers_on_success_response(self, authorized_client: AsyncClient) -> None:
+        response = await authorized_client.get("/api/v1/health")
         assert response.status_code == 200
         for header, value in SECURITY_HEADERS.items():
             assert response.headers.get(header) == value, header
@@ -46,14 +46,18 @@ class TestSecurityHeaders:
 class TestCors:
     """Verify CORS allows configured origins and rejects others."""
 
-    async def test_allowed_origin_gets_cors_headers(self, client: AsyncClient) -> None:
-        response = await client.get("/api/v1/health", headers={"Origin": ALLOWED_ORIGIN})
+    async def test_allowed_origin_gets_cors_headers(self, authorized_client: AsyncClient) -> None:
+        response = await authorized_client.get("/api/v1/health", headers={"Origin": ALLOWED_ORIGIN})
         assert response.status_code == 200
         assert response.headers.get("access-control-allow-origin") == ALLOWED_ORIGIN
         assert response.headers.get("access-control-allow-credentials") == "true"
 
-    async def test_disallowed_origin_gets_no_cors_headers(self, client: AsyncClient) -> None:
-        response = await client.get("/api/v1/health", headers={"Origin": DISALLOWED_ORIGIN})
+    async def test_disallowed_origin_gets_no_cors_headers(
+        self, authorized_client: AsyncClient
+    ) -> None:
+        response = await authorized_client.get(
+            "/api/v1/health", headers={"Origin": DISALLOWED_ORIGIN}
+        )
         assert response.status_code == 200
         assert "access-control-allow-origin" not in response.headers
 
@@ -102,13 +106,19 @@ class TestCorrelationIDPropagation:
 class TestStructuredErrors:
     """Verify API errors use the structured envelope."""
 
-    async def test_validation_error_shape(self, client: AsyncClient) -> None:
-        response = await client.post("/api/v1/analysis/scan", json={})
+    async def test_validation_error_shape(self, authorized_client: AsyncClient) -> None:
+        """Auth runs before body validation; valid auth yields the 422 envelope."""
+        response = await authorized_client.post("/api/v1/analysis/scan", json={})
         assert response.status_code == 422
         body = response.json()
         assert body["error"]["code"] == "VALIDATION_ERROR"
         assert body["error"]["message"]
         assert body["error"]["details"]["validation_errors"]
+
+    async def test_validation_requires_authentication(self, client: AsyncClient) -> None:
+        """Invalid body without credentials is rejected as unauthenticated."""
+        response = await client.post("/api/v1/analysis/scan", json={})
+        assert response.status_code == 401
 
     async def test_unknown_route_returns_404(self, client: AsyncClient) -> None:
         response = await client.get("/api/v1/no-such-endpoint")

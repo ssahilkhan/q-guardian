@@ -1,16 +1,24 @@
 """API v1 router configuration for Q-Guardian.
 
-Aggregates all v1 endpoint routers. Future modules add their
-routers here to become part of the v1 API.
+Aggregates all v1 endpoint routers. Every v1 route requires an
+authenticated principal (JWT access token or API key). Future modules
+add their routers here to become part of the v1 API.
 """
 
 from __future__ import annotations
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
 from q_guardian.api.v1.endpoints import analysis, console, health, system
+from q_guardian.security.http_auth import get_current_principal
 
-api_v1_router = APIRouter()
+# Router-level dependencies propagate to every included sub-router, so
+# all v1 endpoints are authenticated by this single declaration.
+api_v1_router = APIRouter(
+    dependencies=[
+        Depends(get_current_principal),
+    ],
+)
 
 api_v1_router.include_router(
     health.router,
