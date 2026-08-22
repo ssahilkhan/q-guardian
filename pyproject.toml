@@ -113,6 +113,11 @@ select = [
 ]
 ignore = ["T201"]
 
+[tool.ruff.lint.per-file-ignores]
+# Security test payloads intentionally contain fullwidth/homoglyph unicode.
+"tests/unit/test_edge_cases.py" = ["RUF001"]
+"tests/security/corpus.py" = ["RUF001", "RUF002", "RUF003"]
+
 [tool.ruff.lint.flake8-type-checking]
 runtime-evaluated-base-classes = ["q_guardian.schemas.base.BaseSchema"]
 

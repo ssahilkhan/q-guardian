@@ -1,44 +1,54 @@
 # ============================================================
 # Q-Guardian Dependencies
 # ============================================================
+# Pinned runtime requirements for the API service (used by Docker).
+#
+# QA note (2026-08-21, release audit):
+#   - Pins match the exact versions the 2,977-test suite and local
+#     staging smoke test were validated against.
+#   - python-jose / passlib / bcrypt / python-multipart were REMOVED:
+#     zero imports anywhere in src/, tests, or scripts. This eliminates
+#     all python-jose CVEs plus the unfixed transitive ecdsa CVE
+#     (PYSEC-2026-1325). Re-add deliberately when auth is implemented.
+#   - The authoritative dependency ranges live in pyproject.toml.
+# ============================================================
 
-# --- Core ---
-fastapi==0.115.6
-uvicorn[standard]==0.34.0
-pydantic==2.10.4
-pydantic-settings==2.7.1
-python-dotenv==1.0.1
-python-multipart==0.0.20
+# --- Core API ---
+fastapi==0.141.1
+uvicorn[standard]==0.52.4
+pydantic==2.13.4
+pydantic-settings==2.15.0
+python-dotenv==1.2.3
+
+# --- Classical ML stack (required by the public analysis API) ---
+numpy==2.5.1
+scikit-learn==1.9.0
+joblib==1.5.3
 
 # --- Database ---
-motor==3.7.0
-pymongo==4.11.3
-
-# --- Security ---
-python-jose[cryptography]==3.3.0
-passlib[bcrypt]==1.7.4
-bcrypt==4.2.1
+motor==3.7.1
+pymongo==4.17.0
 
 # --- Logging ---
-structlog==24.4.0
+structlog==26.1.0
 
 # --- HTTP Client ---
 httpx==0.28.1
 
-# --- Utilities orjson==3.10.13
+# --- Utilities ---
+orjson==3.12.0
 python-dateutil==2.9.0.post0
 
-# --- Testing ---
-pytest==8.3.4
-pytest-asyncio==0.25.0
-pytest-cov==6.0.0
-httpx==0.28.1
-mongomock==4.2.0.post1
-
-# --- Code Quality ---
-ruff==0.8.6
-mypy==1.14.1
-pre-commit==4.0.1
-
-# --- Docker ---
+# --- Production server (Docker image) ---
 gunicorn==23.0.0
+
+# --- Testing (dev/QA only; not required at runtime) ---
+pytest==9.1.1
+pytest-asyncio==1.4.0
+pytest-cov==7.1.0
+mongomock==4.3.0
+
+# --- Code Quality (dev only) ---
+ruff==0.16.4
+mypy==2.3.1
+pre-commit==4.6.2
