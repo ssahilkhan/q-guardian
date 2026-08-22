@@ -6,6 +6,7 @@ Root conftest makes fixtures available to all test subdirectories.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import os
 import sys
 from typing import TYPE_CHECKING, Any
@@ -65,12 +66,30 @@ async def client(app: Any) -> AsyncGenerator[AsyncClient, None]:
     for making test HTTP requests. The client is unauthenticated;
     use ``authorized_client`` for protected endpoints.
 
+    ASGITransport does not run FastAPI lifespan events, so a MongoDB
+    client bound to this test's event loop is connected explicitly.
+    Endpoints surface structured 503 errors when no server is reachable.
+
     Yields:
         AsyncClient instance connected to the test application.
     """
+    from q_guardian.database import client as db_client_module
+
+    # Motor clients bind to one event loop; reset the singleton so every
+    # test gets a client attached to its own loop.
+    await db_client_module.get_db_client().disconnect()
+    db_client_module._client_instance = None
+    database = db_client_module.get_db_client()
+    with contextlib.suppress(Exception):
+        await database.connect()
+
     transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        yield ac
+    try:
+        async with AsyncClient(transport=transport, base_url="http://test") as ac:
+            yield ac
+    finally:
+        await database.disconnect()
+        db_client_module._client_instance = None
 
 
 @pytest_asyncio.fixture(scope="function")

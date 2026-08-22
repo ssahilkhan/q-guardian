@@ -15,6 +15,7 @@ from fastapi import FastAPI
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.staticfiles import StaticFiles
 
+from q_guardian.api.services.analysis import get_analysis_service
 from q_guardian.api.v1.router import api_v1_router
 from q_guardian.config.settings import get_settings
 from q_guardian.core.constants import API_V1_PREFIX, APP_DESCRIPTION, APP_TITLE, APP_VERSION
@@ -70,6 +71,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     db_client = get_db_client()
     try:
         await db_client.connect()
+        await get_analysis_service().history_repository.ensure_indexes()
     except Exception as e:
         logger.warning("mongodb_connection_failed", error=str(e))
 

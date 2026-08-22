@@ -106,7 +106,7 @@ async def summary(request: Request) -> ResponseSchema[dict[str, Any]]:
     Returns:
         Component, rule, model and history aggregates.
     """
-    data = service.summary()
+    data = await service.summary()
     return ResponseSchema(
         success=True,
         message="Summary retrieved successfully",

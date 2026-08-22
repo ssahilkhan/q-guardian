@@ -2,7 +2,7 @@
 
 Reuses :class:`ThreatAnalysisPlugin` (normalize -> validate -> features ->
 rules -> optional ML/quantum -> decision) without duplicating any detection
-logic, and keeps a bounded in-memory scan history for the console UI.
+logic, and persists a bounded scan history in MongoDB for the console UI.
 
 The service is deliberately read-mostly: the only mutation it exposes is
 submitting a prompt through the existing scan pipeline.
@@ -10,14 +10,16 @@ submitting a prompt through the existing scan pipeline.
 
 from __future__ import annotations
 
-import asyncio
 import importlib.util
-from collections import deque
 from functools import lru_cache
 from typing import TYPE_CHECKING, Any
 
 from q_guardian.api.services.research import research_snapshot
 from q_guardian.config.settings import SecuritySettings, get_settings
+from q_guardian.database.repositories.analysis_history import (
+    AnalysisHistoryRepository,
+    build_default_history_repository,
+)
 from q_guardian.ml.config import MLConfig
 from q_guardian.ml.plugin import ThreatAnalysisPlugin
 from q_guardian.quantum.fusion.strategies import (
@@ -29,8 +31,6 @@ from q_guardian.security.enums import PromptDecision
 
 if TYPE_CHECKING:
     from q_guardian.security.pipeline import RuleEngine
-
-MAX_HISTORY = 200
 
 # Quantum backends shipped with the framework. Names match the `name`
 # properties in q_guardian.quantum.backends. `requires` is the optional
@@ -127,10 +127,20 @@ def _redact_url(url: str) -> str:
 class AnalysisService:
     """Facade exposing the existing pipeline to the API layer."""
 
-    def __init__(self, history_limit: int = MAX_HISTORY) -> None:
+    def __init__(self, history_repository: AnalysisHistoryRepository | None = None) -> None:
+        """Initialize the service.
+
+        Args:
+            history_repository: Persistent scan-history store. Defaults
+                to the MongoDB-backed repository; tests may inject an
+                in-memory double.
+        """
         self._plugin = ThreatAnalysisPlugin()
-        self._history: deque[dict[str, Any]] = deque(maxlen=history_limit)
-        self._lock = asyncio.Lock()
+        self._history: AnalysisHistoryRepository = (
+            history_repository
+            if history_repository is not None
+            else build_default_history_repository()
+        )
 
     @property
     def plugin(self) -> ThreatAnalysisPlugin:
@@ -142,23 +152,24 @@ class AnalysisService:
         """Return the rule engine used by the pipeline."""
         return self._plugin.rule_engine
 
+    @property
+    def history_repository(self) -> AnalysisHistoryRepository:
+        """Return the persistent scan-history repository."""
+        return self._history
+
     async def scan(self, prompt: str) -> dict[str, Any]:
-        """Run the existing scan pipeline on a prompt and record the result."""
+        """Run the existing scan pipeline on a prompt and persist the result."""
         result = await self._plugin.scan_prompt(prompt)
-        async with self._lock:
-            self._history.appendleft(result)
+        await self._history.add(result)
         return result
 
-    def history(self) -> list[dict[str, Any]]:
+    async def history(self) -> list[dict[str, Any]]:
         """Return the bounded scan history (most recent first)."""
-        return list(self._history)
+        return await self._history.list_recent()
 
-    def get(self, analysis_id: str) -> dict[str, Any] | None:
+    async def get(self, analysis_id: str) -> dict[str, Any] | None:
         """Return a single analysis result by ID, or None."""
-        for result in self._history:
-            if result.get("analysis_id") == analysis_id:
-                return result
-        return None
+        return await self._history.get_by_id(analysis_id)
 
     def rules(self) -> list[dict[str, Any]]:
         """Return the enabled detection rules as JSON-safe dicts."""
@@ -253,11 +264,11 @@ class AnalysisService:
             },
         }
 
-    def summary(self) -> dict[str, Any]:
+    async def summary(self) -> dict[str, Any]:
         """Return overview aggregates for the landing page."""
         rules = self.rule_engine.list_rules()
         ml = self.models_status()["ml"]
-        history = self.history()
+        history = await self.history()
         decisions = [result.get("decision", "") for result in history]
         return {
             "components": self.components(),
@@ -309,7 +320,7 @@ def get_analysis_service() -> AnalysisService:
     """Return the shared AnalysisService singleton.
 
     Cached so every API endpoint and the console UI observe the same
-    pipeline instance and the same bounded scan history.
+    pipeline instance and the same persistent scan history.
     """
     return AnalysisService()
 
