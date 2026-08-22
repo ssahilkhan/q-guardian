@@ -105,17 +105,30 @@ class HybridEvaluator:
         contamination: float = 0.2,
         provider_weights: dict[str, float] | None = None,
         random_state: int = 42,
+        use_semantic_embedding: bool = False,
+        embedding_model_name: str = "sentence-transformers/all-MiniLM-L6-v2",
+        rf_n_estimators: int | None = None,
+        xgb_n_estimators: int | None = None,
     ) -> None:
         self.quantum = quantum
         self.quantum_shots = quantum_shots
         self.quantum_feature_count = quantum_feature_count
         self.quantum_cap = quantum_cap
         self.n_estimators = n_estimators
+        # Per-model estimator overrides (None = use ``n_estimators``).
+        self.rf_n_estimators = rf_n_estimators
+        self.xgb_n_estimators = xgb_n_estimators
         self.contamination = contamination
         self.provider_weights = dict(
             DEFAULT_PROVIDER_WEIGHTS if provider_weights is None else provider_weights
         )
         self.random_state = random_state
+        # Optional semantic-embedding extension of the feature vector (used by
+        # the training-diversity arm_d models). When enabled, ``vector()``
+        # appends a normalized sentence embedding to the handcrafted features
+        # so training and inference share one identical representation.
+        self.use_semantic_embedding = use_semantic_embedding
+        self.embedding_model_name = embedding_model_name
 
         self.normalizer = PromptNormalizer()
         self.feature_extractor = PromptFeatureExtractor()
@@ -128,14 +141,55 @@ class HybridEvaluator:
         self.xgb: XGBoostThreatClassifier | None = None
         self.qsvm: QSVMModel | None = None
         self._providers: dict[str, tuple[PredictionProvider, float]] = {}
+        self._embedding_model: Any = None
 
     # ── Feature extraction ─────────────────────────────────────────────
+
+    def _ensure_embedder(self) -> Any:
+        """Lazy-load the sentence-embedding model (optional dependency)."""
+        if self._embedding_model is not None:
+            return self._embedding_model
+        try:
+            from sentence_transformers import SentenceTransformer
+        except ImportError as exc:  # pragma: no cover - environment dependent
+            msg = (
+                "use_semantic_embedding=True requires the optional "
+                "'sentence-transformers' dependency"
+            )
+            raise RuntimeError(msg) from exc
+        self._embedding_model = SentenceTransformer(self.embedding_model_name)
+        return self._embedding_model
+
+    def _embed_texts(self, texts: list[str]) -> np.ndarray:
+        """Encode texts into normalized embeddings (batched)."""
+        model = self._ensure_embedder()
+        emb = model.encode(texts, normalize_embeddings=True, batch_size=64, show_progress_bar=False)
+        return np.asarray(emb, dtype=np.float64)
 
     def vector(self, text: str) -> list[float]:
         """Extract the ML feature vector for a prompt."""
         normalized = self.normalizer.normalize(text)
         base = self.feature_extractor.extract(normalized)
-        return self.ml_features.extract_vector(normalized, base).features
+        features = list(self.ml_features.extract_vector(normalized, base).features)
+        if self.use_semantic_embedding:
+            features.extend(self._embed_texts([text])[0].tolist())
+        return features
+
+    def feature_matrix(self, texts: list[str]) -> np.ndarray:
+        """Feature matrix for many prompts (batched embeddings when enabled).
+
+        Produces exactly the same rows as ``vector()`` per prompt; the batch
+        path only avoids per-text encoder calls during training.
+        """
+        if not self.use_semantic_embedding:
+            return np.array([self.vector(t) for t in texts], dtype=np.float64)
+        base_rows: list[list[float]] = []
+        for t in texts:
+            normalized = self.normalizer.normalize(t)
+            feats = self.feature_extractor.extract(normalized)
+            base_rows.append(list(self.ml_features.extract_vector(normalized, feats).features))
+        emb = self._embed_texts(texts)
+        return np.hstack([np.array(base_rows, dtype=np.float64), emb])
 
     # ── Training ───────────────────────────────────────────────────────
 
@@ -145,7 +199,7 @@ class HybridEvaluator:
             msg = f"texts ({len(texts)}) and labels ({len(labels)}) length mismatch"
             raise ValueError(msg)
 
-        x = np.array([self.vector(t) for t in texts], dtype=np.float64)
+        x = self.feature_matrix(texts)
         y = list(labels)
 
         self.scaler = StandardScaler()
@@ -156,7 +210,9 @@ class HybridEvaluator:
             n_estimators=self.n_estimators,
             contamination=self.contamination,
         )
-        self.rf = RandomForestThreatClassifier(n_estimators=self.n_estimators)
+        self.rf = RandomForestThreatClassifier(
+            n_estimators=self.rf_n_estimators or self.n_estimators
+        )
         self.anomaly.train(x_scaled)
         self.rf.train(x_scaled, y)
 
@@ -164,7 +220,7 @@ class HybridEvaluator:
         # same scaled features as Random Forest; if the optional dependency is
         # not installed the classifier reports itself unavailable and the
         # provider is skipped (graceful degradation, matching the ml module).
-        self.xgb = XGBoostThreatClassifier(n_estimators=self.n_estimators)
+        self.xgb = XGBoostThreatClassifier(n_estimators=self.xgb_n_estimators or self.n_estimators)
         if self.xgb.is_available:
             self.xgb.train(x_scaled, y)
         else:
@@ -250,9 +306,13 @@ class HybridEvaluator:
                 "quantum_feature_count": self.quantum_feature_count,
                 "quantum_cap": self.quantum_cap,
                 "n_estimators": self.n_estimators,
+                "rf_n_estimators": self.rf_n_estimators,
+                "xgb_n_estimators": self.xgb_n_estimators,
                 "contamination": self.contamination,
                 "provider_weights": dict(self.provider_weights),
                 "random_state": self.random_state,
+                "use_semantic_embedding": self.use_semantic_embedding,
+                "embedding_model_name": self.embedding_model_name,
             },
             "scaler": self.scaler,
             "anomaly": self.anomaly,
@@ -272,6 +332,8 @@ class HybridEvaluator:
 
         path = Path(directory)
         state: Any = joblib.load(path / "hybrid_evaluator.joblib")
+        # Checkpoints saved before semantic-embedding support default to the
+        # handcrafted-only representation via __init__ defaults.
         evaluator = cls(**state["params"])
         evaluator.scaler = state.get("scaler")
         evaluator.anomaly = state.get("anomaly")
