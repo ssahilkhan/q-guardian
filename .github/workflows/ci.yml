@@ -86,7 +86,7 @@ jobs:
           python-version: "3.12"
           cache: pip
       # Audit both the lock-style runtime requirements and the package extras.
-      - run: pip install -r requirements.txt
+      - run: pip install -r requirements.txt pip-audit
       - name: pip-audit (runtime requirements)
         run: pip-audit -r requirements.txt --strict
       - name: pip-audit (current environment incl. dev tooling)
