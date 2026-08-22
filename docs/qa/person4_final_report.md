@@ -153,8 +153,8 @@ Performance (30 sequential scans via local staging server):
 | F-03 | P1 | **FIXED** | No security test suite → 70-test suite + CI job |
 | F-04 | P2 | **FIXED** | No dep/secret scanning → pip-audit + gitleaks jobs |
 | F-05 | P2 | **FIXED** | Coverage ungated → `--cov-fail-under=80` in CI |
-| F-06 | P3 | OPEN | `.env.example` APP_VERSION stale (0.1.0 vs 1.1.0) |
-| F-07 | P3 | OPEN | Makefile `clean` target Unix-only |
+| F-06 | P3 | **FIXED** | `.env.example` APP_VERSION stale (0.1.0 vs 1.1.0) |
+| F-07 | P3 | **FIXED** | Makefile `clean` Unix-only → portable Python-based cleanup, verified on Windows |
 | F-08 | P2 | **FIXED & VERIFIED** | Docker build job in CI; image built + container smoke test passed locally (WSL2 installed during audit) |
 | F-09 | P2 | OPEN (ML owner) | IF detector 12-dim vs 43-dim features; silent exception swallow in InferenceEngine |
 | F-10 | P3 | NEW | No `/metrics` Prometheus endpoint; monitoring is log-only |
@@ -168,7 +168,7 @@ Performance (30 sequential scans via local staging server):
 ## 9. Release Checklist (pre-tag)
 
 1. ✅ Docker build + containerized smoke test — **done during this audit** (§7)
-2. ⬜ Fix F-06/F-07 (trivial)
+2. ✅ Fix F-06/F-07 — done (portable `make clean` verified on Windows)
 3. ⬜ Hand F-09 to ML owner with pointer from §4
 4. ⬜ Tag `v1.1.0`; CI `package`/`docker` jobs produce artifacts
 5. ⬜ Post-release backlog: F-10 metrics endpoint, JWT library decision when auth lands (do **not** reintroduce python-jose casually — see §5), evasion-gap roadmap from `docs/qa/security_metrics.md`
