@@ -9,12 +9,11 @@ Focused Phase 1 coverage:
 
 from __future__ import annotations
 
-import os
 from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from q_guardian.exceptions.base import AuthenticationException
+from q_guardian.exceptions.base import AuthenticationError
 from q_guardian.security.auth import (
     APIKeyRecord,
     APIKeyService,
@@ -62,7 +61,7 @@ class TestJWTService:
         service = JWTService()
         token = await service.create_access_token({"sub": "user-1"}, expires_minutes=-1)
 
-        with pytest.raises(AuthenticationException) as exc_info:
+        with pytest.raises(AuthenticationError) as exc_info:
             await service.verify_token(token)
         assert exc_info.value.details.get("reason") == "token_expired"
         assert exc_info.value.status_code == 401
@@ -72,33 +71,33 @@ class TestJWTService:
         token = await service.create_access_token({"sub": "user-1"})
         tampered = token[:-3] + ("aaa" if not token.endswith("aaa") else "bbb")
 
-        with pytest.raises(AuthenticationException):
+        with pytest.raises(AuthenticationError):
             await service.verify_token(tampered)
 
     async def test_garbage_token_rejected(self) -> None:
         service = JWTService()
 
-        with pytest.raises(AuthenticationException):
+        with pytest.raises(AuthenticationError):
             await service.verify_token("not-a-jwt")
 
     async def test_missing_token_rejected(self) -> None:
         service = JWTService()
 
-        with pytest.raises(AuthenticationException):
+        with pytest.raises(AuthenticationError):
             await service.verify_token("")
 
     async def test_wrong_token_type_enforced(self) -> None:
         service = JWTService()
         refresh = await service.create_refresh_token({"sub": "user-1"})
 
-        with pytest.raises(AuthenticationException) as exc_info:
+        with pytest.raises(AuthenticationError) as exc_info:
             await service.verify_token(refresh, expected_type=JWTService.ACCESS_TOKEN_TYPE)
         assert exc_info.value.details.get("reason") == "wrong_token_type"
 
     async def test_empty_payload_rejected(self) -> None:
         service = JWTService()
 
-        with pytest.raises(AuthenticationException):
+        with pytest.raises(AuthenticationError):
             await service.create_access_token({})
 
     async def test_custom_expiry_respected(self) -> None:
@@ -123,9 +122,7 @@ class TestAuthenticationService:
         users = {username: {"password_hash": hash_password(password), "roles": roles}}
         monkeypatch.setenv("AUTH_USERS", json.dumps(users))
 
-    async def test_no_users_configured_returns_none(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    async def test_no_users_configured_returns_none(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.delenv("AUTH_USERS", raising=False)
         service = AuthenticationService()
 
@@ -133,9 +130,7 @@ class TestAuthenticationService:
         result = await service.authenticate("admin", "whatever")
         assert result is None
 
-    async def test_valid_credentials_return_tokens(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    async def test_valid_credentials_return_tokens(self, monkeypatch: pytest.MonkeyPatch) -> None:
         self._provision_user(monkeypatch, "analyst", "s3cret-password", ["analyst"])
         service = AuthenticationService()
 
@@ -152,9 +147,7 @@ class TestAuthenticationService:
         )
         assert access_claims["sub"] == "analyst"
 
-    async def test_invalid_password_returns_none(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    async def test_invalid_password_returns_none(self, monkeypatch: pytest.MonkeyPatch) -> None:
         self._provision_user(monkeypatch, "analyst", "s3cret-password", [])
         service = AuthenticationService()
 
@@ -165,9 +158,7 @@ class TestAuthenticationService:
 
         assert await service.authenticate("ghost", "nope") is None
 
-    async def test_invalid_auth_users_json_ignored(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    async def test_invalid_auth_users_json_ignored(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("AUTH_USERS", "{not valid json")
         service = AuthenticationService()
 
@@ -190,9 +181,7 @@ class TestAuthenticationService:
         )
         assert new_claims["sub"] == "svc"
 
-    async def test_refresh_with_access_token_fails(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    async def test_refresh_with_access_token_fails(self, monkeypatch: pytest.MonkeyPatch) -> None:
         self._provision_user(monkeypatch, "svc", "pw", [])
         service = AuthenticationService()
         first = await service.authenticate("svc", "pw")

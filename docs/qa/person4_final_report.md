@@ -164,6 +164,7 @@ Performance (30 sequential scans via local staging server):
 | F-14 | P1 | **FIXED** | Image never installed the app; uvicorn target violated absolute imports |
 | F-15 | P1 | **FIXED** | Non-root user had no write access to /app persistence paths → crash-loop |
 | F-16 | P2 | **FIXED** | HEALTHCHECK raced DB-selection stall → flapped unhealthy without Mongo |
+| F-17 | P1 | **FIXED** | Upstream auth commit was broken standalone: phantom exception names (AuthenticationException/SecurityException) and imports of removed deps. Fixed to AuthenticationError/SecurityError; migrated jose→PyJWT (keeps 0-CVE tree); bcrypt re-added as genuine dep; also completed pyproject dead-dep removal that f1430d9 missed due to CRLF mismatch |
 
 ## 9. Release Checklist (pre-tag)
 
