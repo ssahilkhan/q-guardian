@@ -28,6 +28,7 @@ class PromptCategory(StrEnum):
     OVERSIZED_PROMPT = "oversized_prompt"
     MALFORMED_INPUT = "malformed_input"
     HOMOGLYPH = "homoglyph"
+    ENCODING = "encoding"
     UNKNOWN = "unknown"
 
 

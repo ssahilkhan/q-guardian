@@ -14,6 +14,10 @@ import unicodedata
 
 import structlog
 
+from q_guardian.security.encoding import (
+    decode_recursive,
+    detect_all_encodings,
+)
 from q_guardian.security.enums import PromptCategory, PromptSeverity, ValidationStatus
 from q_guardian.security.homoglyph import analyze_homoglyphs
 from q_guardian.security.models import (
@@ -430,6 +434,38 @@ DEFAULT_RULES: list[PromptRule] = [
         confidence=0.7,
     ),
     PromptRule(
+        rule_id="enc-002",
+        name="Base64 Encoding Detection",
+        description="Detects Base64 encoded content that may hide malicious payloads",
+        category=PromptCategory.ENCODING,
+        severity=PromptSeverity.MEDIUM,
+        confidence=0.65,
+    ),
+    PromptRule(
+        rule_id="enc-003",
+        name="ROT13 Encoding Detection",
+        description="Detects ROT13 obfuscation that may hide malicious content",
+        category=PromptCategory.ENCODING,
+        severity=PromptSeverity.LOW,
+        confidence=0.5,
+    ),
+    PromptRule(
+        rule_id="enc-004",
+        name="Hex Encoding Detection",
+        description="Detects hexadecimal encoded content that may hide malicious payloads",
+        category=PromptCategory.ENCODING,
+        severity=PromptSeverity.MEDIUM,
+        confidence=0.6,
+    ),
+    PromptRule(
+        rule_id="enc-005",
+        name="URL Encoding Detection",
+        description="Detects URL percent-encoded content that may hide malicious payloads",
+        category=PromptCategory.ENCODING,
+        severity=PromptSeverity.MEDIUM,
+        confidence=0.6,
+    ),
+    PromptRule(
         rule_id="fmt-001",
         name="Suspicious Formatting",
         description="Unusual formatting patterns that may indicate injection",
@@ -613,6 +649,74 @@ class RuleEngine:
                             "confusables": homoglyph_results["confusables"],
                             "mixed_script": homoglyph_results["mixed_script"],
                         },
+                    )
+                    findings.append(finding)
+                continue
+
+            # Special handling for encoding rules (enc-002 through enc-005)
+            if rule.rule_id in ("enc-002", "enc-003", "enc-004", "enc-005"):
+                encoding_type = rule.rule_id.split("-")[1]
+                encoding_map = {
+                    "002": "base64",
+                    "003": "rot13",
+                    "004": "hex",
+                    "005": "url",
+                }
+                target_encoding = encoding_map.get(encoding_type, encoding_type)
+
+                candidates = detect_all_encodings(prompt)
+                encoding_candidates = [c for c in candidates if c.encoding == target_encoding]
+
+                if encoding_candidates:
+                    # Use the highest confidence candidate
+                    best_candidate = max(encoding_candidates, key=lambda c: c.confidence)
+
+                    # Also check for nested decoding
+                    decode_results = decode_recursive(prompt)
+                    encoding_results = [
+                        r for r in decode_results if target_encoding in r.encoding_chain
+                    ]
+                    # Sort by depth descending to get the deepest (most complete) chain first
+                    encoding_results.sort(key=lambda r: r.depth, reverse=True)
+
+                    matched_text = best_candidate.matched_text
+                    if best_candidate.metadata.get("decoded_preview"):
+                        matched_text += f" -> {best_candidate.metadata['decoded_preview']}"
+
+                    # Build metadata with encoding context
+                    metadata = {
+                        "encoding": target_encoding,
+                        "confidence": best_candidate.confidence,
+                        "matched_text": best_candidate.matched_text,
+                        "decoded_preview": best_candidate.metadata.get("decoded_preview", ""),
+                        "decoded_length": best_candidate.metadata.get("decoded_length", 0),
+                        "encoding_context": {
+                            "encoding": target_encoding,
+                            "decoding_depth": 1,
+                            "encoding_chain": [target_encoding],
+                        },
+                    }
+
+                    # Add nested encoding info if found
+                    if encoding_results:
+                        max_depth = max(r.depth for r in encoding_results)
+                        full_chain = encoding_results[0].encoding_chain
+                        metadata["encoding_context"]["decoding_depth"] = max_depth
+                        metadata["encoding_context"]["encoding_chain"] = list(full_chain)
+                        if encoding_results[0].metadata.get("decoded_preview"):
+                            metadata["nested_decoded_preview"] = encoding_results[0].metadata[
+                                "decoded_preview"
+                            ]
+
+                    finding = PromptFinding(
+                        rule_id=rule.rule_id,
+                        rule_name=rule.name,
+                        category=rule.category,
+                        severity=rule.severity,
+                        description=rule.description,
+                        matched_text=matched_text[:200],
+                        confidence=rule.confidence,
+                        metadata=metadata,
                     )
                     findings.append(finding)
                 continue
