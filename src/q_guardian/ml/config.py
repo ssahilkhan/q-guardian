@@ -16,7 +16,7 @@ class MLConfig(BaseModel):
 
     model_config = ConfigDict(extra="allow")
 
-    enabled: bool = Field(default=False, description="Enable ML-based analysis")
+    enabled: bool = Field(default=True, description="Enable ML-based analysis")
 
     # Storage
     model_storage_path: Path = Field(

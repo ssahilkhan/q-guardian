@@ -30,11 +30,15 @@ from q_guardian.ml.events import (
 class TestMLConfig:
     def test_defaults(self) -> None:
         config = MLConfig()
-        assert config.enabled is False
+        assert config.enabled is True
         assert config.anomaly_threshold == 0.5
         assert config.classification_threshold == 0.5
         assert config.default_cv_folds == 5
         assert config.random_state == 42
+
+    def test_explicit_disabled(self) -> None:
+        config = MLConfig(enabled=False)
+        assert config.enabled is False
 
     def test_custom(self) -> None:
         config = MLConfig(enabled=True, anomaly_threshold=0.3, max_features=5000)
@@ -47,6 +51,12 @@ class TestMLConfig:
         data = config.model_dump()
         restored = MLConfig.model_validate(data)
         assert restored.enabled == config.enabled
+
+    def test_roundtrip_disabled(self) -> None:
+        config = MLConfig(enabled=False)
+        data = config.model_dump()
+        restored = MLConfig.model_validate(data)
+        assert restored.enabled is False
 
 
 class TestMLEnums:
