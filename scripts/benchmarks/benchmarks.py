@@ -8,7 +8,6 @@ from scripts.benchmarks.benchmark_runner import (
     BenchmarkSuite,
     async_benchmark,
     benchmark,
-    compute_stats,
 )
 
 
@@ -27,7 +26,9 @@ class StartupBenchmark:
     async def bench_import(self) -> BenchmarkResult:
         async def _measure() -> None:
             import importlib
+
             import q_guardian.sdk.guardian
+
             importlib.reload(q_guardian.sdk.guardian)
 
         return await async_benchmark(
@@ -53,7 +54,7 @@ class StartupBenchmark:
         )
 
     async def bench_init_with_config(self) -> BenchmarkResult:
-        from q_guardian import Guardian, FrameworkConfig
+        from q_guardian import FrameworkConfig, Guardian
         from q_guardian.framework.config import PluginConfig
 
         def _measure() -> None:
@@ -114,6 +115,7 @@ class PromptSecurityBenchmark:
 
     async def bench_normalize(self) -> BenchmarkResult:
         from q_guardian.security.pipeline import PromptNormalizer
+
         normalizer = PromptNormalizer()
         prompts = self.SAFE_PROMPTS + self.MALICIOUS_PROMPTS
         idx = 0
@@ -123,10 +125,16 @@ class PromptSecurityBenchmark:
             normalizer.normalize(prompts[idx % len(prompts)])
             idx += 1
 
-        return benchmark(_measure, iterations=self.iterations, warmup=self.warmup, name="prompt_security.normalize")
+        return benchmark(
+            _measure,
+            iterations=self.iterations,
+            warmup=self.warmup,
+            name="prompt_security.normalize",
+        )
 
     async def bench_validate(self) -> BenchmarkResult:
         from q_guardian.security.pipeline import PromptValidator
+
         validator = PromptValidator()
         prompts = self.SAFE_PROMPTS + self.MALICIOUS_PROMPTS
         idx = 0
@@ -136,10 +144,16 @@ class PromptSecurityBenchmark:
             validator.validate(prompts[idx % len(prompts)])
             idx += 1
 
-        return benchmark(_measure, iterations=self.iterations, warmup=self.warmup, name="prompt_security.validate")
+        return benchmark(
+            _measure,
+            iterations=self.iterations,
+            warmup=self.warmup,
+            name="prompt_security.validate",
+        )
 
     async def bench_feature_extract(self) -> BenchmarkResult:
         from q_guardian.security.pipeline import PromptFeatureExtractor
+
         extractor = PromptFeatureExtractor()
         prompts = self.SAFE_PROMPTS + self.MALICIOUS_PROMPTS
         idx = 0
@@ -149,10 +163,16 @@ class PromptSecurityBenchmark:
             extractor.extract(prompts[idx % len(prompts)])
             idx += 1
 
-        return benchmark(_measure, iterations=self.iterations, warmup=self.warmup, name="prompt_security.feature_extract")
+        return benchmark(
+            _measure,
+            iterations=self.iterations,
+            warmup=self.warmup,
+            name="prompt_security.feature_extract",
+        )
 
     async def bench_rule_engine_safe(self) -> BenchmarkResult:
         from q_guardian.security.pipeline import RuleEngine
+
         engine = RuleEngine()
         idx = 0
 
@@ -161,10 +181,16 @@ class PromptSecurityBenchmark:
             engine.analyze(self.SAFE_PROMPTS[idx % len(self.SAFE_PROMPTS)])
             idx += 1
 
-        return benchmark(_measure, iterations=self.iterations, warmup=self.warmup, name="prompt_security.rule_engine_safe")
+        return benchmark(
+            _measure,
+            iterations=self.iterations,
+            warmup=self.warmup,
+            name="prompt_security.rule_engine_safe",
+        )
 
     async def bench_rule_engine_malicious(self) -> BenchmarkResult:
         from q_guardian.security.pipeline import RuleEngine
+
         engine = RuleEngine()
         idx = 0
 
@@ -173,16 +199,22 @@ class PromptSecurityBenchmark:
             engine.analyze(self.MALICIOUS_PROMPTS[idx % len(self.MALICIOUS_PROMPTS)])
             idx += 1
 
-        return benchmark(_measure, iterations=self.iterations, warmup=self.warmup, name="prompt_security.rule_engine_malicious")
+        return benchmark(
+            _measure,
+            iterations=self.iterations,
+            warmup=self.warmup,
+            name="prompt_security.rule_engine_malicious",
+        )
 
     async def bench_full_pipeline_safe(self) -> BenchmarkResult:
+        from q_guardian.security.decision import SecurityDecisionEngine
         from q_guardian.security.pipeline import (
             PromptFeatureExtractor,
             PromptNormalizer,
             PromptValidator,
             RuleEngine,
         )
-        from q_guardian.security.decision import SecurityDecisionEngine
+
         normalizer = PromptNormalizer()
         validator = PromptValidator()
         extractor = PromptFeatureExtractor()
@@ -199,20 +231,29 @@ class PromptSecurityBenchmark:
             features = extractor.extract(normalized)
             findings = rule_engine.analyze(normalized, features)
             from q_guardian.security.models import PromptAnalysis
-            analysis = PromptAnalysis(original_prompt=prompt, normalized_prompt=normalized, findings=findings)
+
+            analysis = PromptAnalysis(
+                original_prompt=prompt, normalized_prompt=normalized, findings=findings
+            )
             decision_engine.decide(analysis)
 
-        return await async_benchmark(_measure, iterations=self.iterations, warmup=self.warmup, name="prompt_security.full_pipeline_safe")
+        return await async_benchmark(
+            _measure,
+            iterations=self.iterations,
+            warmup=self.warmup,
+            name="prompt_security.full_pipeline_safe",
+        )
 
     async def bench_full_pipeline_malicious(self) -> BenchmarkResult:
+        from q_guardian.security.decision import SecurityDecisionEngine
+        from q_guardian.security.models import PromptAnalysis
         from q_guardian.security.pipeline import (
             PromptFeatureExtractor,
             PromptNormalizer,
             PromptValidator,
             RuleEngine,
         )
-        from q_guardian.security.decision import SecurityDecisionEngine
-        from q_guardian.security.models import PromptAnalysis
+
         normalizer = PromptNormalizer()
         validator = PromptValidator()
         extractor = PromptFeatureExtractor()
@@ -228,10 +269,17 @@ class PromptSecurityBenchmark:
             status, errors = validator.validate(normalized)
             features = extractor.extract(normalized)
             findings = rule_engine.analyze(normalized, features)
-            analysis = PromptAnalysis(original_prompt=prompt, normalized_prompt=normalized, findings=findings)
+            analysis = PromptAnalysis(
+                original_prompt=prompt, normalized_prompt=normalized, findings=findings
+            )
             decision_engine.decide(analysis)
 
-        return await async_benchmark(_measure, iterations=self.iterations, warmup=self.warmup, name="prompt_security.full_pipeline_malicious")
+        return await async_benchmark(
+            _measure,
+            iterations=self.iterations,
+            warmup=self.warmup,
+            name="prompt_security.full_pipeline_malicious",
+        )
 
 
 class PolicyBenchmark:
@@ -247,7 +295,9 @@ class PolicyBenchmark:
         results.append(await self.bench_policy_engine_evaluate())
         return results
 
-    async def _make_assessment(self, risk_score: float, risk_level: str, severity: str, threat_level: str) -> Any:
+    async def _make_assessment(
+        self, risk_score: float, risk_level: str, severity: str, threat_level: str
+    ) -> Any:
         from q_guardian.risk.data import (
             ConfidenceScore,
             RiskAssessment,
@@ -255,13 +305,16 @@ class PolicyBenchmark:
             ThreatScore,
         )
         from q_guardian.risk.enums import RiskLevel, Severity, ThreatLevel
+
         level_map = {v.value: v for v in RiskLevel}
         sev_map = {v.value: v for v in Severity}
         tl_map = {v.value: v for v in ThreatLevel}
         return RiskAssessment(
             risk_score=risk_score,
             risk_level=level_map.get(risk_level, RiskLevel.MINIMAL),
-            threat_score=ThreatScore(threat_score=risk_score, threat_level=tl_map.get(threat_level, ThreatLevel.NONE)),
+            threat_score=ThreatScore(
+                threat_score=risk_score, threat_level=tl_map.get(threat_level, ThreatLevel.NONE)
+            ),
             severity=SeverityScore(severity=sev_map.get(severity, Severity.LOW), score=risk_score),
             confidence=ConfidenceScore(raw_confidence=0.8, normalized_confidence=0.8),
         )
@@ -269,6 +322,7 @@ class PolicyBenchmark:
     async def bench_policy_eval_low_risk(self) -> BenchmarkResult:
         from q_guardian.risk.policy.evaluator import PolicyEvaluator
         from q_guardian.risk.policy.policies import create_default_policy
+
         evaluator = PolicyEvaluator()
         policy = create_default_policy()
         assessment = await self._make_assessment(0.1, "low", "low", "low")
@@ -276,11 +330,17 @@ class PolicyBenchmark:
         def _measure() -> None:
             evaluator.evaluate(policy, assessment)
 
-        return benchmark(_measure, iterations=self.iterations, warmup=self.warmup, name="policy.evaluate_low_risk")
+        return benchmark(
+            _measure,
+            iterations=self.iterations,
+            warmup=self.warmup,
+            name="policy.evaluate_low_risk",
+        )
 
     async def bench_policy_eval_high_risk(self) -> BenchmarkResult:
         from q_guardian.risk.policy.evaluator import PolicyEvaluator
         from q_guardian.risk.policy.policies import create_default_policy
+
         evaluator = PolicyEvaluator()
         policy = create_default_policy()
         assessment = await self._make_assessment(0.8, "high", "high", "high")
@@ -288,11 +348,17 @@ class PolicyBenchmark:
         def _measure() -> None:
             evaluator.evaluate(policy, assessment)
 
-        return benchmark(_measure, iterations=self.iterations, warmup=self.warmup, name="policy.evaluate_high_risk")
+        return benchmark(
+            _measure,
+            iterations=self.iterations,
+            warmup=self.warmup,
+            name="policy.evaluate_high_risk",
+        )
 
     async def bench_policy_eval_critical(self) -> BenchmarkResult:
         from q_guardian.risk.policy.evaluator import PolicyEvaluator
         from q_guardian.risk.policy.policies import create_default_policy
+
         evaluator = PolicyEvaluator()
         policy = create_default_policy()
         assessment = await self._make_assessment(1.0, "critical", "critical", "critical")
@@ -300,10 +366,16 @@ class PolicyBenchmark:
         def _measure() -> None:
             evaluator.evaluate(policy, assessment)
 
-        return benchmark(_measure, iterations=self.iterations, warmup=self.warmup, name="policy.evaluate_critical")
+        return benchmark(
+            _measure,
+            iterations=self.iterations,
+            warmup=self.warmup,
+            name="policy.evaluate_critical",
+        )
 
     async def bench_policy_engine_evaluate(self) -> BenchmarkResult:
         from q_guardian.risk.policy.policy_engine import PolicyEngine
+
         engine = PolicyEngine()
         engine.load_defaults()
         assessment = await self._make_assessment(0.7, "moderate", "medium", "medium")
@@ -311,7 +383,9 @@ class PolicyBenchmark:
         def _measure() -> None:
             engine.evaluate(assessment)
 
-        return benchmark(_measure, iterations=self.iterations, warmup=self.warmup, name="policy.engine_evaluate")
+        return benchmark(
+            _measure, iterations=self.iterations, warmup=self.warmup, name="policy.engine_evaluate"
+        )
 
 
 class EventBusBenchmark:
@@ -328,8 +402,8 @@ class EventBusBenchmark:
         return results
 
     async def bench_publish_no_subscribers(self) -> BenchmarkResult:
-        from q_guardian.events.bus import EventBus
         from q_guardian.events.base import Event
+        from q_guardian.events.bus import EventBus
 
         bus = EventBus()
 
@@ -341,11 +415,16 @@ class EventBusBenchmark:
         async def _measure() -> None:
             await bus.publish(event)
 
-        return await async_benchmark(_measure, iterations=self.iterations, warmup=self.warmup, name="event_bus.publish_no_subs")
+        return await async_benchmark(
+            _measure,
+            iterations=self.iterations,
+            warmup=self.warmup,
+            name="event_bus.publish_no_subs",
+        )
 
     async def bench_publish_with_subscribers(self) -> BenchmarkResult:
-        from q_guardian.events.bus import EventBus
         from q_guardian.events.base import Event
+        from q_guardian.events.bus import EventBus
 
         bus = EventBus()
         call_count = 0
@@ -365,7 +444,12 @@ class EventBusBenchmark:
         async def _measure() -> None:
             await bus.publish(event)
 
-        return await async_benchmark(_measure, iterations=self.iterations, warmup=self.warmup, name="event_bus.publish_5_subs")
+        return await async_benchmark(
+            _measure,
+            iterations=self.iterations,
+            warmup=self.warmup,
+            name="event_bus.publish_5_subs",
+        )
 
     async def bench_subscribe_unsubscribe(self) -> BenchmarkResult:
         from q_guardian.events.bus import EventBus
@@ -383,7 +467,12 @@ class EventBusBenchmark:
             if ids:
                 await bus.unsubscribe(ids.pop())
 
-        return await async_benchmark(_measure, iterations=self.iterations, warmup=self.warmup, name="event_bus.subscribe_unsubscribe")
+        return await async_benchmark(
+            _measure,
+            iterations=self.iterations,
+            warmup=self.warmup,
+            name="event_bus.subscribe_unsubscribe",
+        )
 
     async def bench_broadcast(self) -> BenchmarkResult:
         from q_guardian.events.bus import EventBus
@@ -398,7 +487,9 @@ class EventBusBenchmark:
         async def _measure() -> None:
             await bus.broadcast("bench.test", data={"key": "value"})
 
-        return await async_benchmark(_measure, iterations=self.iterations, warmup=self.warmup, name="event_bus.broadcast")
+        return await async_benchmark(
+            _measure, iterations=self.iterations, warmup=self.warmup, name="event_bus.broadcast"
+        )
 
 
 class RuntimeBenchmark:
@@ -417,17 +508,24 @@ class RuntimeBenchmark:
 
     async def bench_session_create_close(self) -> BenchmarkResult:
         from q_guardian.runtime.managers import SessionManager
+
         mgr = SessionManager()
 
         async def _measure() -> None:
             session = await mgr.create_session(agent_id="bench-agent")
             await mgr.close_session(session.session_id)
 
-        return await async_benchmark(_measure, iterations=self.iterations, warmup=self.warmup, name="runtime.session_create_close")
+        return await async_benchmark(
+            _measure,
+            iterations=self.iterations,
+            warmup=self.warmup,
+            name="runtime.session_create_close",
+        )
 
     async def bench_request_track_complete(self) -> BenchmarkResult:
         from q_guardian.runtime.managers import RequestManager
         from q_guardian.runtime.models import AgentRequest, AgentResponse
+
         mgr = RequestManager()
 
         async def _measure() -> None:
@@ -436,31 +534,46 @@ class RuntimeBenchmark:
             resp = AgentResponse(request_id=req.request_id, output="bench response")
             await mgr.complete_request(req.request_id, resp)
 
-        return await async_benchmark(_measure, iterations=self.iterations, warmup=self.warmup, name="runtime.request_track_complete")
+        return await async_benchmark(
+            _measure,
+            iterations=self.iterations,
+            warmup=self.warmup,
+            name="runtime.request_track_complete",
+        )
 
     async def bench_tool_lifecycle(self) -> BenchmarkResult:
         from q_guardian.runtime.managers import ToolExecutionTracker
+
         tracker = ToolExecutionTracker()
 
         def _measure() -> None:
             inv = tracker.start_invocation("bench_tool", arguments={"x": 1})
             tracker.finish_invocation(inv.invocation_id, result="done")
 
-        return benchmark(_measure, iterations=self.iterations, warmup=self.warmup, name="runtime.tool_lifecycle")
+        return benchmark(
+            _measure, iterations=self.iterations, warmup=self.warmup, name="runtime.tool_lifecycle"
+        )
 
     async def bench_memory_operations(self) -> BenchmarkResult:
+        from q_guardian.runtime.enums import MemoryType
         from q_guardian.runtime.managers import MemoryTracker
-        from q_guardian.runtime.enums import MemoryType, MemoryOperation
+
         tracker = MemoryTracker()
 
         def _measure() -> None:
             tracker.record_write(MemoryType.SHORT_TERM, key="bench_key", value="bench_value")
             tracker.record_read(MemoryType.SHORT_TERM, key="bench_key")
 
-        return benchmark(_measure, iterations=self.iterations, warmup=self.warmup, name="runtime.memory_read_write")
+        return benchmark(
+            _measure,
+            iterations=self.iterations,
+            warmup=self.warmup,
+            name="runtime.memory_read_write",
+        )
 
     async def bench_guardian_session_lifecycle(self) -> BenchmarkResult:
         from q_guardian import Guardian
+
         g = Guardian()
 
         async def _measure() -> None:
@@ -469,7 +582,12 @@ class RuntimeBenchmark:
             await g.close_session()
             await g.shutdown()
 
-        return await async_benchmark(_measure, iterations=self.iterations, warmup=self.warmup, name="runtime.guardian_session_lifecycle")
+        return await async_benchmark(
+            _measure,
+            iterations=self.iterations,
+            warmup=self.warmup,
+            name="runtime.guardian_session_lifecycle",
+        )
 
 
 class ObservabilityBenchmark:
@@ -488,16 +606,23 @@ class ObservabilityBenchmark:
 
     async def bench_metrics_counter(self) -> BenchmarkResult:
         from q_guardian.observability.metrics.metrics_engine import MetricsEngine
+
         engine = MetricsEngine()
         engine.initialize()
 
         def _measure() -> None:
             engine.record_counter("bench.counter", value=1.0)
 
-        return benchmark(_measure, iterations=self.iterations, warmup=self.warmup, name="observability.metrics_counter")
+        return benchmark(
+            _measure,
+            iterations=self.iterations,
+            warmup=self.warmup,
+            name="observability.metrics_counter",
+        )
 
     async def bench_metrics_histogram(self) -> BenchmarkResult:
         from q_guardian.observability.metrics.metrics_engine import MetricsEngine
+
         engine = MetricsEngine()
         engine.initialize()
         val = 0.0
@@ -507,10 +632,16 @@ class ObservabilityBenchmark:
             val += 0.1
             engine.record_histogram("bench.histogram", value=val)
 
-        return benchmark(_measure, iterations=self.iterations, warmup=self.warmup, name="observability.metrics_histogram")
+        return benchmark(
+            _measure,
+            iterations=self.iterations,
+            warmup=self.warmup,
+            name="observability.metrics_histogram",
+        )
 
     async def bench_metrics_gauge(self) -> BenchmarkResult:
         from q_guardian.observability.metrics.metrics_engine import MetricsEngine
+
         engine = MetricsEngine()
         engine.initialize()
         val = 0.0
@@ -520,10 +651,16 @@ class ObservabilityBenchmark:
             val += 1.0
             engine.record_gauge("bench.gauge", value=val)
 
-        return benchmark(_measure, iterations=self.iterations, warmup=self.warmup, name="observability.metrics_gauge")
+        return benchmark(
+            _measure,
+            iterations=self.iterations,
+            warmup=self.warmup,
+            name="observability.metrics_gauge",
+        )
 
     async def bench_trace_lifecycle(self) -> BenchmarkResult:
         from q_guardian.observability.tracing.trace_engine import TraceEngine
+
         engine = TraceEngine()
         engine.initialize()
 
@@ -534,10 +671,16 @@ class ObservabilityBenchmark:
                 engine.finish_span(trace.trace_id, span.span_id)
             engine.finish_trace(trace.trace_id)
 
-        return await async_benchmark(_measure, iterations=self.iterations, warmup=self.warmup, name="observability.trace_lifecycle")
+        return await async_benchmark(
+            _measure,
+            iterations=self.iterations,
+            warmup=self.warmup,
+            name="observability.trace_lifecycle",
+        )
 
     async def bench_hook_register_execute(self) -> BenchmarkResult:
         from q_guardian.hooks.manager import HookManager
+
         mgr = HookManager()
 
         async def _hook(**kwargs: Any) -> dict[str, Any]:
@@ -548,7 +691,12 @@ class ObservabilityBenchmark:
         async def _measure() -> None:
             await mgr.execute_hook("bench.hook", data="test")
 
-        return await async_benchmark(_measure, iterations=self.iterations, warmup=self.warmup, name="observability.hook_execute")
+        return await async_benchmark(
+            _measure,
+            iterations=self.iterations,
+            warmup=self.warmup,
+            name="observability.hook_execute",
+        )
 
 
 class MLEngineBenchmark:
@@ -564,20 +712,37 @@ class MLEngineBenchmark:
     async def bench_feature_pipeline(self) -> BenchmarkResult:
         try:
             from q_guardian.ml.feature_pipeline import MLFeatureProvider
+
             provider = MLFeatureProvider()
         except Exception:
-            return BenchmarkResult(name="ml.feature_pipeline", iterations=0, min_ns=0, max_ns=0, avg_ns=0, p50_ns=0, p95_ns=0, p99_ns=0, total_ns=0, metadata={"skipped": "ML deps unavailable"})
+            return BenchmarkResult(
+                name="ml.feature_pipeline",
+                iterations=0,
+                min_ns=0,
+                max_ns=0,
+                avg_ns=0,
+                p50_ns=0,
+                p95_ns=0,
+                p99_ns=0,
+                total_ns=0,
+                metadata={"skipped": "ML deps unavailable"},
+            )
 
-        from q_guardian.security.pipeline import PromptNormalizer, PromptFeatureExtractor
+        from q_guardian.security.pipeline import PromptFeatureExtractor, PromptNormalizer
+
         normalizer = PromptNormalizer()
         extractor = PromptFeatureExtractor()
 
         async def _measure() -> None:
-            normalized = normalizer.normalize("Hello, this is a test prompt for ML pipeline benchmarking.")
+            normalized = normalizer.normalize(
+                "Hello, this is a test prompt for ML pipeline benchmarking."
+            )
             features = extractor.extract(normalized)
             await provider.get_feature_vector(features)
 
-        return await async_benchmark(_measure, iterations=self.iterations, warmup=self.warmup, name="ml.feature_pipeline")
+        return await async_benchmark(
+            _measure, iterations=self.iterations, warmup=self.warmup, name="ml.feature_pipeline"
+        )
 
 
 ALL_BENCHMARKS = [
@@ -592,9 +757,10 @@ ALL_BENCHMARKS = [
 
 
 if __name__ == "__main__":
+
     async def _main() -> None:
         suite = BenchmarkSuite(name="individual-benchmarks")
-        for name, cls in ALL_BENCHMARKS:
+        for _name, cls in ALL_BENCHMARKS:
             bench = cls(iterations=50, warmup=5)
             results = await bench.run()
             for r in results:

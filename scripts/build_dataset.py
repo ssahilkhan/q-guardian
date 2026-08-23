@@ -21,7 +21,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import subprocess
 import sys
 import time
@@ -41,8 +40,13 @@ def fetch_rows(repo: str, split: str, length: int = 100):
     while True:
         resp = requests.get(
             ROWS_API,
-            params={"dataset": repo, "config": "default", "split": split,
-                    "offset": offset, "length": length},
+            params={
+                "dataset": repo,
+                "config": "default",
+                "split": split,
+                "offset": offset,
+                "length": length,
+            },
             timeout=60,
         )
         resp.raise_for_status()
@@ -67,8 +71,7 @@ def download_deepset(out_path: Path) -> int:
                 label = row.get("label")
                 if not text or label not in (0, 1):
                     continue
-                f.write(json.dumps(
-                    {"text": text, "label": int(label)}, ensure_ascii=False) + "\n")
+                f.write(json.dumps({"text": text, "label": int(label)}, ensure_ascii=False) + "\n")
                 rows_written += 1
     print(f"  wrote {rows_written} labeled rows -> {out_path}")
     return rows_written
@@ -96,8 +99,9 @@ def export_memory(out_path: Path) -> int:
             if key in seen:
                 continue
             seen.add(key)
-            f.write(json.dumps(
-                {"text": text, "label": int(rec["label"])}, ensure_ascii=False) + "\n")
+            f.write(
+                json.dumps({"text": text, "label": int(rec["label"])}, ensure_ascii=False) + "\n"
+            )
             rows_written += 1
     print(f"  wrote {rows_written} unique CLI prompts -> {out_path}")
     return rows_written
@@ -105,16 +109,22 @@ def export_memory(out_path: Path) -> int:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--from-memory", action="store_true",
-                        help="also export prompts collected in the CLI")
-    parser.add_argument("--train", action="store_true",
-                        help="chain into scripts/train_data.py after building")
-    parser.add_argument("--max-samples", type=int, default=200,
-                        help="samples per class used for training (default 200)")
-    parser.add_argument("--qsvm-samples", type=int, default=60,
-                        help="samples per class for the QSVM (default 60)")
-    parser.add_argument("--out", default=str(ROOT / "data"),
-                        help="where dataset files are written")
+    parser.add_argument(
+        "--from-memory", action="store_true", help="also export prompts collected in the CLI"
+    )
+    parser.add_argument(
+        "--train", action="store_true", help="chain into scripts/train_data.py after building"
+    )
+    parser.add_argument(
+        "--max-samples",
+        type=int,
+        default=200,
+        help="samples per class used for training (default 200)",
+    )
+    parser.add_argument(
+        "--qsvm-samples", type=int, default=60, help="samples per class for the QSVM (default 60)"
+    )
+    parser.add_argument("--out", default=str(ROOT / "data"), help="where dataset files are written")
     args = parser.parse_args()
 
     out_dir = Path(args.out)
@@ -133,15 +143,21 @@ def main() -> None:
 
     if not args.train:
         print("\nNext step: train the models, e.g.:")
-        print(f"  python scripts/train_data.py {datasets[0][0]} "
-              f"--max-samples {args.max_samples}")
+        print(f"  python scripts/train_data.py {datasets[0][0]} --max-samples {args.max_samples}")
         return
 
     for path, _ in datasets:
         t0 = time.monotonic()
-        cmd = [sys.executable, str(ROOT / "scripts" / "train_data.py"),
-               path, "--base", "--max-samples", str(args.max_samples),
-               "--qsvm-samples", str(args.qsvm_samples)]
+        cmd = [
+            sys.executable,
+            str(ROOT / "scripts" / "train_data.py"),
+            path,
+            "--base",
+            "--max-samples",
+            str(args.max_samples),
+            "--qsvm-samples",
+            str(args.qsvm_samples),
+        ]
         print(f"\n>>> Training on {path} ...")
         subprocess.run(cmd, cwd=str(ROOT))
         print(f"    finished in {time.monotonic() - t0:.1f}s")

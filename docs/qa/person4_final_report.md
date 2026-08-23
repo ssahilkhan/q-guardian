@@ -156,10 +156,10 @@ Performance (30 sequential scans via local staging server):
 | F-06 | P3 | **FIXED** | `.env.example` APP_VERSION stale (0.1.0 vs 1.1.0) |
 | F-07 | P3 | **FIXED** | Makefile `clean` Unix-only → portable Python-based cleanup, verified on Windows |
 | F-08 | P2 | **FIXED & VERIFIED** | Docker build job in CI; image built + container smoke test passed locally (WSL2 installed during audit) |
-| F-09 | P2 | OPEN (ML owner) | IF detector 12-dim vs 43-dim features; silent exception swallow in InferenceEngine |
-| F-10 | P3 | NEW | No `/metrics` Prometheus endpoint; monitoring is log-only |
-| F-11 | P3 | NEW | `/api/v1/health` first-probe latency ~5 s when DB down (serverSelection timeout); consider caching last-known DB state |
-| F-12 | P3 | NEW | Pre-existing lint debt in `scripts/` (~119 findings) outside CI scope; schedule cleanup |
+| F-09 | P2 | FIXED | Canonical `extract_core_features` (12-dim) shared by all classical models + loud dim-mismatch guard (`ml/base.py`); engine already logged errors - audit wording corrected |
+| F-10 | P3 | FIXED & VERIFIED | Dependency-free `/metrics` (Prometheus text): uptime, request counters/latency per route template, scan-decision counters; timing middleware rewritten as pure ASGI to resolve route templates under FastAPI >= 0.141 `_IncludedRouter` |
+| F-11 | P3 | FIXED & VERIFIED | 5 s TTL cache in `database/health.py` (`force=True` bypass, `reset_database_health_cache()` for tests); repeated probes no longer re-stall on unreachable DB |
+| F-12 | P3 | FIXED & VERIFIED | `scripts/` cleaned: auto-fixes + manual repairs; scoped cosmetic ignore for `scripts/benchmarks/*`; `ruff check src/ tests/ scripts/` fully clean |
 | F-13 | P1 | **FIXED** | `.dockerignore` excluded pyproject.toml/README.md → image could never build |
 | F-14 | P1 | **FIXED** | Image never installed the app; uvicorn target violated absolute imports |
 | F-15 | P1 | **FIXED** | Non-root user had no write access to /app persistence paths → crash-loop |

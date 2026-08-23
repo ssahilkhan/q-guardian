@@ -13,8 +13,10 @@ from typing import TYPE_CHECKING
 import structlog
 from fastapi import FastAPI
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from fastapi.responses import PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 
+from q_guardian.api.metrics import render_metrics
 from q_guardian.api.v1.router import api_v1_router
 from q_guardian.config.settings import get_settings
 from q_guardian.core.constants import API_V1_PREFIX, APP_DESCRIPTION, APP_TITLE, APP_VERSION
@@ -131,8 +133,9 @@ def _register_middleware(app: FastAPI) -> None:
 
     app.add_middleware(SecurityHeadersMiddleware)
     app.add_middleware(ExceptionLoggingMiddleware)
-    app.add_middleware(ResponseTimingMiddleware)
     app.add_middleware(CorrelationIDMiddleware)
+    # Outermost so its scope view receives the router's ``route`` mutation.
+    app.add_middleware(ResponseTimingMiddleware)
 
 
 def _register_routes(app: FastAPI) -> None:
@@ -159,6 +162,14 @@ def _register_routes(app: FastAPI) -> None:
         }
 
     app.include_router(api_v1_router, prefix=API_V1_PREFIX)
+
+    @app.get("/metrics", include_in_schema=False, tags=["Ops"])
+    async def metrics() -> PlainTextResponse:
+        """Expose operational metrics in Prometheus text format."""
+        return PlainTextResponse(
+            render_metrics(),
+            media_type="text/plain; version=0.0.4; charset=utf-8",
+        )
 
     _register_ui(app)
 

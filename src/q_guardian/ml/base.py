@@ -13,6 +13,74 @@ if TYPE_CHECKING:
 
 logger = structlog.get_logger("ml.base")
 
+# Canonical 12-dim handcrafted feature contract used by every classical model
+# at inference time. Training pipelines MUST supply vectors built by the same
+# extractor; MLFeatureProvider.extract_vector() serves a different, richer
+# 43-dim space intended for research/training experiments only.
+CORE_FEATURE_NAMES: list[str] = [
+    "length",
+    "word_count",
+    "line_count",
+    "token_estimate",
+    "entropy",
+    "uppercase_ratio",
+    "digit_ratio",
+    "special_char_count",
+    "code_block_count",
+    "url_count",
+    "suspicious_keyword_count",
+    "repeated_pattern_count",
+]
+
+
+def extract_core_features(features: Any) -> list[float]:
+    """Build the canonical 12-dim numeric vector from prompt features.
+
+    This is the single source of truth for the classical-model feature space.
+    ``IsolationForestDetector``, ``RandomForestThreatClassifier`` and
+    ``XGBoostThreatClassifier`` all consume it via their ``_extract_vector``
+    helpers, keeping train/inference dimensions consistent.
+
+    Args:
+        features: PromptFeatures instance (typed as Any to avoid a circular
+            schema import at module load).
+
+    Returns:
+        Numeric vector ordered exactly as ``CORE_FEATURE_NAMES``.
+    """
+    return [
+        float(features.length),
+        float(features.word_count),
+        float(features.line_count),
+        float(features.token_estimate),
+        features.entropy,
+        features.uppercase_ratio,
+        features.digit_ratio,
+        float(features.special_char_count),
+        float(features.code_block_count),
+        float(features.url_count),
+        float(len(features.suspicious_keywords)),
+        float(len(features.repeated_patterns)),
+    ]
+
+
+def validate_feature_dimension(model_name: str, expected: int, got: int) -> None:
+    """Raise an actionable error when a feature vector's width is wrong.
+
+    Args:
+        model_name: Human-readable model name for the error message.
+        expected: Dimensionality the trained estimator requires.
+        got: Dimensionality of the incoming vector.
+
+    Raises:
+        ValueError: Always, when called (i.e. when a mismatch was detected).
+    """
+    raise ValueError(
+        f"{model_name}: feature dimension mismatch - estimator expects "
+        f"{expected} values but received {got}. Train with vectors produced "
+        f"by q_guardian.ml.base.extract_core_features (see CORE_FEATURE_NAMES)."
+    )
+
 
 class BaseThreatModel(ABC):
     """Common interface for all ML threat models.
