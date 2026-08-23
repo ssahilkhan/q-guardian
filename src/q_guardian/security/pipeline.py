@@ -15,6 +15,7 @@ import unicodedata
 import structlog
 
 from q_guardian.security.enums import PromptCategory, PromptSeverity, ValidationStatus
+from q_guardian.security.homoglyph import analyze_homoglyphs
 from q_guardian.security.models import (
     PromptFeatures,
     PromptFinding,
@@ -472,6 +473,17 @@ DEFAULT_RULES: list[PromptRule] = [
         ],
         confidence=0.8,
     ),
+    PromptRule(
+        rule_id="hg-001",
+        name="Homoglyph/Confusable Character Detection",
+        description=(
+            "Detects Unicode confusable characters "
+            "(Cyrillic/Greek lookalikes) and suspicious mixed-script text"
+        ),
+        category=PromptCategory.HOMOGLYPH,
+        severity=PromptSeverity.MEDIUM,
+        confidence=0.75,
+    ),
 ]
 
 
@@ -560,6 +572,49 @@ class RuleEngine:
 
         for rule in self._rules.values():
             if not rule.enabled:
+                continue
+
+            # Special handling for homoglyph rule (hg-001)
+            if rule.rule_id == "hg-001":
+                homoglyph_results = analyze_homoglyphs(prompt)
+                if homoglyph_results["has_confusables"] or homoglyph_results["has_mixed_script"]:
+                    # Build a combined finding with all homoglyph details
+                    details: list[str] = []
+
+                    for conf in homoglyph_results["confusables"]:
+                        details.append(
+                            f"U+{conf['code_point'][2:]} "
+                            f"({conf['script']} '{conf['char']}' "
+                            f"lookalike: Latin '{conf['lookalike']}') "
+                            f"at position {conf['position']}"
+                        )
+
+                    for mixed in homoglyph_results["mixed_script"]:
+                        scripts = ", ".join(mixed["scripts"])
+                        details.append(
+                            f"Mixed-script segment '{mixed['segment']}' "
+                            f"(scripts: {scripts}, "
+                            f"confusables: {mixed['confusable_count']})"
+                        )
+
+                    matched_text = "; ".join(details[:5])  # Limit to first 5 for readability
+                    if len(details) > 5:
+                        matched_text += f" ... (+{len(details) - 5} more)"
+
+                    finding = PromptFinding(
+                        rule_id=rule.rule_id,
+                        rule_name=rule.name,
+                        category=rule.category,
+                        severity=rule.severity,
+                        description=rule.description,
+                        matched_text=matched_text,
+                        confidence=rule.confidence,
+                        metadata={
+                            "confusables": homoglyph_results["confusables"],
+                            "mixed_script": homoglyph_results["mixed_script"],
+                        },
+                    )
+                    findings.append(finding)
                 continue
 
             matched = False

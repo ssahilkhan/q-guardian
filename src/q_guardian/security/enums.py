@@ -27,6 +27,7 @@ class PromptCategory(StrEnum):
     SUSPICIOUS_FORMATTING = "suspicious_formatting"
     OVERSIZED_PROMPT = "oversized_prompt"
     MALFORMED_INPUT = "malformed_input"
+    HOMOGLYPH = "homoglyph"
     UNKNOWN = "unknown"
 
 
