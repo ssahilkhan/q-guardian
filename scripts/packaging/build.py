@@ -1,4 +1,5 @@
 """Build script for Q-Guardian package."""
+
 from __future__ import annotations
 
 import shutil
@@ -8,7 +9,6 @@ import tarfile
 import tomllib
 import zipfile
 from pathlib import Path
-
 
 ROOT = Path(__file__).resolve().parents[2]
 DIST = ROOT / "dist"

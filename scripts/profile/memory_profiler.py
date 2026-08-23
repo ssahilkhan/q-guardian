@@ -7,12 +7,10 @@ using only the Python standard library.
 from __future__ import annotations
 
 import gc
-import sys
 import threading
 import time
 import tracemalloc
-from dataclasses import dataclass, field
-from pathlib import Path
+from dataclasses import dataclass
 from typing import Any
 
 
@@ -71,14 +69,14 @@ def _get_resident_mb() -> float:
 def take_snapshot() -> MemorySnapshot:
     """Capture a single memory snapshot."""
     objects = gc.get_objects()
-    gc_counts = {i: c for i, c in enumerate(gc.get_count())}
+    gc_counts = dict(enumerate(gc.get_count()))
     for gen in gc.get_stats():
         idx = gc.get_stats().index(gen)
         gc_counts[idx] = gen.get("collections", gc_counts.get(idx, 0))
 
     heap_mb = 0.0
     if tracemalloc.is_tracing():
-        current, peak = tracemalloc.get_traced_memory()
+        current, _peak = tracemalloc.get_traced_memory()
         heap_mb = current / (1024 * 1024)
 
     total_mb = 0.0
@@ -328,7 +326,11 @@ class LeakDetector:
                 "object_delta": obj_delta,
                 "time_delta_sec": round(time_delta, 2),
                 "heap_growth_pct": round(
-                    (heap_delta / self._baseline.heap_mb * 100) if self._baseline.heap_mb > 0 else 0,
+                    (
+                        (heap_delta / self._baseline.heap_mb * 100)
+                        if self._baseline.heap_mb > 0
+                        else 0
+                    ),
                     2,
                 ),
                 "suspect": is_growing,

@@ -7,6 +7,7 @@ throughput measurement, memory profiling, and comprehensive results.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import statistics
 import time
 import tracemalloc
@@ -16,6 +17,7 @@ from typing import Any
 
 try:
     import psutil
+
     _HAS_PSUTIL = True
 except ImportError:
     _HAS_PSUTIL = False
@@ -189,14 +191,16 @@ class LoadTestEngine:
                 req_start = time.perf_counter()
                 try:
                     ok = await scenario.execute_session(request_id)
-                except Exception as exc:  # noqa: BLE001
+                except Exception as exc:
                     ok = False
                     async with lock:
-                        errors.append({
-                            "session_id": request_id,
-                            "error": str(exc),
-                            "time": time.perf_counter() - start_time,
-                        })
+                        errors.append(
+                            {
+                                "session_id": request_id,
+                                "error": str(exc),
+                                "time": time.perf_counter() - start_time,
+                            }
+                        )
 
                 req_end = time.perf_counter()
                 latency_ms = (req_end - req_start) * 1000.0
@@ -211,10 +215,8 @@ class LoadTestEngine:
             current, _peak = tracemalloc.get_traced_memory()
             mem_samples.append(current)
             if process is not None:
-                try:
+                with contextlib.suppress(psutil.Error, OSError):
                     process.memory_info()
-                except (psutil.Error, OSError):
-                    pass
 
         async def _launcher() -> list[asyncio.Task[None]]:
             """Launch worker tasks for the duration of the test."""

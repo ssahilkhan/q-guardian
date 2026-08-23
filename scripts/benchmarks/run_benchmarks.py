@@ -2,14 +2,13 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-import json
 import sys
 import time
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
-from scripts.benchmarks.benchmark_runner import BenchmarkResult, BenchmarkSuite, compute_stats
+from scripts.benchmarks.benchmark_runner import BenchmarkResult, BenchmarkSuite
 from scripts.benchmarks.benchmarks import (
     ALL_BENCHMARKS,
     EventBusBenchmark,
@@ -28,25 +27,29 @@ def _parse_args() -> argparse.Namespace:
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument(
-        "--iterations", "-n",
+        "--iterations",
+        "-n",
         type=int,
         default=100,
         help="Number of measured iterations (default: 100)",
     )
     parser.add_argument(
-        "--warmup", "-w",
+        "--warmup",
+        "-w",
         type=int,
         default=10,
         help="Number of warmup iterations (default: 10)",
     )
     parser.add_argument(
-        "--output-format", "-f",
+        "--output-format",
+        "-f",
         choices=["json", "text", "both"],
         default="both",
         help="Output format: json, text, or both (default: both)",
     )
     parser.add_argument(
-        "--output", "-o",
+        "--output",
+        "-o",
         type=str,
         default=None,
         help="Output file path for JSON results",
@@ -55,7 +58,8 @@ def _parse_args() -> argparse.Namespace:
         "--suites",
         nargs="*",
         default=None,
-        help="Run specific benchmark suites (default: all). Choices: " + " ".join(name for name, _ in ALL_BENCHMARKS),
+        help="Run specific benchmark suites (default: all). Choices: "
+        + " ".join(name for name, _ in ALL_BENCHMARKS),
     )
     parser.add_argument(
         "--compare",
@@ -111,7 +115,9 @@ _SUITE_RUNNERS: dict[str, tuple[str, any]] = {
 }
 
 
-async def _run_all_benchmarks(iterations: int, warmup: int, suites: list[str] | None = None) -> BenchmarkSuite:
+async def _run_all_benchmarks(
+    iterations: int, warmup: int, suites: list[str] | None = None
+) -> BenchmarkSuite:
     suite = BenchmarkSuite(name="q-guardian-benchmarks")
     active_suites = suites or list(_SUITE_RUNNERS.keys())
 
@@ -144,11 +150,13 @@ def _compare_results(suite: BenchmarkSuite, baseline_path: str) -> None:
     try:
         baseline = BenchmarkSuite.load_json(baseline_path)
         comparisons = suite.compare_with(baseline)
-        print(f"\n{'='*120}")
+        print(f"\n{'=' * 120}")
         print(f"  Comparison with baseline: {baseline.name}")
-        print(f"{'='*120}")
-        print(f"{'Benchmark':<45} {'Baseline avg':>14} {'Current avg':>14} {'Delta %':>10} {'Status':>10}")
-        print(f"{'-'*120}")
+        print(f"{'=' * 120}")
+        print(
+            f"{'Benchmark':<45} {'Baseline avg':>14} {'Current avg':>14} {'Delta %':>10} {'Status':>10}"
+        )
+        print(f"{'-' * 120}")
         for comp in comparisons:
             if comp["status"] == "new":
                 print(f"{comp['name']:<45} {'N/A':>14} {'N/A':>14} {'N/A':>10} {'NEW':>10}")
@@ -161,7 +169,7 @@ def _compare_results(suite: BenchmarkSuite, baseline_path: str) -> None:
                     f"{comp['avg_delta_pct']:>+9.2f}% "
                     f"{status:>10}"
                 )
-        print(f"{'='*120}")
+        print(f"{'=' * 120}")
     except Exception as e:
         print(f"\nComparison failed: {e}")
 

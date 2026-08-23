@@ -8,10 +8,8 @@ from __future__ import annotations
 
 import json
 from datetime import UTC, datetime
-from typing import Any
 
 from scripts.loadtest.load_tester import LoadTestResult
-
 
 # ---------------------------------------------------------------------------
 # Thresholds for regression detection
@@ -47,9 +45,7 @@ class LoadTestReporter:
         lines: list[str] = []
         lines.append(f"# Load Test Report — `{result.scenario_name}`")
         lines.append("")
-        lines.append(
-            f"*Generated: {datetime.now(UTC).strftime('%Y-%m-%d %H:%M:%S UTC')}*"
-        )
+        lines.append(f"*Generated: {datetime.now(UTC).strftime('%Y-%m-%d %H:%M:%S UTC')}*")
         lines.append("")
 
         lines.append("## Summary")
@@ -104,18 +100,10 @@ class LoadTestReporter:
             lines.append("")
             lines.append("| Parameter | Value |")
             lines.append("|-----------|-------|")
-            lines.append(
-                f"| Concurrent Sessions | {result.config.concurrent_sessions} |"
-            )
-            lines.append(
-                f"| Target Sessions | {result.config.target_sessions} |"
-            )
-            lines.append(
-                f"| Ramp-up Seconds | {result.config.ramp_up_seconds} |"
-            )
-            lines.append(
-                f"| Duration Seconds | {result.config.duration_seconds} |"
-            )
+            lines.append(f"| Concurrent Sessions | {result.config.concurrent_sessions} |")
+            lines.append(f"| Target Sessions | {result.config.target_sessions} |")
+            lines.append(f"| Ramp-up Seconds | {result.config.ramp_up_seconds} |")
+            lines.append(f"| Duration Seconds | {result.config.duration_seconds} |")
             lines.append("")
 
         return "\n".join(lines)
@@ -141,18 +129,12 @@ class LoadTestReporter:
         lines: list[str] = []
         lines.append("# Load Test Comparison")
         lines.append("")
-        lines.append(
-            f"*Generated: {datetime.now(UTC).strftime('%Y-%m-%d %H:%M:%S UTC')}*"
-        )
+        lines.append(f"*Generated: {datetime.now(UTC).strftime('%Y-%m-%d %H:%M:%S UTC')}*")
         lines.append("")
         lines.append(
-            f"**Baseline:** `{baseline.scenario_name}` "
-            f"({baseline.total_requests} requests)"
+            f"**Baseline:** `{baseline.scenario_name}` ({baseline.total_requests} requests)"
         )
-        lines.append(
-            f"**Current:** `{current.scenario_name}` "
-            f"({current.total_requests} requests)"
-        )
+        lines.append(f"**Current:** `{current.scenario_name}` ({current.total_requests} requests)")
         lines.append("")
 
         lines.append("## Metrics Comparison")
@@ -223,9 +205,7 @@ class LoadTestReporter:
         """
         data = result.summary_dict()
         data["latencies_ms"] = (
-            result.latencies_ms[:1000]
-            if len(result.latencies_ms) > 1000
-            else result.latencies_ms
+            result.latencies_ms[:1000] if len(result.latencies_ms) > 1000 else result.latencies_ms
         )
         data["errors"] = result.errors[:100]
         return json.dumps(data, indent=2, default=str)
@@ -332,27 +312,18 @@ if __name__ == "__main__":
 
     if isinstance(data, list):
         for item in data:
-            result = LoadTestResult(**{
-                k: v for k, v in item.items()
-                if k != "latencies_ms"
-            })
+            result = LoadTestResult(**{k: v for k, v in item.items() if k != "latencies_ms"})
             result.latencies_ms = item.get("latencies_ms", [])
             print(LoadTestReporter.to_markdown(result))
     else:
-        result = LoadTestResult(**{
-            k: v for k, v in data.items()
-            if k != "latencies_ms"
-        })
+        result = LoadTestResult(**{k: v for k, v in data.items() if k != "latencies_ms"})
         result.latencies_ms = data.get("latencies_ms", [])
         print(LoadTestReporter.to_markdown(result))
 
     if len(sys.argv) >= 3:
         with open(sys.argv[2], encoding="utf-8") as f:
             baseline_data = json.load(f)
-        baseline = LoadTestResult(**{
-            k: v for k, v in baseline_data.items()
-            if k != "latencies_ms"
-        })
+        baseline = LoadTestResult(**{k: v for k, v in baseline_data.items() if k != "latencies_ms"})
         baseline.latencies_ms = baseline_data.get("latencies_ms", [])
         print("\n--- COMPARISON ---\n")
         print(LoadTestReporter.compare_markdown(baseline, result))

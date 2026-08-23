@@ -1,11 +1,11 @@
 """Validate Q-Guardian package metadata and structure."""
+
 from __future__ import annotations
 
 import ast
 import sys
 import tomllib
 from pathlib import Path
-
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -47,8 +47,7 @@ def _validate_version_match(pyproject_version: str, init_version: str | None) ->
         errors.append("Could not read __version__ from src/q_guardian/__init__.py")
     elif pyproject_version != init_version:
         errors.append(
-            f"Version mismatch: pyproject.toml={pyproject_version}, "
-            f"__init__.py={init_version}"
+            f"Version mismatch: pyproject.toml={pyproject_version}, __init__.py={init_version}"
         )
     return errors
 
@@ -79,25 +78,24 @@ def _validate_exports() -> list[str]:
 
     imports = set()
     for node in ast.walk(tree):
-        if isinstance(node, ast.Import):
-            for alias in node.names:
-                imports.add(alias.asname or alias.name.split(".", 1)[0])
-        elif isinstance(node, ast.ImportFrom):
+        if isinstance(node, (ast.Import, ast.ImportFrom)):
             for alias in node.names:
                 imports.add(alias.asname or alias.name.split(".", 1)[0])
 
     all_list: list[str] = []
     for node in ast.walk(tree):
-        if isinstance(node, ast.Assign) and any(
-            isinstance(target, ast.Name) and target.id == "__all__"
-            for target in node.targets
+        if (
+            isinstance(node, ast.Assign)
+            and any(
+                isinstance(target, ast.Name) and target.id == "__all__" for target in node.targets
+            )
+            and isinstance(node.value, (ast.List, ast.Tuple))
         ):
-            if isinstance(node.value, (ast.List, ast.Tuple)):
-                all_list.extend(
-                    elt.value
-                    for elt in node.value.elts
-                    if isinstance(elt, ast.Constant) and isinstance(elt.value, str)
-                )
+            all_list.extend(
+                elt.value
+                for elt in node.value.elts
+                if isinstance(elt, ast.Constant) and isinstance(elt.value, str)
+            )
 
     for name in all_list:
         if name not in imports:
