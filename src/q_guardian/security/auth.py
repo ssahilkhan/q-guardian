@@ -248,7 +248,8 @@ class JWTService:
             "exp": int((now + lifetime).timestamp()),
             "jti": uuid_module.uuid4().hex,
         }
-        return jwt.encode(claims, self._secret_key, algorithm=self._algorithm)
+        token: str = jwt.encode(claims, self._secret_key, algorithm=self._algorithm)
+        return token
 
 
 # =============================================================================
@@ -424,6 +425,30 @@ class AuthorizationService:
         """
         required = f"{resource}:{action}"
         for role in self._user_roles.get(user_id, []):
+            permissions = self._role_permissions.get(role, [])
+            if "*" in permissions or required in permissions:
+                return True
+        return False
+
+    async def check_permission_for_roles(
+        self, roles: list[str], resource: str, action: str
+    ) -> bool:
+        """Check permission for an explicit role list (e.g. token claims).
+
+        Stateless variant of :meth:`check_permission` for principals whose
+        roles come from verified JWT/API-key claims instead of the
+        in-process role registry.
+
+        Args:
+            roles: The role names to evaluate.
+            resource: The resource identifier (e.g. ``api-keys``).
+            action: The action identifier (e.g. ``manage``).
+
+        Returns:
+            True if any role grants the permission.
+        """
+        required = f"{resource}:{action}"
+        for role in roles:
             permissions = self._role_permissions.get(role, [])
             if "*" in permissions or required in permissions:
                 return True
