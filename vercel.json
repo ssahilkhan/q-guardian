@@ -3,7 +3,7 @@
   "installCommand": "pip install -r requirements.txt",
   "functions": {
     "src/q_guardian/main.py": {
-      "runtime": "python3.12",
+      "runtime": "python@3.12",
       "maxDuration": 30
     }
   }
