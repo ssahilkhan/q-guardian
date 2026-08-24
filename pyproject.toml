@@ -145,6 +145,10 @@ mypy_path = "src"
 plugins = ["pydantic.mypy"]
 
 [[tool.mypy.overrides]]
+module = ["langgraph", "langgraph.*", "langchain_core.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
 module = [
     "qiskit.*",
     "qiskit_aer.*",
@@ -155,6 +159,11 @@ module = [
     "sentence_transformers.*",
 ]
 ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["q_guardian.adapters.langgraph"]
+ignore_missing_imports = true
+ignore_errors = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
