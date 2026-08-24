@@ -1,16 +1,5 @@
 {
   "buildCommand": "pip install -e .",
   "installCommand": "pip install -e .",
-  "functions": {
-    "src/q_guardian/main.py": {
-      "runtime": "python@3.12",
-      "maxDuration": 30
-    }
-  },
-  "rewrites": [
-    {
-      "source": "/(.*)",
-      "destination": "src/q_guardian/main.py"
-    }
-  ]
+  "framework": "fastapi"
 }
