@@ -1,6 +1,4 @@
 {
-  "buildCommand": "pip install -e .",
-  "installCommand": "pip install -e .",
   "functions": {
     "main.py": {
       "runtime": "python@3.12",
