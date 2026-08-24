@@ -28,6 +28,7 @@ from q_guardian.quantum.fusion.strategies import (
 )
 from q_guardian.security.config import PromptSecurityConfig
 from q_guardian.security.enums import PromptDecision
+from q_guardian.security.indirect import ContentSegment
 
 if TYPE_CHECKING:
     from q_guardian.security.pipeline import RuleEngine
@@ -124,6 +125,16 @@ def _redact_url(url: str) -> str:
     return f"{scheme}://{rest}"
 
 
+def _coerce_content_segments(raw_segments: list[Any] | None) -> list[ContentSegment]:
+    """Coerce API-supplied segments into ``ContentSegment`` models."""
+    if not raw_segments:
+        return []
+    return [
+        segment if isinstance(segment, ContentSegment) else ContentSegment.model_validate(segment)
+        for segment in raw_segments
+    ]
+
+
 class AnalysisService:
     """Facade exposing the existing pipeline to the API layer."""
 
@@ -157,9 +168,24 @@ class AnalysisService:
         """Return the persistent scan-history repository."""
         return self._history
 
-    async def scan(self, prompt: str) -> dict[str, Any]:
-        """Run the existing scan pipeline on a prompt and persist the result."""
-        result = await self._plugin.scan_prompt(prompt)
+    async def scan(
+        self,
+        prompt: str,
+        context_segments: list[Any] | None = None,
+    ) -> dict[str, Any]:
+        """Run the existing scan pipeline on a prompt and persist the result.
+
+        Args:
+            prompt: The prompt text to analyze.
+            context_segments: Optional untrusted content segments. Accepts
+                ``ContentSegment`` models or JSON-safe dictionaries /
+                schema objects; anything else is coerced via pydantic.
+
+        Returns:
+            The serialized analysis payload (also persisted to history).
+        """
+        segments = _coerce_content_segments(context_segments)
+        result = await self._plugin.scan_prompt(prompt, context_segments=segments)
         await self._history.add(result)
         return result
 

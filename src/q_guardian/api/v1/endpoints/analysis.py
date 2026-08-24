@@ -57,7 +57,7 @@ async def scan_prompt(
     Returns:
         The full analysis result wrapped in the standard envelope.
     """
-    result = await service.scan(body.prompt)
+    result = await service.scan(body.prompt, context_segments=body.context_segments)
     item = _to_item(result)
     return ResponseSchema(
         success=True,

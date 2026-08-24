@@ -7,6 +7,58 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field
 
 
+class IndirectInjectionConfig(BaseModel):
+    """Configuration for indirect prompt injection detection (P3-5).
+
+    Controls how untrusted content segments (tool outputs, RAG context,
+    retrieved documents, ...) are analyzed for injection directives.
+    Detection only runs on segments explicitly marked as untrusted;
+    ordinary direct prompt analysis is never affected.
+    """
+
+    enabled: bool = Field(
+        default=True,
+        description="Enable indirect injection detection on untrusted segments",
+    )
+    trusted_sources: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Allowlist treated as trusted: exact source_id matches, exact uri "
+            "matches, or uri prefix matches for entries ending with '/'"
+        ),
+    )
+    segment_max_bytes: int = Field(
+        default=50_000,
+        ge=1,
+        description="Maximum segment content size (bytes) before truncation",
+    )
+    max_segments: int = Field(
+        default=64,
+        ge=0,
+        description="Maximum number of untrusted segments analyzed per scan",
+    )
+    confidence_weights: dict[str, float] = Field(
+        default_factory=dict,
+        description="Per-source-type confidence weights; empty uses module defaults",
+    )
+    quote_discount: float = Field(
+        default=0.6,
+        ge=0.0,
+        le=1.0,
+        description="Confidence multiplier for quoted/attributed directive text",
+    )
+    code_discount: float = Field(
+        default=0.7,
+        ge=0.0,
+        le=1.0,
+        description="Confidence multiplier for matches inside fenced code blocks",
+    )
+    disabled_rules: list[str] = Field(
+        default_factory=list,
+        description="ii-* rule IDs excluded from standalone detection",
+    )
+
+
 class PromptSecurityConfig(BaseModel):
     """Configuration for the Prompt Security Engine.
 
@@ -68,6 +120,12 @@ class PromptSecurityConfig(BaseModel):
         default=50_000, description="Maximum decoded content length per attempt"
     )
     encoding_max_attempts: int = Field(default=4, description="Maximum decoding attempts per input")
+
+    # Indirect injection detection (P3-5)
+    indirect: IndirectInjectionConfig = Field(
+        default_factory=IndirectInjectionConfig,
+        description="Indirect prompt injection detection configuration",
+    )
 
     # Future ML configuration placeholders
     ml_enabled: bool = Field(default=False, description="Enable ML-based analysis (future)")

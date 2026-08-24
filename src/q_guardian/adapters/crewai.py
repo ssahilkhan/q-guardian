@@ -14,6 +14,12 @@ from typing import TYPE_CHECKING, Any
 
 from q_guardian.adapters.base import Adapter
 from q_guardian.security.encoding import detect_all_encodings
+from q_guardian.security.indirect import (
+    ContentSegment,
+    IndirectInjectionConfig,
+    SourceType,
+    build_untrusted_context,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -36,6 +42,15 @@ except ImportError:  # pragma: no cover - optional dependency
 logger = logging.getLogger("q_guardian.adapters.crewai")
 
 _BLOCKED_MESSAGE = "Blocked by Q-Guardian security policy"
+
+
+def _resolve_indirect_config(raw: Any) -> IndirectInjectionConfig:
+    """Coerce adapter config into an ``IndirectInjectionConfig``."""
+    if isinstance(raw, IndirectInjectionConfig):
+        return raw
+    if isinstance(raw, dict):
+        return IndirectInjectionConfig.model_validate(raw)
+    return IndirectInjectionConfig()
 
 
 class CrewAISecurityError(Exception):
@@ -68,7 +83,12 @@ class SecuredCrewProxy:
         """Always True; marks this object as a security wrapper."""
         return True
 
-    def kickoff(self, inputs: dict[str, Any] | None = None, **kwargs: Any) -> Any:
+    def kickoff(
+        self,
+        inputs: dict[str, Any] | None = None,
+        untrusted_keys: Any = None,
+        **kwargs: Any,
+    ) -> Any:
         """Run a security-scanned synchronous crew kickoff.
 
         Inputs are scanned (and threat events published) before execution;
@@ -76,6 +96,10 @@ class SecuredCrewProxy:
 
         Args:
             inputs: Kickoff inputs scanned before execution.
+            untrusted_keys: Optional keys of ``inputs`` whose values carry
+                untrusted external content. Either a list of key names or
+                a mapping of key name to ``SourceType`` value. Enables
+                indirect injection analysis for those values.
             **kwargs: Additional arguments forwarded to ``Crew.kickoff``.
 
         Returns:
@@ -84,7 +108,12 @@ class SecuredCrewProxy:
         Raises:
             CrewAISecurityError: If inputs or outputs violate security policy.
         """
-        input_result = self._adapter.scan_text(self._adapter.extract_text(inputs), "inputs")
+        segments = self._adapter.build_untrusted_segments(inputs, untrusted_keys)
+        input_result = self._adapter.scan_text(
+            self._adapter.extract_text(inputs),
+            "inputs",
+            context_segments=segments,
+        )
         self._adapter.publish_scan_events_sync(input_result)
         self._adapter.raise_if_blocked(input_result)
         output = self._crew_ref.kickoff(inputs=inputs, **kwargs)
@@ -93,11 +122,17 @@ class SecuredCrewProxy:
         self._adapter.raise_if_blocked(out_result)
         return output
 
-    async def akickoff(self, inputs: dict[str, Any] | None = None, **kwargs: Any) -> Any:
+    async def akickoff(
+        self,
+        inputs: dict[str, Any] | None = None,
+        untrusted_keys: Any = None,
+        **kwargs: Any,
+    ) -> Any:
         """Run a security-scanned asynchronous crew kickoff.
 
         Args:
             inputs: Kickoff inputs scanned before execution.
+            untrusted_keys: Optional untrusted input keys (see :meth:`kickoff`).
             **kwargs: Additional arguments forwarded to ``Crew.akickoff``.
 
         Returns:
@@ -106,16 +141,23 @@ class SecuredCrewProxy:
         Raises:
             CrewAISecurityError: If inputs or outputs violate security policy.
         """
-        await self._adapter.async_scan_inputs(inputs)
+        segments = self._adapter.build_untrusted_segments(inputs, untrusted_keys)
+        await self._adapter.async_scan_inputs(inputs, context_segments=segments)
         result = await self._crew_ref.akickoff(inputs=inputs, **kwargs)
         await self._adapter.async_check_output(result)
         return result
 
-    async def kickoff_async(self, inputs: dict[str, Any] | None = None, **kwargs: Any) -> Any:
+    async def kickoff_async(
+        self,
+        inputs: dict[str, Any] | None = None,
+        untrusted_keys: Any = None,
+        **kwargs: Any,
+    ) -> Any:
         """Run a security-scanned ``kickoff_async`` call.
 
         Args:
             inputs: Kickoff inputs scanned before execution.
+            untrusted_keys: Optional untrusted input keys (see :meth:`kickoff`).
             **kwargs: Additional arguments forwarded to ``Crew.kickoff_async``.
 
         Returns:
@@ -124,16 +166,23 @@ class SecuredCrewProxy:
         Raises:
             CrewAISecurityError: If inputs or outputs violate security policy.
         """
-        await self._adapter.async_scan_inputs(inputs)
+        segments = self._adapter.build_untrusted_segments(inputs, untrusted_keys)
+        await self._adapter.async_scan_inputs(inputs, context_segments=segments)
         result = await self._crew_ref.kickoff_async(inputs=inputs, **kwargs)
         await self._adapter.async_check_output(result)
         return result
 
-    def kickoff_for_each(self, inputs: list[dict[str, Any]], **kwargs: Any) -> list[Any]:
+    def kickoff_for_each(
+        self,
+        inputs: list[dict[str, Any]],
+        untrusted_keys: Any = None,
+        **kwargs: Any,
+    ) -> list[Any]:
         """Run security-scanned kickoffs for a batch of inputs.
 
         Args:
             inputs: List of input dictionaries; each is scanned individually.
+            untrusted_keys: Optional untrusted input keys (see :meth:`kickoff`).
             **kwargs: Additional arguments forwarded to ``Crew.kickoff_for_each``.
 
         Returns:
@@ -143,7 +192,12 @@ class SecuredCrewProxy:
             CrewAISecurityError: If any input or output violates policy.
         """
         for item in inputs:
-            item_result = self._adapter.scan_text(self._adapter.extract_text(item), "inputs")
+            segments = self._adapter.build_untrusted_segments(item, untrusted_keys)
+            item_result = self._adapter.scan_text(
+                self._adapter.extract_text(item),
+                "inputs",
+                context_segments=segments,
+            )
             self._adapter.publish_scan_events_sync(item_result)
             self._adapter.raise_if_blocked(item_result)
         results: list[Any] = list(self._crew_ref.kickoff_for_each(inputs=inputs, **kwargs))
@@ -153,11 +207,17 @@ class SecuredCrewProxy:
             self._adapter.raise_if_blocked(out_result)
         return results
 
-    async def akickoff_for_each(self, inputs: list[dict[str, Any]], **kwargs: Any) -> list[Any]:
+    async def akickoff_for_each(
+        self,
+        inputs: list[dict[str, Any]],
+        untrusted_keys: Any = None,
+        **kwargs: Any,
+    ) -> list[Any]:
         """Run security-scanned async kickoffs for a batch of inputs.
 
         Args:
             inputs: List of input dictionaries; each is scanned individually.
+            untrusted_keys: Optional untrusted input keys (see :meth:`kickoff`).
             **kwargs: Additional arguments forwarded to ``Crew.akickoff_for_each``.
 
         Returns:
@@ -167,7 +227,8 @@ class SecuredCrewProxy:
             CrewAISecurityError: If any input or output violates policy.
         """
         for item in inputs:
-            await self._adapter.async_scan_inputs(item)
+            segments = self._adapter.build_untrusted_segments(item, untrusted_keys)
+            await self._adapter.async_scan_inputs(item, context_segments=segments)
         results: list[Any] = list(await self._crew_ref.akickoff_for_each(inputs=inputs, **kwargs))
         for result in results:
             await self._adapter.async_check_output(result)
@@ -218,6 +279,7 @@ class CrewAIAdapter(Adapter):
         self._event_bus: EventBus | None = cfg.get("event_bus")
         if self._event_bus is None and guardian is not None:
             self._event_bus = getattr(guardian, "event_bus", None)
+        self._indirect_config = _resolve_indirect_config(cfg.get("indirect_config"))
 
     @property
     def name(self) -> str:
@@ -391,11 +453,17 @@ class CrewAIAdapter(Adapter):
         """
         return SecuredCrewProxy(crew=crew, adapter=self)
 
-    def scan_inputs(self, inputs: dict[str, Any] | None) -> dict[str, Any]:
+    def scan_inputs(
+        self,
+        inputs: dict[str, Any] | None,
+        context_segments: list[ContentSegment] | None = None,
+    ) -> dict[str, Any]:
         """Scan kickoff inputs synchronously and block on violations.
 
         Args:
             inputs: Kickoff inputs dictionary.
+            context_segments: Optional untrusted content segments enabling
+                indirect injection analysis.
 
         Returns:
             Scan result dictionary.
@@ -403,15 +471,23 @@ class CrewAIAdapter(Adapter):
         Raises:
             CrewAISecurityError: If the decision is BLOCK.
         """
-        result = self.scan_text(self.extract_text(inputs), "inputs")
+        result = self.scan_text(
+            self.extract_text(inputs), "inputs", context_segments=context_segments
+        )
         self.raise_if_blocked(result)
         return result
 
-    async def async_scan_inputs(self, inputs: dict[str, Any] | None) -> dict[str, Any]:
+    async def async_scan_inputs(
+        self,
+        inputs: dict[str, Any] | None,
+        context_segments: list[ContentSegment] | None = None,
+    ) -> dict[str, Any]:
         """Scan kickoff inputs asynchronously and block on violations.
 
         Args:
             inputs: Kickoff inputs dictionary.
+            context_segments: Optional untrusted content segments enabling
+                indirect injection analysis.
 
         Returns:
             Scan result dictionary.
@@ -419,7 +495,9 @@ class CrewAIAdapter(Adapter):
         Raises:
             CrewAISecurityError: If the decision is BLOCK.
         """
-        result = self.scan_text(self.extract_text(inputs), "inputs")
+        result = self.scan_text(
+            self.extract_text(inputs), "inputs", context_segments=context_segments
+        )
         await self.publish_scan_events(result)
         self.raise_if_blocked(result)
         return result
@@ -515,7 +593,11 @@ class CrewAIAdapter(Adapter):
             adapter.raise_if_blocked(result)
             delegate_result = tool.run(**kwargs)
             out_text = adapter.extract_text(delegate_result)
-            out_scan = adapter.scan_text(out_text, "tool_output")
+            out_scan = adapter.scan_text(
+                out_text,
+                "tool_output",
+                context_segments=adapter._tool_output_segments(out_text, str(tool_name)),
+            )
             adapter.publish_scan_events_sync(out_scan)
             adapter.raise_if_blocked(out_scan)
             return delegate_result
@@ -545,7 +627,13 @@ class CrewAIAdapter(Adapter):
             adapter.raise_if_blocked(result)
             delegate_result = tool(*args, **kwargs)
             out_text = adapter.extract_text(delegate_result)
-            out_scan = adapter.scan_text(out_text, "tool_output")
+            out_scan = adapter.scan_text(
+                out_text,
+                "tool_output",
+                context_segments=adapter._tool_output_segments(
+                    out_text, getattr(tool, "__name__", "callable_tool")
+                ),
+            )
             adapter.publish_scan_events_sync(out_scan)
             adapter.raise_if_blocked(out_scan)
             return delegate_result
@@ -559,7 +647,13 @@ class CrewAIAdapter(Adapter):
             adapter.raise_if_blocked(result)
             delegate_result = await tool(*args, **kwargs)
             out_text = adapter.extract_text(delegate_result)
-            out_scan = adapter.scan_text(out_text, "tool_output")
+            out_scan = adapter.scan_text(
+                out_text,
+                "tool_output",
+                context_segments=adapter._tool_output_segments(
+                    out_text, getattr(tool, "__name__", "callable_tool")
+                ),
+            )
             await adapter.publish_scan_events(out_scan)
             adapter.raise_if_blocked(out_scan)
             return delegate_result
@@ -586,6 +680,25 @@ class CrewAIAdapter(Adapter):
                 f"{_BLOCKED_MESSAGE}: {result.get('source', 'unknown')}",
                 result.get("findings", []),
             )
+
+    def _tool_output_segments(self, output_text: str, tool_name: str) -> list[ContentSegment]:
+        """Return a provenance segment for tool output when opted in.
+
+        Enabled via ``config={'tool_output_untrusted': True}``; disabled by
+        default so legacy scanning behavior is fully preserved.
+        """
+        if not self._config.get("tool_output_untrusted", False):
+            return []
+        if not output_text or not output_text.strip():
+            return []
+        return [
+            ContentSegment(
+                content=output_text,
+                source_type=SourceType.TOOL_OUTPUT,
+                source_id=tool_name,
+                position=0,
+            )
+        ]
 
     def analyze_prompt(self, prompt: str) -> Any:
         """Run the full prompt pipeline (normalize → validate → rules → decide).
@@ -631,16 +744,74 @@ class CrewAIAdapter(Adapter):
         decision_engine.decide(analysis)
         return analysis
 
-    def scan_text(self, text: str, source: str) -> dict[str, Any]:
+    def build_untrusted_segments(
+        self,
+        inputs: dict[str, Any] | None,
+        untrusted_keys: Any = None,
+    ) -> list[ContentSegment]:
+        """Build content segments from kickoff inputs flagged as untrusted.
+
+        Args:
+            inputs: Kickoff inputs dictionary.
+            untrusted_keys: Either a list of key names or a mapping of key
+                name to ``SourceType`` value. Keys absent from ``inputs``
+                are ignored; non-string values are stringified.
+
+        Returns:
+            Content segments (possibly empty) with declared provenance.
+        """
+        if not inputs or untrusted_keys is None:
+            return []
+        if isinstance(untrusted_keys, dict):
+            key_sources: dict[str, str] = {
+                str(key): str(value) for key, value in untrusted_keys.items()
+            }
+        else:
+            key_sources = {str(key): SourceType.RAG_CONTEXT.value for key in untrusted_keys}
+
+        segments: list[ContentSegment] = []
+        for key, source_type in key_sources.items():
+            if key not in inputs:
+                continue
+            value = inputs[key]
+            if value is None:
+                continue
+            text = value if isinstance(value, str) else self.extract_text(value)
+            if not text.strip():
+                continue
+            try:
+                resolved_source = SourceType(source_type)
+            except ValueError:
+                resolved_source = SourceType.RAG_CONTEXT
+            segments.append(
+                ContentSegment(
+                    content=text,
+                    source_type=resolved_source,
+                    source_id=key,
+                    position=len(segments),
+                )
+            )
+        return segments
+
+    def scan_text(
+        self,
+        text: str,
+        source: str,
+        context_segments: list[ContentSegment] | None = None,
+    ) -> dict[str, Any]:
         """Scan text content using the existing security pipeline.
 
         Combines rule-based analysis with homoglyph detection (P1-1) and
         encoding detection (P1-2), then applies the existing decision
-        architecture (ALLOW/WARN/REVIEW/BLOCK).
+        architecture (ALLOW/WARN/REVIEW/BLOCK). When untrusted context
+        segments are supplied, indirect injection analysis (P3-5) runs on
+        them in addition to the direct rules.
 
         Args:
             text: The text content to scan.
             source: Label describing where the text came from.
+            context_segments: Optional untrusted content segments enabling
+                indirect injection analysis.
 
         Returns:
             Dictionary with decision, risk_score, findings, source, and
@@ -673,6 +844,11 @@ class CrewAIAdapter(Adapter):
             "has_confusables": homoglyph_results["has_confusables"],
             "has_mixed_script": homoglyph_results["has_mixed_script"],
         }
+
+        indirect_context: dict[str, Any] | None = None
+        if context_segments and self._indirect_config.enabled:
+            indirect_context = build_untrusted_context(context_segments, self._indirect_config)
+            features.metadata["untrusted_context"] = indirect_context
 
         engine = RuleEngine()
         findings = engine.analyze(normalized, features)
@@ -710,6 +886,20 @@ class CrewAIAdapter(Adapter):
                     "has_mixed_script": homoglyph_results["has_mixed_script"],
                 },
             },
+            **(
+                {
+                    "indirect_context": {
+                        "segments_scanned": len(indirect_context.get("segments", [])),
+                        "segments_omitted": indirect_context.get("segments_omitted", 0),
+                        "trusted_count": indirect_context.get("trusted_count", 0),
+                        "indirect_findings_count": sum(
+                            1 for f in analysis.findings if f.rule_id.startswith("ii-")
+                        ),
+                    }
+                }
+                if indirect_context is not None
+                else {}
+            ),
         }
 
     def extract_text(self, data: Any) -> str:
@@ -866,6 +1056,8 @@ class CrewAIAdapter(Adapter):
             "publish_events": self._config.get("publish_events", True),
             "event_bus_connected": self._event_bus is not None,
             "guardian_attached": self._guardian is not None,
+            "indirect_injection_enabled": self._indirect_config.enabled,
+            "tool_output_untrusted": self._config.get("tool_output_untrusted", False),
         }
 
 

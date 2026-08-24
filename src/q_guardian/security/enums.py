@@ -29,6 +29,7 @@ class PromptCategory(StrEnum):
     MALFORMED_INPUT = "malformed_input"
     HOMOGLYPH = "homoglyph"
     ENCODING = "encoding"
+    INDIRECT_INJECTION = "indirect_injection"
     UNKNOWN = "unknown"
 
 

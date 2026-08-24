@@ -11,8 +11,10 @@ from q_guardian.ml.config import MLConfig
 from q_guardian.ml.inference.engine import InferenceEngine
 from q_guardian.ml.models.model_manager import ModelManager
 from q_guardian.plugins.base import Plugin
+from q_guardian.security.config import IndirectInjectionConfig, PromptSecurityConfig
 from q_guardian.security.decision import SecurityDecisionEngine
 from q_guardian.security.enums import PromptDecision
+from q_guardian.security.indirect import ContentSegment, build_untrusted_context
 from q_guardian.security.models import PromptAnalysis
 from q_guardian.security.pipeline import (
     PromptFeatureExtractor,
@@ -54,6 +56,14 @@ class ThreatAnalysisPlugin(Plugin):
         self._feature_extractor = PromptFeatureExtractor()
         self._rule_engine = RuleEngine()
         self._decision_engine = SecurityDecisionEngine()
+
+        # Indirect injection detection configuration (P3-5). When a
+        # PromptSecurityConfig is supplied as rule_config, its indirect
+        # settings are honored.
+        if isinstance(rule_config, PromptSecurityConfig):
+            self._indirect_config: IndirectInjectionConfig = rule_config.indirect
+        else:
+            self._indirect_config = IndirectInjectionConfig()
 
         # ML components
         self._model_manager = ModelManager()
@@ -145,15 +155,32 @@ class ThreatAnalysisPlugin(Plugin):
             ml_findings=self._ml_findings_count,
         )
 
-    async def scan_prompt(self, prompt: str, **kwargs: Any) -> dict[str, Any]:
+    async def scan_prompt(
+        self,
+        prompt: str,
+        context_segments: list[ContentSegment] | None = None,
+        **kwargs: Any,
+    ) -> dict[str, Any]:
         """Scan a prompt through the full unified pipeline.
 
         Pipeline:
         1. Normalize → Validate → Extract features (rule-based)
-        2. Rule analysis
-        3. ML inference (if enabled and detectors registered)
-        4. Merge findings
-        5. Decision
+        2. Attach optional untrusted context segments (indirect injection)
+        3. Rule analysis
+        4. ML inference (if enabled and detectors registered)
+        5. Merge findings
+        6. Decision
+
+        Args:
+            prompt: The prompt text to scan.
+            context_segments: Optional untrusted content segments (tool
+                outputs, RAG context, documents, ...) analyzed for indirect
+                injection. When omitted, behavior is identical to direct
+                prompt analysis.
+            **kwargs: Reserved for future extensions.
+
+        Returns:
+            Serialized PromptAnalysis with decision fields.
         """
         start = time.monotonic()
         self._scan_count += 1
@@ -162,8 +189,9 @@ class ThreatAnalysisPlugin(Plugin):
         normalized = self._normalizer.normalize(prompt)
         validation_status, validation_errors = self._validator.validate(normalized)
 
-        # Step 2: Extract features
+        # Step 2: Extract features (+ attach untrusted context if provided)
         features = self._feature_extractor.extract(normalized)
+        indirect_summary = self._attach_untrusted_context(features, context_segments)
 
         # Step 3: Rule analysis
         rule_findings = self._rule_engine.analyze(normalized, features)
@@ -207,6 +235,11 @@ class ThreatAnalysisPlugin(Plugin):
         analysis.processing_time_ms = round(elapsed_ms, 2)
         analysis.metadata["ml_findings_count"] = ml_findings_count
         analysis.metadata["rule_findings_count"] = len(rule_findings)
+        if indirect_summary:
+            analysis.metadata["indirect_summary"] = indirect_summary
+            analysis.metadata["indirect_findings_count"] = sum(
+                1 for f in rule_findings if f.rule_id.startswith("ii-")
+            )
 
         if analysis.decision == PromptDecision.BLOCK:
             self._block_count += 1
@@ -215,6 +248,41 @@ class ThreatAnalysisPlugin(Plugin):
         await self._publish_events(analysis, ml_result, features, normalized)
 
         return analysis.model_dump()
+
+    def _attach_untrusted_context(
+        self,
+        features: Any,
+        context_segments: list[ContentSegment] | None,
+    ) -> dict[str, Any]:
+        """Attach untrusted context segments to features for ii-* rules.
+
+        Builds the JSON-safe provenance payload consumed by the guarded
+        indirect injection rules in :class:`RuleEngine`. When no segments
+        are provided or detection is disabled, features remain untouched
+        and the ``ii-*`` rules stay inert.
+
+        Args:
+            features: Extracted prompt features (mutated in place).
+            context_segments: Optional untrusted content segments.
+
+        Returns:
+            A summary dictionary for analysis metadata.
+        """
+        if not context_segments or not self._indirect_config.enabled:
+            return {}
+        payload = build_untrusted_context(context_segments, self._indirect_config)
+        if not payload.get("segments"):
+            return {
+                "segments_scanned": 0,
+                "segments_omitted": payload.get("segments_omitted", 0),
+                "trusted_count": payload.get("trusted_count", 0),
+            }
+        features.metadata["untrusted_context"] = payload
+        return {
+            "segments_scanned": len(payload["segments"]),
+            "segments_omitted": payload.get("segments_omitted", 0),
+            "trusted_count": payload.get("trusted_count", 0),
+        }
 
     async def _publish_events(
         self,

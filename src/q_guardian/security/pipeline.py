@@ -520,6 +520,61 @@ DEFAULT_RULES: list[PromptRule] = [
         severity=PromptSeverity.MEDIUM,
         confidence=0.75,
     ),
+    PromptRule(
+        rule_id="ii-001",
+        name="Untrusted Content: Instruction Override",
+        description=(
+            "Instruction override directive found in untrusted content. "
+            "Provenance-gated: fires only when untrusted context segments "
+            "are attached to the scan."
+        ),
+        category=PromptCategory.INDIRECT_INJECTION,
+        severity=PromptSeverity.HIGH,
+        confidence=0.9,
+    ),
+    PromptRule(
+        rule_id="ii-002",
+        name="Untrusted Content: Structured Directive Injection",
+        description=(
+            "Structured directive block impersonating system instructions "
+            "found in untrusted content. Provenance-gated."
+        ),
+        category=PromptCategory.INDIRECT_INJECTION,
+        severity=PromptSeverity.MEDIUM,
+        confidence=0.75,
+    ),
+    PromptRule(
+        rule_id="ii-003",
+        name="Untrusted Content: Obfuscated Injection Payload",
+        description=(
+            "Encoded or homoglyph-obfuscated injection payload found in "
+            "untrusted content. Provenance-gated."
+        ),
+        category=PromptCategory.INDIRECT_INJECTION,
+        severity=PromptSeverity.HIGH,
+        confidence=0.85,
+    ),
+    PromptRule(
+        rule_id="ii-004",
+        name="Untrusted Content: Agent-Directed Action",
+        description=(
+            "Exfiltration or tool-execution directive aimed at the agent, "
+            "found in untrusted content. Provenance-gated."
+        ),
+        category=PromptCategory.INDIRECT_INJECTION,
+        severity=PromptSeverity.MEDIUM,
+        confidence=0.8,
+    ),
+    PromptRule(
+        rule_id="ii-005",
+        name="Untrusted Content: Cross-Segment Instruction Assembly",
+        description=(
+            "Injection directive assembled across multiple untrusted segments. Provenance-gated."
+        ),
+        category=PromptCategory.INDIRECT_INJECTION,
+        severity=PromptSeverity.HIGH,
+        confidence=0.7,
+    ),
 ]
 
 
@@ -653,6 +708,14 @@ class RuleEngine:
                     findings.append(finding)
                 continue
 
+            # Special handling for indirect injection rules (ii-001..ii-005).
+            # Provenance-gated: these rules never fire on ordinary direct
+            # prompt analysis. They require untrusted context segments to
+            # have been attached via PromptFeatures.metadata.
+            if rule.rule_id.startswith("ii-"):
+                findings.extend(self._evaluate_indirect_rule(rule, features))
+                continue
+
             # Special handling for encoding rules (enc-002 through enc-005)
             if rule.rule_id in ("enc-002", "enc-003", "enc-004", "enc-005"):
                 encoding_type = rule.rule_id.split("-")[1]
@@ -753,3 +816,25 @@ class RuleEngine:
                 findings.append(finding)
 
         return findings
+
+    def _evaluate_indirect_rule(
+        self,
+        rule: PromptRule,
+        features: PromptFeatures | None,
+    ) -> list[PromptFinding]:
+        """Evaluate a single provenance-gated indirect injection rule.
+
+        Returns an empty list unless untrusted context segments were
+        attached to the features metadata by a caller (plugin, adapter,
+        or service). The heavy lifting is delegated to
+        :mod:`q_guardian.security.indirect`.
+        """
+        if features is None:
+            return []
+        context_payload = features.metadata.get("untrusted_context")
+        if not isinstance(context_payload, dict):
+            return []
+
+        from q_guardian.security.indirect import evaluate_indirect_rule
+
+        return evaluate_indirect_rule(rule.rule_id, context_payload)

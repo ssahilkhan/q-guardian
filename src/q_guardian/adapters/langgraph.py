@@ -579,6 +579,155 @@ class LangGraphAdapter(Adapter):
                             parts.append(item.get("text", ""))
         return "\n".join(parts)
 
+    # ============================================================
+    # Indirect injection: provenance-aware state scanning (P3-5)
+    # ============================================================
+
+    async def scan_state_with_provenance(
+        self,
+        state: dict[str, Any],
+        untrusted_keys: list[str],
+        source: str = "state",
+    ) -> dict[str, Any]:
+        """Scan graph state with provenance-aware indirect injection analysis.
+
+        Values under ``untrusted_keys`` are treated as untrusted external
+        content (tool outputs, retrieved documents, ...) and analyzed by
+        the ``ii-*`` rules in addition to the standard direct rules.
+        Behavior is additive: keys not listed keep their existing handling,
+        and an empty ``untrusted_keys`` list yields the same result as a
+        plain state scan.
+
+        This method is intentionally self-contained and does not rely on
+        the legacy internal text-scanning helpers.
+
+        Args:
+            state: The graph state dictionary.
+            untrusted_keys: State keys whose values carry untrusted
+                external content. String values and lists of strings are
+                supported; other value types are stringified.
+            source: Label describing where the state came from.
+
+        Returns:
+            Scan result dictionary with decision, risk_score, findings,
+            source, encoding_context, and (when segments were scanned)
+            indirect_context keys.
+
+        Raises:
+            ValueError: If ``untrusted_keys`` is empty or state is empty.
+        """
+        from q_guardian.security.config import IndirectInjectionConfig
+        from q_guardian.security.decision import SecurityDecisionEngine
+        from q_guardian.security.homoglyph import analyze_homoglyphs
+        from q_guardian.security.indirect import (
+            ContentSegment,
+            SourceType,
+            build_untrusted_context,
+        )
+        from q_guardian.security.models import PromptAnalysis
+        from q_guardian.security.pipeline import (
+            PromptFeatureExtractor,
+            PromptNormalizer,
+            PromptValidator,
+            RuleEngine,
+        )
+
+        if not untrusted_keys:
+            raise ValueError("untrusted_keys must contain at least one state key")
+        if not state:
+            raise ValueError("state must not be empty")
+
+        segments: list[ContentSegment] = []
+        for position, key in enumerate(untrusted_keys):
+            if key not in state:
+                continue
+            value = state[key]
+            texts = (
+                [str(item) for item in value]
+                if isinstance(value, list)
+                else [value if isinstance(value, str) else str(value)]
+            )
+            for text in texts:
+                if text.strip():
+                    segments.append(
+                        ContentSegment(
+                            content=text,
+                            source_type=SourceType.TOOL_OUTPUT,
+                            source_id=key,
+                            position=position,
+                        )
+                    )
+
+        direct_text = "\n".join(str(v) for k, v in state.items() if isinstance(v, str))
+        if not direct_text.strip():
+            return {"decision": "allow", "risk_score": 0.0, "findings": [], "source": source}
+
+        normalizer = PromptNormalizer()
+        validator = PromptValidator()
+        normalized = normalizer.normalize(direct_text)
+        validation_status, validation_errors = validator.validate(normalized)
+
+        feature_extractor = PromptFeatureExtractor()
+        features = feature_extractor.extract(normalized)
+
+        homoglyph_results = analyze_homoglyphs(normalized)
+        features.metadata["homoglyph"] = {
+            "has_confusables": homoglyph_results["has_confusables"],
+            "has_mixed_script": homoglyph_results["has_mixed_script"],
+        }
+
+        indirect_context: dict[str, Any] | None = None
+        if segments:
+            indirect_config = IndirectInjectionConfig()
+            indirect_context = build_untrusted_context(segments, indirect_config)
+            features.metadata["untrusted_context"] = indirect_context
+
+        engine = RuleEngine()
+        findings = engine.analyze(normalized, features)
+
+        analysis = PromptAnalysis(
+            original_prompt=direct_text,
+            normalized_prompt=normalized,
+            is_valid=(validation_status.value == "valid"),
+            validation_status=validation_status,
+            validation_errors=validation_errors,
+            features=features,
+            findings=findings,
+        )
+        SecurityDecisionEngine().decide(analysis)
+
+        result: dict[str, Any] = {
+            "decision": analysis.decision.value,
+            "risk_score": analysis.risk_score,
+            "findings": [f.model_dump() for f in analysis.findings],
+            "recommendation": analysis.recommendation,
+            "source": source,
+            "encoding_context": {
+                "encoding_candidates": [
+                    {
+                        "encoding": c.encoding,
+                        "confidence": c.confidence,
+                        "decoded_preview": c.metadata.get("decoded_preview", "")[:200],
+                    }
+                    for c in detect_all_encodings(normalized)
+                ],
+                "homoglyph": {
+                    "has_confusables": homoglyph_results["has_confusables"],
+                    "has_mixed_script": homoglyph_results["has_mixed_script"],
+                },
+            },
+        }
+        if indirect_context is not None:
+            result["indirect_context"] = {
+                "segments_scanned": len(indirect_context.get("segments", [])),
+                "segments_omitted": indirect_context.get("segments_omitted", 0),
+                "trusted_count": indirect_context.get("trusted_count", 0),
+                "indirect_findings_count": sum(
+                    1 for f in analysis.findings if f.rule_id.startswith("ii-")
+                ),
+            }
+        return result
+
     def health(self) -> dict[str, Any]:
         """Return adapter health status."""
         return {
