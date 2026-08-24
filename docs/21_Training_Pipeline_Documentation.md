@@ -308,3 +308,180 @@ practically match the fused ensemble.
   caught by CI.
 - Verification for this change: **1,865 unit tests + 14 integration tests
   pass**; `ruff check` and `mypy` clean.
+
+## 12. arm_d diverse retraining (semantic feature mode)
+
+The training-diversity research track (`experiments/training_diversity/`)
+trains the same `HybridEvaluator` stack on the **arm_d diverse** dataset —
+6,269 samples (4,006 malicious / 2,263 benign) = control (deepset +
+dolly-benign) + TrustAIR jailbreaks + JailbreakV-28K subset + mlabonne
+harmful-behaviors, all contamination-filtered against the eval splits.
+
+### 12.1 Semantic embedding feature mode
+
+`HybridEvaluator` accepts two additional constructor flags (persisted in
+`params.json`, restored by `load_state`):
+
+| Param | Default | Meaning |
+|---|---|---|
+| `use_semantic_embedding` | `False` | Append a 384-dim normalized `all-MiniLM-L6-v2` sentence embedding to the 43 handcrafted features (427 total). Requires the optional `sentence-transformers` dependency. |
+| `rf_n_estimators` / `xgb_n_estimators` | `None` | Per-model estimator overrides (`None` = use `n_estimators`). |
+
+When enabled, `vector()` and the batched `feature_matrix()` produce identical
+rows (same normalizer → extractor → ML features → encoder), so training,
+evaluation and inference share one feature implementation. Existing
+checkpoints without these keys load unchanged (defaults off).
+
+### 12.2 Reproducing the arm_d checkpoint
+
+```bash
+# 1. deterministic base splits (seed 42; JBB external pool included)
+q-guardian dataset prepare --config configs/training.json --output-dir artifacts/training_xgboost_fix
+
+# 2. feature caches: 43 handcrafted + 384 MiniLM for arms + eval pools
+python experiments/semantic_features/run_experiment.py          # builds cache once (or reuse build_features())
+python experiments/training_diversity/04_build_features.py      # arm caches + eval pools
+
+# 3. train XGBoost + Random Forest on arm_d, evaluate, save checkpoint
+python experiments/training_diversity/08_train_arm_d_checkpoint.py
+
+# 3b. optional validation-only RF tuning (JBB never used for selection)
+python experiments/training_diversity/09_tune_arm_d_rf.py
+```
+
+Outputs land in `artifacts/training_arm_d/`: `model/hybrid_evaluator.joblib`
+(+ `params.json`), `training_config.json`, `metadata.json`, `evaluation.json`,
+and `verification.json` (reload-from-disk AUC match check).
+
+### 12.3 Measured results (threshold 0.5, seed 42)
+
+Training data: arm_d 6,269 (4,006 mal / 2,263 ben); evaluation pools:
+validation 110, internal test 116, JBB external 200 (100/100).
+RF estimator count (200) was selected by a validation-only grid;
+XGBoost keeps the frozen experiment config.
+
+| Model | Val ROC-AUC | Test ROC-AUC | JBB ROC-AUC | JBB PR-AUC | JBB F1 |
+|---|---:|---:|---:|---:|---:|
+| XGBoost (n_est=50, depth=6) | 0.9717 | 0.9363 | **0.7861** | 0.7881 | 0.7330 |
+| Random Forest (n_est=200) | 0.9556 | 0.9119 | **0.7915** | 0.7941 | 0.7290 |
+
+Both models exceed the JBB ROC-AUC ≥ 0.78 target; JBB was never used for
+training, scaling, calibration, or hyperparameter selection.
+
+## 13. Task 3 — threshold sweep on calibrated models, production threshold 0.2
+
+> **Status:** implemented (Week 3: "threshold sweep on calibrated models;
+> lower default threshold"). Sweep script:
+> `experiments/calibration/02_threshold_sweep_task3.py`. Results artifact:
+> `artifacts/experiments/threshold_sweep/task3_threshold_sweep.json` (+ `.md`).
+
+### 13.1 Artifacts and identity verification
+
+The sweep loads the frozen Task 2 checkpoint
+(`artifacts/training_arm_d/model/hybrid_evaluator.joblib`, RF n_estimators=200,
+XGB n_est=50/depth=6, seed 42, 43+384=427 features, `use_semantic_embedding=True`)
+and asserts that its raw ROC-AUC on every pool equals the values recorded in
+Task 2's `evaluation.json`. The local checkpoint was regenerated
+deterministically with `08_train_arm_d_checkpoint.py` (seed 42) and reproduces
+the §12.3 AUCs exactly, so it is byte-for-byte equivalent in behaviour to the
+pushed Task 2 run.
+
+### 13.2 Calibration (validation-only fitting)
+
+| Model | Method | Fitted on | Selected by |
+|---|---|---|---|
+| XGBoost | Platt (sigmoid, `LogisticRegression(C=1.0)` on raw score) | validation split only (110 samples) | highest validation OOF F1 at t=0.2 (0.8605 vs isotonic 0.8478) |
+| Random Forest | Isotonic (`IsotonicRegression`, clip) | validation split only (110 samples) | highest validation OOF F1 at t=0.2 (0.8000 vs platt 0.5857) |
+
+Honest-metric protocol (mirrors `experiments/calibration/01_run_calibration.py`):
+
+- Validation metrics use out-of-fold calibrated scores
+  (`StratifiedKFold(5, shuffle=True, random_state=42)`).
+- Test/JBB are scored with calibrators refit on the full validation split.
+- JBB labels are never used for calibration fitting or threshold selection.
+- Calibration is persisted inside the checkpoint (`save_state`/`load_state`
+  round-trip `calibrators`; legacy checkpoints load unchanged with no
+  calibrators). Calibrated checkpoint:
+  `artifacts/training_arm_d/model_calibrated/`.
+- Both methods were swept for both models; full tables (including isotonic
+  for XGB and Platt for RF) are in the results JSON.
+
+### 13.3 Data pools
+
+| Pool | Samples | Malicious | Benign | Role |
+|---|---:|---:|---:|---|
+| arm_d train | 6,269 | 4,006 | 2,263 | training only (Task 2) |
+| validation | 110 | 41 | 69 | calibration + threshold selection (OOF) |
+| internal test | 116 | 60 | 56 | evaluation only |
+| JBB external | 200 | 100 | 100 | evaluation only |
+
+### 13.4 Threshold sweep — selected production calibration
+
+**XGBoost (Platt)** — decision rule `calibrated_probability >= threshold`:
+
+| Threshold | Val-OOF P/R/F1/FPR | Test P/R/F1/FPR | JBB P/R/F1/FPR |
+|---:|---|---|---|
+| 0.15 | 0.373 / 1.000 / 0.543 / 1.000 | 0.517 / 1.000 / 0.682 / 1.000 | 0.500 / 1.000 / 0.667 / 1.000 |
+| **0.20** | **0.822 / 0.902 / 0.861 / 0.116** | **0.809 / 0.917 / 0.859 / 0.232** | **0.558 / 0.970 / 0.708 / 0.770** |
+| 0.25 | 0.900 / 0.878 / 0.889 / 0.058 | 0.850 / 0.850 / 0.850 / 0.161 | 0.579 / 0.950 / 0.720 / 0.690 |
+| 0.30 | 0.944 / 0.829 / 0.883 / 0.029 | 0.877 / 0.833 / 0.855 / 0.125 | 0.604 / 0.930 / 0.732 / 0.610 |
+
+(Platt maps almost all validation scores above ~0.16, so thresholds ≤ 0.15
+collapse to "flag everything"; the effective operating range starts at 0.20.)
+
+**Random Forest (isotonic):**
+
+| Threshold | Val-OOF P/R/F1/FPR | Test P/R/F1/FPR | JBB P/R/F1/FPR |
+|---:|---|---|---|
+| 0.15 | 0.639 / 0.951 / 0.765 / 0.319 | 0.797 / 0.917 / 0.853 / 0.250 | 0.529 / 0.990 / 0.690 / 0.880 |
+| **0.20** | **0.704 / 0.927 / 0.800 / 0.232** | **0.797 / 0.917 / 0.853 / 0.250** | **0.529 / 0.990 / 0.690 / 0.880** |
+| 0.25 | 0.717 / 0.927 / 0.809 / 0.217 | 0.797 / 0.917 / 0.853 / 0.250 | 0.529 / 0.990 / 0.690 / 0.880 |
+| 0.30 | 0.712 / 0.902 / 0.796 / 0.217 | 0.797 / 0.917 / 0.853 / 0.250 | 0.529 / 0.990 / 0.690 / 0.880 |
+
+(Isotonic is piecewise constant on 110 samples, so neighbouring thresholds
+0.15–0.30 collapse into identical operating points.)
+
+### 13.5 Verdict on threshold 0.2 vs the roadmap reference
+
+- **In-distribution (validation/test), 0.20 delivers the intended tradeoff**:
+  recall rises to ≈0.92 while test F1 stays at 0.86 (vs 0.850–0.855 at
+  0.25/0.30) at a moderate FPR increase (0.23 vs 0.13–0.16).
+- **On JBB, the roadmap's reference operating point is not attainable with
+  these Task 2 artifacts.** Reference table target: XGB @0.2 → P 0.946 /
+  R 0.854 / F1 0.897 / FPR 0.029. Actual: F1 0.708, FPR 0.77 (Platt) — and
+  even the *raw* model already has JBB FPR 0.63 @0.2 and 0.40 @0.5
+  (raw JBB F1 0.733 @0.5 matches §12.3 exactly). The gap is distribution
+  shift in the model itself (JBB ROC-AUC 0.786); monotonic calibration and
+  threshold choice cannot close it. The reference numbers should be treated
+  as coming from a different configuration and re-based on this sweep.
+- Production threshold **0.2 is kept**: it maximizes recall at acceptable
+  in-distribution precision, which is the correct bias for a security
+  filter, and downstream rule/fusion layers can raise precision.
+
+### 13.6 Production configuration after Task 3
+
+| Setting | Value | Where |
+|---|---|---|
+| ML classification threshold | **0.2** (single source of truth) | `MLConfig.classification_threshold` (`src/q_guardian/ml/config.py`) |
+| Probability calibration | **enabled** by default | `MLConfig.calibration_enabled = True` |
+| Decision rule | `calibrated_probability >= classification_threshold` | `HybridEvaluator.malicious_decisions()` (`src/q_guardian/evaluation/pipeline.py`) |
+| `MLConfig.enabled` | still defaults to `False` | flipping it activates nothing by itself: models must be registered into the scan path |
+
+Ownership note: wiring the calibrated checkpoint + `malicious_decisions()`
+into the backend scan/API path (i.e., making `ml.enabled=True` take effect in
+the default request flow) belongs to Person 2's detection-pipeline work.
+Person 1 supplies the artifacts, calibration, threshold configuration and the
+decision helper.
+
+### 13.7 Regression coverage
+
+- `tests/unit/test_ml_config_events.py` — default `classification_threshold`
+  is 0.2, `calibration_enabled` is True, overrides round-trip.
+- `tests/unit/test_threshold_calibration.py` — calibrated probabilities drive
+  decisions; threshold override; calibrator checkpoint round-trip (incl.
+  legacy checkpoints without calibrators); sweep metric-row structure;
+  artifact schema when the sweep was run locally.
+- Verification: full suite 3,004 passed (+1 environmental failure caused by a
+  local `HF_TOKEN`, passes without it); `ruff check src tests` clean for all
+  touched files; `mypy src/q_guardian/evaluation/pipeline.py
+  src/q_guardian/ml/config.py` clean.

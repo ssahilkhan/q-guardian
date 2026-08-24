@@ -38,7 +38,7 @@
     "provider_weights": null
   },
   "eval": {
-    "threshold": 0.5,
+    "threshold": 0.2,
     "threshold_sweep": [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
   },
   "output_dir": "artifacts/training"

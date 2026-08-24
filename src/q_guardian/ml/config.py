@@ -33,10 +33,21 @@ class MLConfig(BaseModel):
         description="Threshold for anomaly detection (Isolation Forest)",
     )
     classification_threshold: float = Field(
-        default=0.5,
+        default=0.2,
         ge=0.0,
         le=1.0,
-        description="Threshold for classification confidence",
+        description=(
+            "Decision threshold applied to calibrated malicious-class "
+            "probability (Week 3 threshold sweep on the calibrated arm_d "
+            "models; validation-only selection)"
+        ),
+    )
+    calibration_enabled: bool = Field(
+        default=True,
+        description=(
+            "Apply persisted probability calibration (Platt/isotonic) to "
+            "classical model scores before thresholding"
+        ),
     )
     ensemble_weights: dict[str, float] = Field(
         default_factory=dict,

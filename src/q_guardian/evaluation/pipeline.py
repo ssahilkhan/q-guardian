@@ -77,6 +77,38 @@ ALL_PROVIDERS = [
     QUANTUM_PROVIDER,
 ]
 
+# Supported probability calibration methods (fitted on validation only).
+CALIBRATION_METHODS = ("platt", "isotonic")
+
+
+def apply_probability_calibration(
+    calibrator: tuple[str, Any] | None,
+    scores: list[float],
+) -> list[float]:
+    """Map raw model scores through a fitted calibrator.
+
+    Args:
+        calibrator: ``(method, fitted_model)`` as stored in
+            ``HybridEvaluator.calibrators`` — method is ``"platt"``
+            (LogisticRegression on the raw score) or ``"isotonic"``.
+        scores: Raw malicious-class probabilities.
+
+    Returns:
+        Calibrated probabilities (same order/length).
+    """
+    import numpy as np
+
+    if calibrator is None:
+        return list(scores)
+    method, model = calibrator
+    arr = np.asarray(scores, dtype=np.float64)
+    if method == "platt":
+        return [float(v) for v in model.predict_proba(arr.reshape(-1, 1))[:, 1]]
+    if method == "isotonic":
+        return [float(v) for v in model.predict(arr.ravel())]
+    msg = f"unsupported calibration method: {method!r}"
+    raise ValueError(msg)
+
 
 class HybridEvaluator:
     """Fits and evaluates the hybrid detection pipeline.
@@ -127,6 +159,11 @@ class HybridEvaluator:
         self.rf: RandomForestThreatClassifier | None = None
         self.xgb: XGBoostThreatClassifier | None = None
         self.qsvm: QSVMModel | None = None
+        # Optional per-provider probability calibrators (fitted on the
+        # validation split, never on JBB). Maps a classical provider id
+        # ("random-forest"/"xgboost") to ("platt"|"isotonic", fitted model).
+        # When set, ``probability_matrix`` returns calibrated probabilities.
+        self.calibrators: dict[str, tuple[str, Any]] | None = None
         self._providers: dict[str, tuple[PredictionProvider, float]] = {}
 
     # ── Feature extraction ─────────────────────────────────────────────
@@ -297,6 +334,112 @@ class HybridEvaluator:
             return list(results)
 
         return [row["fusion"] for row in asyncio.run(_run())]
+
+    # ── Probability calibration ────────────────────────────────────────
+
+    def set_calibrator(self, provider_id: str, method: str, model: Any) -> None:
+        """Attach a fitted probability calibrator to a classical provider.
+
+        Args:
+            provider_id: ``"random-forest"`` or ``"xgboost"``.
+            method: ``"platt"`` (sigmoid/LogisticRegression) or
+                ``"isotonic"`` (IsotonicRegression).
+            model: The fitted sklearn calibrator object.
+        """
+        if self.calibrators is None:
+            self.calibrators = {}
+        self.calibrators[provider_id] = (method, model)
+
+    def _positive_probability(self, provider_id: str, x_scaled: Any) -> list[float]:
+        """Raw P(malicious) from a fitted classical provider."""
+        if provider_id == CLASSIFIER_PROVIDER:
+            if self.rf is None or self.rf.model is None:
+                msg = "random-forest is not fitted"
+                raise RuntimeError(msg)
+            model = self.rf.model
+        elif provider_id == XGBOOST_PROVIDER:
+            if self.xgb is None or self.xgb.model is None:
+                msg = "xgboost is not fitted"
+                raise RuntimeError(msg)
+            model = self.xgb.model
+        else:
+            msg = f"no probability provider named {provider_id!r}"
+            raise ValueError(msg)
+
+        import numpy as np
+
+        arr = np.asarray(
+            x_scaled, dtype=np.float32 if provider_id == XGBOOST_PROVIDER else np.float64
+        )
+        probas = model.predict_proba(arr)
+        classes = getattr(model, "classes_", None)
+        col = int(np.where(classes == 1)[0][0]) if classes is not None else probas.shape[1] - 1
+        return [float(v) for v in probas[:, col]]
+
+    def raw_probability_matrix(self, texts: list[str]) -> dict[str, list[float]]:
+        """Batched raw P(malicious) per classical provider (RF/XGBoost).
+
+        Uses exactly the same features as single-prompt inference
+        (``vector()``); the batched path only avoids per-text encoder calls.
+        """
+        if self.scaler is None:
+            msg = "HybridEvaluator.fit() must be called before scoring"
+            raise RuntimeError(msg)
+        x = self.feature_matrix(texts)
+        x_scaled = self.scaler.transform(x)
+        providers = [CLASSIFIER_PROVIDER]
+        if self.xgb is not None and self.xgb.is_trained:
+            providers.append(XGBOOST_PROVIDER)
+        return {pid: self._positive_probability(pid, x_scaled) for pid in providers}
+
+    def probability_matrix(
+        self,
+        texts: list[str],
+        *,
+        calibrated: bool = True,
+    ) -> dict[str, list[float]]:
+        """Per-provider malicious-class probabilities for production inference.
+
+        When calibrators are attached (and ``calibrated=True``) the returned
+        scores are **calibrated probabilities**; otherwise raw model scores.
+        Decision rule for downstream consumers:
+        ``probability >= classification_threshold``.
+        """
+        scores = self.raw_probability_matrix(texts)
+        if not calibrated or not self.calibrators:
+            return scores
+        out: dict[str, list[float]] = {}
+        for pid, values in scores.items():
+            cal = self.calibrators.get(pid)
+            out[pid] = apply_probability_calibration(cal, values) if cal else values
+        return out
+
+    def malicious_decisions(
+        self,
+        texts: list[str],
+        provider_id: str = XGBOOST_PROVIDER,
+        threshold: float | None = None,
+    ) -> list[bool]:
+        """Production decision rule: calibrated probability >= threshold.
+
+        The threshold defaults to the single configured source of truth
+        (``MLConfig.classification_threshold``, default 0.2 after the Week 3
+        threshold sweep); callers may override it per call.
+
+        Args:
+            texts: Prompt texts to classify.
+            provider_id: Classical provider to use (default ``"xgboost"``).
+            threshold: Optional override of the configured threshold.
+
+        Returns:
+            One ``True`` (malicious) / ``False`` (benign) decision per text.
+        """
+        from q_guardian.ml.config import MLConfig
+
+        if threshold is None:
+            threshold = MLConfig().classification_threshold
+        probabilities = self.probability_matrix(texts)[provider_id]
+        return [p >= threshold for p in probabilities]
 
     # ── Scoring ────────────────────────────────────────────────────────
 

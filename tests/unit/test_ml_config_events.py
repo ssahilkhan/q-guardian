@@ -32,14 +32,25 @@ class TestMLConfig:
         config = MLConfig()
         assert config.enabled is False
         assert config.anomaly_threshold == 0.5
-        assert config.classification_threshold == 0.5
+        # Week 3 (Person 1 Task 3): production ML threshold lowered to 0.2
+        # and probability calibration enabled by default.
+        assert config.classification_threshold == 0.2
+        assert config.calibration_enabled is True
         assert config.default_cv_folds == 5
         assert config.random_state == 42
 
     def test_custom(self) -> None:
-        config = MLConfig(enabled=True, anomaly_threshold=0.3, max_features=5000)
+        config = MLConfig(
+            enabled=True,
+            anomaly_threshold=0.3,
+            classification_threshold=0.35,
+            calibration_enabled=False,
+            max_features=5000,
+        )
         assert config.enabled is True
         assert config.anomaly_threshold == 0.3
+        assert config.classification_threshold == 0.35
+        assert config.calibration_enabled is False
         assert config.max_features == 5000
 
     def test_roundtrip(self) -> None:
@@ -47,6 +58,8 @@ class TestMLConfig:
         data = config.model_dump()
         restored = MLConfig.model_validate(data)
         assert restored.enabled == config.enabled
+        assert restored.classification_threshold == config.classification_threshold
+        assert restored.calibration_enabled == config.calibration_enabled
 
 
 class TestMLEnums:
