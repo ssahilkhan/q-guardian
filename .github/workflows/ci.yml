@@ -9,6 +9,15 @@ on:
 permissions:
   contents: read
 
+env:
+  # Test configuration
+  AUTH_USERS: '{"tester": {"password_hash": "$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj/RK.PZvO.S", "roles": ["analyst"]}, "admin": {"password_hash": "$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj/RK.PZvO.S", "roles": ["admin"]}}'
+  MONGODB_URI: "mongodb://localhost:27017"
+  MONGODB_DATABASE: "q_guardian_test"
+  RATE_LIMIT_ENABLED: "false"
+  APP_ENVIRONMENT: "testing"
+  LOG_LEVEL: "INFO"
+
 jobs:
   lint:
     name: Lint
@@ -38,6 +47,16 @@ jobs:
   test:
     name: Test (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
+    services:
+      mongodb:
+        image: mongo:7
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --eval 'db.runCommand({ ping: 1 })'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     strategy:
       matrix:
         python-version: ["3.12", "3.13"]
@@ -48,11 +67,48 @@ jobs:
           python-version: ${{ matrix.python-version }}
           cache: pip
       - run: pip install -e ".[dev]"
+      - name: Initialize test database
+        run: |
+          python -c "
+          import asyncio
+          from q_guardian.database.client import get_db_client
+          from q_guardian.security.auth import hash_password
+          import os
+          import json
+          
+          async def init_db():
+              client = get_db_client()
+              await client.connect()
+              db = client.get_database()
+              
+              # Create test users
+              auth_users = json.loads(os.environ['AUTH_USERS'])
+              users_collection = db['users']
+              for username, data in auth_users.items():
+                  await users_collection.update_one(
+                      {'username': username},
+                      {'\$set': {'username': username, **data}},
+                      upsert=True
+                  )
+              print('Test database initialized')
+          
+          asyncio.run(init_db())
+        env:
+          AUTH_USERS: ${{ env.AUTH_USERS }}
+          MONGODB_URI: ${{ env.MONGODB_URI }}
+          MONGODB_DATABASE: ${{ env.MONGODB_DATABASE }}
       - name: Run full test suite with coverage gate
         run: >
           pytest tests/ --tb=short -q
           --cov=q_guardian --cov-report=xml --cov-report=term
           --cov-fail-under=80
+        env:
+          AUTH_USERS: ${{ env.AUTH_USERS }}
+          MONGODB_URI: ${{ env.MONGODB_URI }}
+          MONGODB_DATABASE: ${{ env.MONGODB_DATABASE }}
+          RATE_LIMIT_ENABLED: ${{ env.RATE_LIMIT_ENABLED }}
+          APP_ENVIRONMENT: ${{ env.APP_ENVIRONMENT }}
+          LOG_LEVEL: ${{ env.LOG_LEVEL }}
       - uses: actions/upload-artifact@v4
         if: matrix.python-version == '3.12'
         with:
@@ -62,19 +118,73 @@ jobs:
   security-tests:
     name: Security Test Suite
     runs-on: ubuntu-latest
+    services:
+      mongodb:
+        image: mongo:7
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --eval 'db.runCommand({ ping: 1 })'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
           cache: pip
-      - run: pip install -e ".[dev]"
+      - name: Initialize test database
+        run: |
+          python -c "
+          import asyncio
+          from q_guardian.database.client import get_db_client
+          from q_guardian.security.auth import hash_password
+          import os
+          import json
+          
+          async def init_db():
+              client = get_db_client()
+              await client.connect()
+              db = client.get_database()
+              
+              # Create test users
+              auth_users = json.loads(os.environ['AUTH_USERS'])
+              users_collection = db['users']
+              for username, data in auth_users.items():
+                  await users_collection.update_one(
+                      {'username': username},
+                      {'\$set': {'username': username, **data}},
+                      upsert=True
+                  )
+              print('Test database initialized')
+          
+          asyncio.run(init_db())
+        env:
+          AUTH_USERS: ${{ env.AUTH_USERS }}
+          MONGODB_URI: ${{ env.MONGODB_URI }}
+          MONGODB_DATABASE: ${{ env.MONGODB_DATABASE }}
       - name: Injection / jailbreak / obfuscation / false-positive regression
         run: pytest tests/security/ -v --tb=short
+        env:
+          AUTH_USERS: ${{ env.AUTH_USERS }}
+          MONGODB_URI: ${{ env.MONGODB_URI }}
+          MONGODB_DATABASE: ${{ env.MONGODB_DATABASE }}
+          RATE_LIMIT_ENABLED: ${{ env.RATE_LIMIT_ENABLED }}
+          APP_ENVIRONMENT: ${{ env.APP_ENVIRONMENT }}
+          LOG_LEVEL: ${{ env.LOG_LEVEL }}
       - name: Generate security metrics report
         run: python -m scripts.qa.security_report
+        env:
+          AUTH_USERS: ${{ env.AUTH_USERS }}
+          MONGODB_URI: ${{ env.MONGODB_URI }}
+          MONGODB_DATABASE: ${{ env.MONGODB_DATABASE }}
       - name: Fail on regression below documented gates
         run: pytest tests/security/test_security_metrics.py -q
+        env:
+          AUTH_USERS: ${{ env.AUTH_USERS }}
+          MONGODB_URI: ${{ env.MONGODB_URI }}
+          MONGODB_DATABASE: ${{ env.MONGODB_DATABASE }}
 
   dependency-scan:
     name: Dependency Vulnerability Scan
