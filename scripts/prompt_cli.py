@@ -29,12 +29,11 @@ import contextlib
 import importlib.util
 import io
 import json
-import os
 import sys
 import time
 from pathlib import Path
 
-import numpy as np
+import sklearn  # noqa: F401  (imported for bundled-sklearn detection)
 import structlog
 
 structlog.configure(
@@ -45,9 +44,6 @@ structlog.configure(
     ],
     logger_factory=structlog.PrintLoggerFactory(),
 )
-
-import numpy as np
-import sklearn  # noqa: F401  (imported for bundled-sklearn detection)
 
 ROOT = Path(__file__).resolve().parents[1]
 HARNESS = ROOT / "examples" / "prompt_test_harness.py"
@@ -69,7 +65,7 @@ def load_memory(path: Path) -> list[dict]:
     if not path.exists():
         return []
     records = []
-    with open(path, "r", encoding="utf-8") as f:
+    with open(path, encoding="utf-8") as f:
         for line in f:
             line = line.strip()
             if line:
@@ -125,8 +121,9 @@ def print_verdict(result: dict) -> None:
         p = b.get("probabilities", {})
         safe = p.get("benign", 0.0) * 100
         mall = p.get("threat", 0.0) * 100
-        return (f"    {pid:<16} safe {safe:5.1f}% | "
-                f"malicious {mall:5.1f}%   risk {b['risk_score']:.2f}")
+        return (
+            f"    {pid:<16} safe {safe:5.1f}% | malicious {mall:5.1f}%   risk {b['risk_score']:.2f}"
+        )
 
     print("=" * 64)
     print(f"  VERDICT: {v}  ->  {result['action']}")
@@ -137,13 +134,11 @@ def print_verdict(result: dict) -> None:
         for pid, b in items:
             print(_line(pid, b))
         if items:
-            mean = sum(b["probabilities"].get("threat", 0.0)
-                       for _, b in items) / len(items)
+            mean = sum(b["probabilities"].get("threat", 0.0) for _, b in items) / len(items)
             print(f"    combined malicious confidence: {mean * 100:.1f}%")
 
     print("  -- Hybrid fusion (weighted voting) --")
-    print("    fused label :", result["fused_label"],
-          f"(confidence {result['confidence']:.3f})")
+    print("    fused label :", result["fused_label"], f"(confidence {result['confidence']:.3f})")
     prob_str = " | ".join(f"{k} {v2:.1f}%" for k, v2 in probs.items())
     print(f"    class probs : {prob_str}")
 
@@ -165,13 +160,14 @@ def main() -> None:
     if "--state-dir" in args:
         i = args.index("--state-dir")
         STATE_DIR = Path(args[i + 1])
-        del args[i:i + 2]
+        del args[i : i + 2]
 
     if "--forget" in args:
         if MEMORY_FILE.exists():
             MEMORY_FILE.unlink()
         if STATE_DIR.exists():
             import shutil
+
             shutil.rmtree(STATE_DIR)
         print("Memory and saved models erased.")
         return
@@ -191,16 +187,19 @@ def main() -> None:
                 pipeline.add_sample(rec["text"], int(rec["label"]))
         pipeline.train()
         pipeline.save_state(str(STATE_DIR))
-    print(f"Pipeline ready in {(time.monotonic() - t0) * 1000:.0f} ms "
-          f"| memory: {len(memory)} prompts")
+    print(
+        f"Pipeline ready in {(time.monotonic() - t0) * 1000:.0f} ms | memory: {len(memory)} prompts"
+    )
 
     last_record: dict | None = None
 
     def analyze(prompt: str) -> None:
         nonlocal last_record
         if simple_mode:
-            with contextlib.redirect_stdout(io.StringIO()), \
-                    contextlib.redirect_stderr(io.StringIO()):
+            with (
+                contextlib.redirect_stdout(io.StringIO()),
+                contextlib.redirect_stderr(io.StringIO()),
+            ):
                 result = pipeline.run(prompt)
             print_verdict(result)
         else:
@@ -218,8 +217,10 @@ def main() -> None:
         append_memory(MEMORY_FILE, record)
         memory.append(record)
         last_record = record
-        print(f"  [recorded -> {'malicious' if label else 'benign'} "
-              f"(auto), run :label to correct, :learn to retrain]")
+        print(
+            f"  [recorded -> {'malicious' if label else 'benign'} "
+            f"(auto), run :label to correct, :learn to retrain]"
+        )
 
     def cmd_label() -> None:
         nonlocal last_record
@@ -234,8 +235,10 @@ def main() -> None:
         last_record["label"] = new_label
         last_record["auto"] = False
         rewrite_memory(MEMORY_FILE, memory)
-        print(f"  Label updated to {'malicious' if new_label else 'benign'} "
-              f"for: {last_record['text'][:60]}")
+        print(
+            f"  Label updated to {'malicious' if new_label else 'benign'} "
+            f"for: {last_record['text'][:60]}"
+        )
         print("  Run :learn to incorporate this into the models.")
 
     def cmd_learn() -> None:
@@ -245,8 +248,9 @@ def main() -> None:
             print("  Nothing to learn from yet (analyze some prompts first).")
             return
         print(f"  Retraining on {len(labeled)} remembered prompts + defaults...")
-        base = [(t, 0) for t in HARNESS_MOD._TRAIN_BENIGN] + \
-               [(t, 1) for t in HARNESS_MOD._TRAIN_MALICIOUS]
+        base = [(t, 0) for t in HARNESS_MOD._TRAIN_BENIGN] + [
+            (t, 1) for t in HARNESS_MOD._TRAIN_MALICIOUS
+        ]
         pipeline._train_texts = base + [(r["text"], int(r["label"])) for r in labeled]
         pipeline.train()
         pipeline.save_state(str(STATE_DIR))
@@ -256,13 +260,17 @@ def main() -> None:
         labeled = [r for r in memory if r.get("label") is not None]
         benign = sum(1 for r in labeled if r["label"] == 0)
         malicious = sum(1 for r in labeled if r["label"] == 1)
-        print(f"  memory: {len(memory)} prompts "
-              f"({len(labeled)} labeled: {benign} benign / {malicious} malicious)")
+        print(
+            f"  memory: {len(memory)} prompts "
+            f"({len(labeled)} labeled: {benign} benign / {malicious} malicious)"
+        )
         for r in memory[-10:]:
             flag = "B" if r.get("label") == 0 else "M" if r.get("label") == 1 else "?"
             auto = "auto" if r.get("auto") else "user"
-            print(f"    [{flag}/{auto}] {r['text'][:70]} -> "
-                  f"{r['action']} ({r['risk_level']}, {r['risk_score']})")
+            print(
+                f"    [{flag}/{auto}] {r['text'][:70]} -> "
+                f"{r['action']} ({r['risk_level']}, {r['risk_score']})"
+            )
 
     single = [a for a in args if not a.startswith("--") and a != "-s"]
     if single:
@@ -291,8 +299,7 @@ def main() -> None:
                 break
             elif cmd in ("simple", "verbose"):
                 simple_mode = not simple_mode
-                print(f"  Output mode: "
-                      f"{'clean verdict' if simple_mode else 'full backend detail'}")
+                print(f"  Output mode: {'clean verdict' if simple_mode else 'full backend detail'}")
             elif cmd == "label":
                 cmd_label()
             elif cmd == "learn":

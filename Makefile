@@ -52,7 +52,5 @@ loadtest-quick: ## Run quick load test (100 sessions)
 profile-snapshot: ## Take memory snapshot
 	python -m scripts.profile.run_profiler snapshot
 
-clean: ## Clean up generated files
-	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
-	find . -type f -name "*.pyc" -delete 2>/dev/null || true
-	rm -rf .pytest_cache .mypy_cache htmlcov .coverage coverage.xml
+clean: ## Clean up generated files (cross-platform)
+	@python -c "import pathlib, shutil; root = pathlib.Path('.'); dirs = [p for pat in ('__pycache__', '.pytest_cache', '.mypy_cache', '.ruff_cache', 'htmlcov') for p in root.rglob(pat)]; [shutil.rmtree(p, ignore_errors=True) for p in dirs]; [p.unlink() for p in root.rglob('*.pyc') if p.is_file()]; [pathlib.Path(n).unlink(missing_ok=True) for n in ('.coverage', 'coverage.xml')]"

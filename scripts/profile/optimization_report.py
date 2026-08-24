@@ -35,7 +35,9 @@ class Finding:
         }
 
     def to_markdown(self) -> str:
-        icon = {"info": "[INFO]", "warning": "[WARN]", "critical": "[CRIT]"}.get(self.severity, "[•]")
+        icon = {"info": "[INFO]", "warning": "[WARN]", "critical": "[CRIT]"}.get(
+            self.severity, "[NOTE]"
+        )
         lines = [
             f"### {icon} [{self.severity.upper()}] {self.title}",
             "",
@@ -180,8 +182,7 @@ class OptimizationReport:
                     severity="warning" if growth_pct < 100 else "critical",
                     title="High Object Count Growth",
                     description=(
-                        f"Object count grew from {start:,} to {end:,} "
-                        f"({growth_pct:+.1f}%)."
+                        f"Object count grew from {start:,} to {end:,} ({growth_pct:+.1f}%)."
                     ),
                     recommendation=(
                         "High object counts increase GC overhead. Consider using "
@@ -219,8 +220,8 @@ class OptimizationReport:
             "",
             "## Summary",
             "",
-            f"| Severity | Count |",
-            f"|----------|-------|",
+            "| Severity | Count |",
+            "|----------|-------|",
             f"| Critical | {counts['critical']} |",
             f"| Warning  | {counts['warning']} |",
             f"| Info     | {counts['info']} |",
@@ -249,7 +250,9 @@ class OptimizationReport:
         lines.append("2. **Lazy Loading:** Defer allocation until data is actually needed")
         lines.append("3. **__slots__:** Reduce per-instance memory on data-heavy classes")
         lines.append("4. **Weak References:** Use `weakref` for caches to allow GC cleanup")
-        lines.append("5. **Streaming:** Process large datasets in chunks rather than loading all at once")
+        lines.append(
+            "5. **Streaming:** Process large datasets in chunks rather than loading all at once"
+        )
         lines.append("6. **Context Managers:** Ensure resources are released deterministically")
 
         return "\n".join(lines)
@@ -289,5 +292,5 @@ if __name__ == "__main__":
 
     opt = OptimizationReport(report)
     print(opt.to_markdown())
-    print(f"\nJSON output:")
+    print("\nJSON output:")
     print(opt.to_json())

@@ -8,19 +8,16 @@ from __future__ import annotations
 
 import asyncio
 import random
-from typing import Any
 
+from q_guardian.runtime.managers import SessionManager
+from q_guardian.runtime.models import Agent
 from q_guardian.security.pipeline import (
     PromptFeatureExtractor,
     PromptNormalizer,
     PromptValidator,
     RuleEngine,
 )
-from q_guardian.runtime.models import Agent, AgentSession
-from q_guardian.runtime.managers import SessionManager
-
 from scripts.loadtest.load_tester import LoadTestConfig, LoadTestScenario
-
 
 # ---------------------------------------------------------------------------
 # Sample prompts
@@ -84,11 +81,11 @@ class PromptScanScenario(LoadTestScenario):
     async def execute_session(self, session_id: int) -> bool:
         prompt = random.choice(_SAMPLE_PROMPTS)
         normalized = self._normalizer.normalize(prompt)
-        status, errors = self._validator.validate(normalized)
+        status = self._validator.validate(normalized)[0]
         if status.value != "valid":
             return True  # validation rejection is not a failure
         features = self._extractor.extract(normalized)
-        findings = self._rule_engine.analyze(normalized, features)
+        self._rule_engine.analyze(normalized, features)
         return True
 
     async def teardown(self) -> None:
@@ -124,7 +121,7 @@ class SessionLifecycleScenario(LoadTestScenario):
             await asyncio.sleep(0.001)  # simulate brief active period
             await self._session_manager.close_session(session.session_id)
             return True
-        except Exception:  # noqa: BLE001
+        except Exception:
             return False
 
     async def teardown(self) -> None:
@@ -163,7 +160,7 @@ class MixedWorkloadScenario(LoadTestScenario):
                 return await self._run_session_lifecycle(session_id)
             else:
                 return await self._run_policy_eval(session_id)
-        except Exception:  # noqa: BLE001
+        except Exception:
             return False
 
     async def _run_prompt_scan(self, session_id: int) -> bool:
@@ -187,7 +184,7 @@ class MixedWorkloadScenario(LoadTestScenario):
         # Simulate policy evaluation with basic rule matching
         prompt = random.choice(_SAMPLE_PROMPTS)
         findings = self._rule_engine.analyze(prompt)
-        risk_score = sum(f.confidence for f in findings) / max(len(findings), 1)
+        sum(f.confidence for f in findings) / max(len(findings), 1)  # simulate scoring cost
         return True
 
     async def teardown(self) -> None:

@@ -80,24 +80,31 @@ def _write_scores(scores: list[dict], path: Path) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--dataset", default=None,
-                        help="path to JSONL dataset (default: built-in corpus)")
+    parser.add_argument(
+        "--dataset", default=None, help="path to JSONL dataset (default: built-in corpus)"
+    )
     parser.add_argument("--k", type=int, default=5, help="number of CV folds")
     parser.add_argument("--seed", type=int, default=42, help="fold seed")
-    parser.add_argument("--threshold", type=float, default=0.5,
-                        help="decision threshold (default 0.5)")
-    parser.add_argument("--no-quantum", action="store_true",
-                        help="skip the quantum QSVM provider")
-    parser.add_argument("--quantum-shots", type=int, default=128,
-                        help="simulator shots per kernel evaluation")
-    parser.add_argument("--quantum-feature-count", type=int, default=5,
-                        help="number of features/qubits used by the QSVM")
-    parser.add_argument("--quantum-cap", type=int, default=None,
-                        help="cap QSVM training samples (kernel is O(n^2))")
-    parser.add_argument("--no-ablate", action="store_true",
-                        help="skip provider ablation")
-    parser.add_argument("--output", default=str(DEFAULT_OUTPUT_DIR),
-                        help="output directory for reports")
+    parser.add_argument(
+        "--threshold", type=float, default=0.5, help="decision threshold (default 0.5)"
+    )
+    parser.add_argument("--no-quantum", action="store_true", help="skip the quantum QSVM provider")
+    parser.add_argument(
+        "--quantum-shots", type=int, default=128, help="simulator shots per kernel evaluation"
+    )
+    parser.add_argument(
+        "--quantum-feature-count",
+        type=int,
+        default=5,
+        help="number of features/qubits used by the QSVM",
+    )
+    parser.add_argument(
+        "--quantum-cap", type=int, default=None, help="cap QSVM training samples (kernel is O(n^2))"
+    )
+    parser.add_argument("--no-ablate", action="store_true", help="skip provider ablation")
+    parser.add_argument(
+        "--output", default=str(DEFAULT_OUTPUT_DIR), help="output directory for reports"
+    )
     args = parser.parse_args()
 
     if args.dataset:
@@ -110,8 +117,10 @@ def main() -> None:
         dataset = PromptBenchmarkDataset.builtin()
         dataset_name = "builtin"
 
-    print(f"Dataset ({dataset_name}): {len(dataset)} samples "
-          f"({dataset.positives()} threats / {dataset.negatives()} benign)")
+    print(
+        f"Dataset ({dataset_name}): {len(dataset)} samples "
+        f"({dataset.positives()} threats / {dataset.negatives()} benign)"
+    )
 
     evaluator_kwargs = {
         "quantum": not args.no_quantum,
@@ -121,8 +130,10 @@ def main() -> None:
     }
 
     benchmark = DetectionBenchmark(evaluator_kwargs=evaluator_kwargs)
-    print(f"Running {args.k}-fold cross-validation "
-          f"{'(with quantum)' if not args.no_quantum else '(classical only)'}...")
+    print(
+        f"Running {args.k}-fold cross-validation "
+        f"{'(with quantum)' if not args.no_quantum else '(classical only)'}..."
+    )
     t0 = time.monotonic()
     report = benchmark.run(
         dataset,
@@ -152,8 +163,14 @@ def main() -> None:
     fusion = cv["metrics"].get("fusion", {})
     print("\n" + "=" * 64)
     print("HYBRID FUSION (mean over folds)")
-    for key in ("roc_auc", "pr_auc", "f1_score", "accuracy",
-                "expected_calibration_error", "brier_score"):
+    for key in (
+        "roc_auc",
+        "pr_auc",
+        "f1_score",
+        "accuracy",
+        "expected_calibration_error",
+        "brier_score",
+    ):
         m = fusion.get(key)
         if m:
             print(f"  {key:<26} {m['mean']:.4f} ± {m['std']:.4f}")
@@ -165,8 +182,10 @@ def main() -> None:
     summary = report.get("ablation_summary")
     if summary:
         print("\nABLATION")
-        print(f"  most valuable provider: {summary['most_valuable_provider']} "
-              f"(delta {summary['most_valuable_delta']:.4f} ROC-AUC)")
+        print(
+            f"  most valuable provider: {summary['most_valuable_provider']} "
+            f"(delta {summary['most_valuable_delta']:.4f} ROC-AUC)"
+        )
         print(f"  recommendation: {summary['recommendation']}")
     print(f"\nTotal benchmark time: {elapsed:.1f}s")
 

@@ -25,13 +25,12 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from typing import Any, ClassVar
 
+import jwt
 import structlog
 from bcrypt import checkpw, gensalt, hashpw
-from jose import ExpiredSignatureError, JWTError, jwt
 
 from q_guardian.config.settings import get_settings
-from q_guardian.exceptions.base import AuthenticationError as AuthenticationException
-from q_guardian.exceptions.base import SecurityError as SecurityException
+from q_guardian.exceptions.base import AuthenticationError, SecurityError
 
 logger = structlog.get_logger("security.auth")
 
@@ -151,7 +150,7 @@ class JWTService:
             Encoded JWT string.
 
         Raises:
-            AuthenticationException: If the payload is empty.
+            AuthenticationError: If the payload is empty.
         """
         minutes = expires_minutes if expires_minutes is not None else self._access_expires_minutes
         return self._encode(payload, timedelta(minutes=minutes), self.ACCESS_TOKEN_TYPE)
@@ -183,11 +182,11 @@ class JWTService:
             Decoded token payload including standard claims.
 
         Raises:
-            AuthenticationException: If the token is malformed, has an
+            AuthenticationError: If the token is malformed, has an
                 invalid signature, or has expired.
         """
         if not token or not isinstance(token, str):
-            raise AuthenticationException(
+            raise AuthenticationError(
                 message="Missing authentication token",
                 details={"reason": "token_missing"},
             )
@@ -196,26 +195,24 @@ class JWTService:
                 token,
                 self._secret_key,
                 algorithms=[self._algorithm],
-                # python-jose expects per-claim ``require_<claim>`` keys;
-                # a list-style "require" option is silently ignored.
-                options={"require_exp": True, "require_sub": True},
+                options={"require": ["exp", "sub"]},
             )
-        except ExpiredSignatureError as exc:
+        except jwt.ExpiredSignatureError as exc:
             logger.info("jwt_token_expired")
-            raise AuthenticationException(
+            raise AuthenticationError(
                 message="Token has expired",
                 details={"reason": "token_expired"},
             ) from exc
-        except JWTError as exc:
+        except jwt.PyJWTError as exc:
             logger.info("jwt_token_invalid")
-            raise AuthenticationException(
+            raise AuthenticationError(
                 message="Invalid authentication token",
                 details={"reason": "token_invalid"},
             ) from exc
 
         token_type = payload.get("type")
         if expected_type is not None and token_type != expected_type:
-            raise AuthenticationException(
+            raise AuthenticationError(
                 message="Invalid token type",
                 details={
                     "reason": "wrong_token_type",
@@ -237,10 +234,10 @@ class JWTService:
             Encoded JWT string.
 
         Raises:
-            AuthenticationException: If the payload is empty.
+            AuthenticationError: If the payload is empty.
         """
         if not payload:
-            raise AuthenticationException(
+            raise AuthenticationError(
                 message="Cannot create token from empty payload",
                 details={"reason": "empty_payload"},
             )
@@ -349,7 +346,7 @@ class AuthenticationService:
             payload = await self._jwt_service.verify_token(
                 refresh_token, expected_type=JWTService.REFRESH_TOKEN_TYPE
             )
-        except AuthenticationException:
+        except AuthenticationError:
             return None
         subject = str(payload["sub"])
         roles = [str(r) for r in payload.get("roles", [])]
@@ -732,7 +729,7 @@ def ensure_production_secret(secret_key: str) -> None:
         secret_key: The configured secret key.
 
     Raises:
-        SecurityException: When the value equals the well-known placeholder
+        SecurityError: When the value equals the well-known placeholder
             and the runtime environment is production.
     """
     if (
@@ -740,7 +737,7 @@ def ensure_production_secret(secret_key: str) -> None:
         and os.getenv("ENVIRONMENT") == "production"
     ):
         msg = "SECRET_KEY must be changed in production!"
-        raise SecurityException(msg)
+        raise SecurityError(msg)
 
 
 # =============================================================================

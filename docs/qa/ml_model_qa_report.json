@@ -1,0 +1,132 @@
+{
+  "generated_at": "2026-08-21T15:32:04.580278+00:00",
+  "commit": "705f034",
+  "version": "1.1.0",
+  "python": "3.12.7",
+  "seed": 42,
+  "datasets": {
+    "training_pool": {
+      "path": "data/prompt_injections.jsonl",
+      "samples": 662,
+      "benign": 399,
+      "malicious": 263,
+      "split": {
+        "train": 531,
+        "validation": 131
+      }
+    },
+    "external_test": {
+      "path": "data/benchmark_prompts.jsonl",
+      "samples": 62,
+      "benign": 30,
+      "malicious": 32,
+      "note": "held-out set; different distribution/curation than pool"
+    }
+  },
+  "feature_pipeline": "PromptNormalizer -> PromptFeatureExtractor -> MLFeatureProvider (43-dim)",
+  "classifiers": [
+    {
+      "model": "random-forest",
+      "trained_samples": 531,
+      "validation": {
+        "confusion_matrix": {
+          "tp": 45,
+          "tn": 70,
+          "fp": 9,
+          "fn": 7
+        },
+        "precision": 0.8333,
+        "recall": 0.8654,
+        "f1": 0.849,
+        "accuracy": 0.8779,
+        "false_positive_rate": 0.1139,
+        "false_negative_rate": 0.1346
+      },
+      "external": {
+        "confusion_matrix": {
+          "tp": 23,
+          "tn": 27,
+          "fp": 3,
+          "fn": 9
+        },
+        "precision": 0.8846,
+        "recall": 0.7188,
+        "f1": 0.7931,
+        "accuracy": 0.8065,
+        "false_positive_rate": 0.1,
+        "false_negative_rate": 0.2812
+      }
+    },
+    {
+      "model": "xgboost",
+      "trained_samples": 531,
+      "validation": {
+        "confusion_matrix": {
+          "tp": 44,
+          "tn": 69,
+          "fp": 10,
+          "fn": 8
+        },
+        "precision": 0.8148,
+        "recall": 0.8462,
+        "f1": 0.8302,
+        "accuracy": 0.8626,
+        "false_positive_rate": 0.1266,
+        "false_negative_rate": 0.1538
+      },
+      "external": {
+        "confusion_matrix": {
+          "tp": 18,
+          "tn": 26,
+          "fp": 4,
+          "fn": 14
+        },
+        "precision": 0.8182,
+        "recall": 0.5625,
+        "f1": 0.6667,
+        "accuracy": 0.7097,
+        "false_positive_rate": 0.1333,
+        "false_negative_rate": 0.4375
+      }
+    }
+  ],
+  "anomaly_detection": {
+    "trained_on": "benign training split only (unsupervised)",
+    "validation": {
+      "model": "isolation-forest",
+      "confusion_matrix": {
+        "tp": 40,
+        "tn": 68,
+        "fp": 11,
+        "fn": 12
+      },
+      "precision": 0.7843,
+      "recall": 0.7692,
+      "f1": 0.7767,
+      "accuracy": 0.8244,
+      "false_positive_rate": 0.1392,
+      "false_negative_rate": 0.2308
+    },
+    "external": {
+      "model": "isolation-forest",
+      "confusion_matrix": {
+        "tp": 14,
+        "tn": 28,
+        "fp": 2,
+        "fn": 18
+      },
+      "precision": 0.875,
+      "recall": 0.4375,
+      "f1": 0.5833,
+      "accuracy": 0.6774,
+      "false_positive_rate": 0.0667,
+      "false_negative_rate": 0.5625
+    }
+  },
+  "limitations": [
+    "No production model artifacts ship with the framework; these models were trained inside this QA run.",
+    "Results are QA validation of the ML code path, NOT production performance claims.",
+    "External set is small (62 samples); treat external metrics as indicative.",
+    "Binary labels: pool uses 0=benign/1=malicious; classifier maps class indices accordingly."
+  ]
+}

@@ -12,6 +12,7 @@ from typing import Any
 import structlog
 from fastapi import APIRouter, HTTPException, Query, Request
 
+from q_guardian.api.metrics import record_scan_decision
 from q_guardian.api.services.analysis import get_analysis_service
 from q_guardian.schemas.base import PaginatedResponseSchema, ResponseSchema
 from q_guardian.schemas.console import AnalysisItemSchema, ScanRequestSchema
@@ -59,6 +60,7 @@ async def scan_prompt(
     """
     result = await service.scan(body.prompt)
     item = _to_item(result)
+    record_scan_decision(item.decision)
     return ResponseSchema(
         success=True,
         message=f"Analysis completed with decision {item.decision}",

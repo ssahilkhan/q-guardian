@@ -9,7 +9,11 @@ import numpy as np
 import structlog
 from sklearn.ensemble import IsolationForest
 
-from q_guardian.ml.base import BaseThreatModel
+from q_guardian.ml.base import (
+    BaseThreatModel,
+    extract_core_features,
+    validate_feature_dimension,
+)
 from q_guardian.ml.config import MLConfig
 from q_guardian.ml.data import ModelMetadata
 from q_guardian.ml.enums import ModelBackend, ModelStatus, ModelType
@@ -101,6 +105,13 @@ class IsolationForestDetector(PromptDetector, BaseThreatModel):
 
         if self._model is not None:
             feature_vector = self._extract_vector(features)
+            expected = int(getattr(self._model, "n_features_in_", len(feature_vector)))
+            if expected != len(feature_vector):
+                validate_feature_dimension(
+                    self.name,
+                    expected,
+                    len(feature_vector),
+                )
             arr = np.array([feature_vector], dtype=np.float64)
             raw_score = self._model.decision_function(arr)[0]
             prediction = self._model.predict(arr)[0]
@@ -161,21 +172,8 @@ class IsolationForestDetector(PromptDetector, BaseThreatModel):
         }
 
     def _extract_vector(self, features: PromptFeatures) -> list[float]:
-        """Extract a numeric vector from PromptFeatures."""
-        return [
-            float(features.length),
-            float(features.word_count),
-            float(features.line_count),
-            float(features.token_estimate),
-            features.entropy,
-            features.uppercase_ratio,
-            features.digit_ratio,
-            float(features.special_char_count),
-            float(features.code_block_count),
-            float(features.url_count),
-            float(len(features.suspicious_keywords)),
-            float(len(features.repeated_patterns)),
-        ]
+        """Extract the canonical 12-dim vector (see ml.base.CORE_FEATURE_NAMES)."""
+        return extract_core_features(features)
 
     def health(self) -> dict[str, Any]:
         """Return detector health status."""

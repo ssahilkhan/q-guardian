@@ -16,11 +16,8 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
-import os
-import sys
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Sequence
 
 from scripts.loadtest.load_tester import LoadTestConfig, LoadTestEngine, LoadTestResult
 from scripts.loadtest.reporter import LoadTestReporter
@@ -90,7 +87,7 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--scenario",
-        choices=list(_SCENARIO_MAP.keys()) + ["all"],
+        choices=[*list(_SCENARIO_MAP.keys()), "all"],
         default="all",
         help="Scenario to run (default: all)",
     )
@@ -141,16 +138,8 @@ def _build_parser() -> argparse.ArgumentParser:
 
 def _build_config(args: argparse.Namespace) -> LoadTestConfig:
     profile = _PROFILES[args.profile]
-    duration = (
-        args.duration
-        if args.duration is not None
-        else float(profile["duration_seconds"])
-    )
-    ramp_up = (
-        args.ramp_up
-        if args.ramp_up is not None
-        else float(profile["ramp_up_seconds"])
-    )
+    duration = args.duration if args.duration is not None else float(profile["duration_seconds"])
+    ramp_up = args.ramp_up if args.ramp_up is not None else float(profile["ramp_up_seconds"])
     # Clamp ramp_up so it never exceeds duration
     ramp_up = min(ramp_up, duration)
     return LoadTestConfig(
@@ -178,11 +167,9 @@ def _save_result(result: LoadTestResult, scenario_name: str) -> Path:
 async def _run(args: argparse.Namespace) -> None:
     config = _build_config(args)
 
-    scenarios_to_run: list[str]
-    if args.scenario == "all":
-        scenarios_to_run = list(_SCENARIO_MAP.keys())
-    else:
-        scenarios_to_run = [args.scenario]
+    scenarios_to_run: list[str] = (
+        list(_SCENARIO_MAP.keys()) if args.scenario == "all" else [args.scenario]
+    )
 
     all_results: list[LoadTestResult] = []
     engine = LoadTestEngine(config)
@@ -224,10 +211,9 @@ async def _run(args: argparse.Namespace) -> None:
             baseline_data = json.loads(compare_path.read_text(encoding="utf-8"))
             if isinstance(baseline_data, list):
                 baseline_data = baseline_data[0] if baseline_data else {}
-            baseline = LoadTestResult(**{
-                k: v for k, v in baseline_data.items()
-                if k != "latencies_ms"
-            })
+            baseline = LoadTestResult(
+                **{k: v for k, v in baseline_data.items() if k != "latencies_ms"}
+            )
             baseline.latencies_ms = baseline_data.get("latencies_ms", [])
             current = all_results[0]
             print(f"\n{'=' * 60}")

@@ -4,9 +4,10 @@ import json
 import math
 import statistics
 import time
+from collections.abc import Callable
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 
 @dataclass
@@ -75,7 +76,9 @@ class BenchmarkResult:
         )
 
 
-def compute_stats(latencies_ns: list[int], name: str, iterations: int, metadata: dict[str, Any] | None = None) -> BenchmarkResult:
+def compute_stats(
+    latencies_ns: list[int], name: str, iterations: int, metadata: dict[str, Any] | None = None
+) -> BenchmarkResult:
     sorted_lat = sorted(latencies_ns)
     total = sum(sorted_lat)
     avg = total / len(sorted_lat) if sorted_lat else 0.0
@@ -114,7 +117,13 @@ def _percentile(sorted_data: list[int], pct: float) -> float:
     return sorted_data[f] * (c - k) + sorted_data[c] * (k - f)
 
 
-def benchmark(func: Callable[..., Any], iterations: int = 100, warmup: int = 10, name: str | None = None, metadata: dict[str, Any] | None = None) -> BenchmarkResult:
+def benchmark(
+    func: Callable[..., Any],
+    iterations: int = 100,
+    warmup: int = 10,
+    name: str | None = None,
+    metadata: dict[str, Any] | None = None,
+) -> BenchmarkResult:
     bench_name = name or func.__qualname__
 
     for _ in range(warmup):
@@ -130,7 +139,13 @@ def benchmark(func: Callable[..., Any], iterations: int = 100, warmup: int = 10,
     return compute_stats(latencies, bench_name, iterations, metadata)
 
 
-async def async_benchmark(func: Callable[..., Any], iterations: int = 100, warmup: int = 10, name: str | None = None, metadata: dict[str, Any] | None = None) -> BenchmarkResult:
+async def async_benchmark(
+    func: Callable[..., Any],
+    iterations: int = 100,
+    warmup: int = 10,
+    name: str | None = None,
+    metadata: dict[str, Any] | None = None,
+) -> BenchmarkResult:
     bench_name = name or func.__qualname__
 
     for _ in range(warmup):
@@ -212,16 +227,18 @@ class BenchmarkSuite:
                 continue
             avg_delta = ((r.avg_ns - b.avg_ns) / b.avg_ns * 100) if b.avg_ns > 0 else 0.0
             p95_delta = ((r.p95_ns - b.p95_ns) / b.p95_ns * 100) if b.p95_ns > 0 else 0.0
-            comparisons.append({
-                "name": r.name,
-                "baseline_avg_us": b.avg_us,
-                "current_avg_us": r.avg_us,
-                "avg_delta_pct": round(avg_delta, 2),
-                "baseline_p95_us": b.p95_us,
-                "current_p95_us": r.p95_us,
-                "p95_delta_pct": round(p95_delta, 2),
-                "regression": avg_delta > 10.0,
-            })
+            comparisons.append(
+                {
+                    "name": r.name,
+                    "baseline_avg_us": b.avg_us,
+                    "current_avg_us": r.avg_us,
+                    "avg_delta_pct": round(avg_delta, 2),
+                    "baseline_p95_us": b.p95_us,
+                    "current_p95_us": r.p95_us,
+                    "p95_delta_pct": round(p95_delta, 2),
+                    "regression": avg_delta > 10.0,
+                }
+            )
         return comparisons
 
     @classmethod
@@ -229,11 +246,16 @@ class BenchmarkSuite:
         data = json.loads(Path(path).read_text(encoding="utf-8"))
         suite = cls(name=data.get("suite", "loaded"))
         for rd in data.get("results", []):
-            suite._results.append(BenchmarkResult(**{k: v for k, v in rd.items() if k in BenchmarkResult.__dataclass_fields__}))
+            suite._results.append(
+                BenchmarkResult(
+                    **{k: v for k, v in rd.items() if k in BenchmarkResult.__dataclass_fields__}
+                )
+            )
         return suite
 
 
 if __name__ == "__main__":
+
     def _noop() -> None:
         pass
 
@@ -241,4 +263,4 @@ if __name__ == "__main__":
     suite.add(benchmark(_noop, iterations=1000, warmup=100, name="noop-baseline"))
     suite.print_table()
     suite.save_json("scripts/benchmarks/_runner_smoke.json")
-    print(f"\nSaved to scripts/benchmarks/_runner_smoke.json")
+    print("\nSaved to scripts/benchmarks/_runner_smoke.json")

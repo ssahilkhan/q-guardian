@@ -39,21 +39,38 @@ def _build_parser() -> argparse.ArgumentParser:
 
     # monitor
     mon = sub.add_parser("monitor", help="Monitor memory over time")
-    mon.add_argument("--duration", type=float, default=10.0, help="Duration in seconds (default: 10)")
-    mon.add_argument("--interval", type=float, default=1.0, help="Snapshot interval in seconds (default: 1)")
+    mon.add_argument(
+        "--duration", type=float, default=10.0, help="Duration in seconds (default: 10)"
+    )
+    mon.add_argument(
+        "--interval", type=float, default=1.0, help="Snapshot interval in seconds (default: 1)"
+    )
     mon.add_argument("--output", type=str, default=None, help="Output file path for JSON report")
 
     # leak-detect
     leak = sub.add_parser("leak-detect", help="Detect potential memory leaks")
-    leak.add_argument("--duration", type=float, default=30.0, help="Detection duration in seconds (default: 30)")
-    leak.add_argument("--interval", type=float, default=2.0, help="Snapshot interval in seconds (default: 2)")
+    leak.add_argument(
+        "--duration", type=float, default=30.0, help="Detection duration in seconds (default: 30)"
+    )
+    leak.add_argument(
+        "--interval", type=float, default=2.0, help="Snapshot interval in seconds (default: 2)"
+    )
     leak.add_argument("--output", type=str, default=None, help="Output file path for JSON report")
 
     # analyze
     analyse = sub.add_parser("analyze", help="Analyse current tracemalloc state")
-    analyse.add_argument("--threshold", type=int, default=1024 * 1024, help="Large allocation threshold in bytes (default: 1MB)")
-    analyse.add_argument("--top", type=int, default=20, help="Number of top allocations to show (default: 20)")
-    analyse.add_argument("--output", type=str, default=None, help="Output file path for JSON report")
+    analyse.add_argument(
+        "--threshold",
+        type=int,
+        default=1024 * 1024,
+        help="Large allocation threshold in bytes (default: 1MB)",
+    )
+    analyse.add_argument(
+        "--top", type=int, default=20, help="Number of top allocations to show (default: 20)"
+    )
+    analyse.add_argument(
+        "--output", type=str, default=None, help="Output file path for JSON report"
+    )
 
     return parser
 
@@ -129,7 +146,7 @@ def _analyze_mode(args: argparse.Namespace) -> None:
     }
 
     print(f"  Large allocations (>= {args.threshold / 1024 / 1024:.1f} MB): {len(large)}")
-    print(f"  Top file hotspots:")
+    print("  Top file hotspots:")
     for fname, size in list(patterns.items())[:5]:
         print(f"    {fname}: {size / 1024 / 1024:.2f} MB")
 
@@ -184,9 +201,11 @@ def _print_leak_summary(result: dict[str, Any]) -> None:
     print(f"  Suspects:        {result['suspects_count']}")
 
     for suspect in result["suspects"][:5]:
-        print(f"    +{suspect['time_delta_sec']:.1f}s: "
-              f"+{suspect['heap_delta_mb']:.2f} MB "
-              f"({suspect['heap_growth_pct']:.1f}%)")
+        print(
+            f"    +{suspect['time_delta_sec']:.1f}s: "
+            f"+{suspect['heap_delta_mb']:.2f} MB "
+            f"({suspect['heap_growth_pct']:.1f}%)"
+        )
 
 
 def _save_json(data: dict[str, Any], path: str) -> None:
