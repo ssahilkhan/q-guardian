@@ -1,7 +1,7 @@
 {
   "buildCommand": "pip install -e .",
   "functions": {
-    "api/index.py": {
+    "asgi.py": {
       "runtime": "python@3.12",
       "maxDuration": 30
     }
