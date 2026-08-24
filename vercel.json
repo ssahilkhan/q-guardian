@@ -1,8 +1,9 @@
 {
   "buildCommand": "pip install -e .",
+  "framework": "fastapi",
   "functions": {
     "asgi.py": {
-      "runtime": "python@3.12",
+      "runtime": "python3.12",
       "maxDuration": 30
     }
   }
