@@ -2,7 +2,7 @@
   "buildCommand": "pip install -e .",
   "installCommand": "pip install -e .",
   "functions": {
-    "api/index.py": {
+    "main.py": {
       "runtime": "python@3.12",
       "maxDuration": 30
     }
