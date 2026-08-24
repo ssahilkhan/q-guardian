@@ -1,4 +1,5 @@
 {
+  "buildCommand": "pip install -e .",
   "functions": {
     "api/index.py": {
       "runtime": "python@3.12",
