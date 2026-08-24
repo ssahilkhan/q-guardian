@@ -6,6 +6,7 @@ Root conftest makes fixtures available to all test subdirectories.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import os
 import sys
 from typing import TYPE_CHECKING, Any
@@ -62,14 +63,65 @@ async def client(app: Any) -> AsyncGenerator[AsyncClient, None]:
     """Create an async HTTP test client.
 
     Provides an httpx AsyncClient connected to the FastAPI app
-    for making test HTTP requests.
+    for making test HTTP requests. The client is unauthenticated;
+    use ``authorized_client`` for protected endpoints.
+
+    ASGITransport does not run FastAPI lifespan events, so a MongoDB
+    client bound to this test's event loop is connected explicitly.
+    Endpoints surface structured 503 errors when no server is reachable.
 
     Yields:
         AsyncClient instance connected to the test application.
     """
+    from q_guardian.database import client as db_client_module
+
+    # Motor clients bind to one event loop; reset the singleton so every
+    # test gets a client attached to its own loop.
+    await db_client_module.get_db_client().disconnect()
+    db_client_module._client_instance = None
+    database = db_client_module.get_db_client()
+    with contextlib.suppress(Exception):
+        await database.connect()
+
     transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        yield ac
+    try:
+        async with AsyncClient(transport=transport, base_url="http://test") as ac:
+            yield ac
+    finally:
+        await database.disconnect()
+        db_client_module._client_instance = None
+
+
+@pytest_asyncio.fixture(scope="function")
+async def auth_headers() -> dict[str, str]:
+    """Bearer headers carrying a valid JWT access token."""
+    from q_guardian.security.auth import get_jwt_service
+
+    token = await get_jwt_service().create_access_token(
+        {"sub": "integration-tester", "roles": ["admin"]}
+    )
+    return {"Authorization": f"Bearer {token}"}
+
+
+@pytest_asyncio.fixture(scope="function")
+async def authorized_client(
+    client: AsyncClient, auth_headers: dict[str, str]
+) -> AsyncGenerator[AsyncClient, None]:
+    """HTTP test client pre-configured with valid JWT credentials."""
+    client.headers.update(auth_headers)
+    yield client
+
+
+@pytest.fixture
+def api_key_headers() -> dict[str, str]:
+    """Headers carrying a freshly provisioned, valid API key."""
+    from q_guardian.config.settings import get_settings
+    from q_guardian.security.auth import get_api_key_service
+
+    raw_key, _record = get_api_key_service().generate_api_key(
+        name="integration", owner="tests", roles=["service"]
+    )
+    return {get_settings().security.api_key_header: raw_key}
 
 
 @pytest.fixture

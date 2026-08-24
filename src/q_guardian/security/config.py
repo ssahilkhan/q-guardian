@@ -59,6 +59,16 @@ class PromptSecurityConfig(BaseModel):
         description="Custom suspicious keywords (null = use defaults)",
     )
 
+    # Encoding detection configuration
+    encoding_detection_enabled: bool = Field(
+        default=True, description="Enable encoding detection (Base64, ROT13, Hex, URL)"
+    )
+    encoding_max_depth: int = Field(default=3, description="Maximum recursive decoding depth")
+    encoding_max_decoded_length: int = Field(
+        default=50_000, description="Maximum decoded content length per attempt"
+    )
+    encoding_max_attempts: int = Field(default=4, description="Maximum decoding attempts per input")
+
     # Future ML configuration placeholders
     ml_enabled: bool = Field(default=False, description="Enable ML-based analysis (future)")
     ml_model_path: str = Field(default="", description="Path to ML model (future)")

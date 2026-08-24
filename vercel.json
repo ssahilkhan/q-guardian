@@ -1,0 +1,4 @@
+{
+  "buildCommand": "pip install -e .",
+  "framework": "fastapi"
+}

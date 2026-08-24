@@ -21,6 +21,24 @@ if TYPE_CHECKING:
 logger = structlog.get_logger("database.client")
 
 
+def _redact_url(url: str) -> str:
+    """Return a URL with any embedded credentials replaced.
+
+    Args:
+        url: The raw connection URL.
+
+    Returns:
+        A log-safe URL; credentials never reach logs or errors.
+    """
+    if "://" not in url:
+        return "<redacted>"
+    scheme, rest = url.split("://", 1)
+    if "@" in rest:
+        _, host = rest.rsplit("@", 1)
+        return f"{scheme}://***@{host}"
+    return f"{scheme}://{rest}"
+
+
 class MongoDBClient:
     """Async MongoDB client wrapper with connection pooling.
 
@@ -42,7 +60,7 @@ class MongoDBClient:
 
         logger.info(
             "mongodb_connecting",
-            url=self._settings.database.url,
+            url=_redact_url(self._settings.database.url),
             database=self._settings.database.database,
         )
 

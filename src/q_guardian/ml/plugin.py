@@ -180,6 +180,7 @@ class ThreatAnalysisPlugin(Plugin):
         )
 
         # Step 5: ML inference (if enabled)
+        ml_result = None
         ml_findings_count = 0
         if (
             self._ml_config.enabled
@@ -211,18 +212,31 @@ class ThreatAnalysisPlugin(Plugin):
             self._block_count += 1
 
         # Publish events
-        await self._publish_events(analysis)
+        await self._publish_events(analysis, ml_result, features, normalized)
 
         return analysis.model_dump()
 
-    async def _publish_events(self, analysis: PromptAnalysis) -> None:
-        """Publish analysis events."""
+    async def _publish_events(
+        self,
+        analysis: PromptAnalysis,
+        ml_result: Any = None,
+        features: Any = None,
+        normalized: str = "",
+    ) -> None:
+        """Publish analysis events including ML events."""
         if self._context is None or not hasattr(self._context, "event_bus"):
             return
 
         bus = self._context.event_bus
         source = f"plugin:{self.name}"
 
+        from q_guardian.ml.events import (
+            AnomalyDetected,
+            EnsemblePrediction,
+            FeatureExtracted,
+            InferenceCompleted,
+            ThreatClassified,
+        )
         from q_guardian.security.events import (
             PromptAllowed,
             PromptAnalysisCompleted,
@@ -248,6 +262,76 @@ class ThreatAnalysisPlugin(Plugin):
                 PromptAllowed(
                     source=source,
                     data=analysis.to_security_dict(),
+                )
+            )
+
+        # Publish ML events if ML inference ran
+        if ml_result is not None:
+            await bus.publish(
+                InferenceCompleted(
+                    source=source,
+                    data={
+                        "analysis_id": analysis.analysis_id,
+                        "is_anomaly": ml_result.is_anomaly,
+                        "anomaly_score": ml_result.anomaly_score,
+                        "risk_score": ml_result.risk_score,
+                        "predicted_class": ml_result.predicted_class,
+                        "confidence": ml_result.confidence,
+                        "predictions": ml_result.predictions,
+                        "findings_count": len(ml_result.findings),
+                        "processing_time_ms": ml_result.processing_time_ms,
+                    },
+                )
+            )
+
+            if ml_result.is_anomaly:
+                await bus.publish(
+                    AnomalyDetected(
+                        source=source,
+                        data={
+                            "analysis_id": analysis.analysis_id,
+                            "anomaly_score": ml_result.anomaly_score,
+                            "threshold": self._ml_config.anomaly_threshold,
+                        },
+                    )
+                )
+
+            if ml_result.predicted_class and ml_result.predicted_class != "benign":
+                await bus.publish(
+                    ThreatClassified(
+                        source=source,
+                        data={
+                            "analysis_id": analysis.analysis_id,
+                            "predicted_class": ml_result.predicted_class,
+                            "confidence": ml_result.confidence,
+                            "all_predictions": ml_result.predictions,
+                        },
+                    )
+                )
+
+            if ml_result.predictions:
+                await bus.publish(
+                    EnsemblePrediction(
+                        source=source,
+                        data={
+                            "analysis_id": analysis.analysis_id,
+                            "predictions": ml_result.predictions,
+                            "predicted_class": ml_result.predicted_class,
+                            "confidence": ml_result.confidence,
+                        },
+                    )
+                )
+
+        if features is not None:
+            feature_count = len(features.__dict__) if hasattr(features, "__dict__") else 0
+            await bus.publish(
+                FeatureExtracted(
+                    source=source,
+                    data={
+                        "analysis_id": analysis.analysis_id,
+                        "prompt_length": len(normalized) if normalized else 0,
+                        "feature_count": feature_count,
+                    },
                 )
             )
 

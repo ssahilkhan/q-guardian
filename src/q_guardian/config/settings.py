@@ -76,6 +76,10 @@ class DatabaseSettings(BaseSettings):
     min_pool_size: int = Field(default=1, description="Minimum connection pool size")
     max_pool_size: int = Field(default=10, description="Maximum connection pool size")
     timeout_ms: int = Field(default=5000, description="Connection timeout in milliseconds")
+    history_collection: str = Field(
+        default="analysis_history",
+        description="Collection used to persist the analysis scan history",
+    )
 
     @property
     def client_kwargs(self) -> dict[str, Any]:
@@ -140,6 +144,22 @@ class CORSSettings(BaseSettings):
     allow_headers: list[str] = Field(default=["*"], description="Allowed headers")
 
 
+class RateLimitSettings(BaseSettings):
+    """API rate limiting configuration."""
+
+    model_config = SettingsConfigDict(
+        env_prefix="RATE_LIMIT_",
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="ignore",
+    )
+
+    enabled: bool = Field(default=False, description="Enable API rate limiting")
+    requests: int = Field(default=100, ge=1, description="Max requests per window")
+    window_seconds: int = Field(default=60, ge=1, description="Sliding window in seconds")
+
+
 class LoggingSettings(BaseSettings):
     """Logging configuration."""
 
@@ -182,4 +202,5 @@ class _SettingsComposite:
         self.database = DatabaseSettings()
         self.security = SecuritySettings()
         self.cors = CORSSettings()
+        self.rate_limit = RateLimitSettings()
         self.logging = LoggingSettings()

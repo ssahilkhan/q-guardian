@@ -13,13 +13,15 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from q_guardian.exceptions.base import AuthenticationError
+from q_guardian.exceptions.base import AuthenticationError, SecurityError
 from q_guardian.security.auth import (
     APIKeyRecord,
     APIKeyService,
     AuthenticationService,
     AuthorizationService,
     JWTService,
+    RateLimitService,
+    ensure_production_secret,
     hash_password,
     reset_auth_singletons,
 )
@@ -307,6 +309,67 @@ class TestAPIKeyService:
         assert data["expires_at"] is None
         assert data["revoked"] is False
         assert "key_hash" not in data
+
+
+class TestRateLimitService:
+    """Tests for the sliding-window rate limiter."""
+
+    async def test_allows_requests_under_limit(self) -> None:
+        service = RateLimitService()
+        for _ in range(5):
+            assert await service.check_rate_limit("client-a", limit=5, window=60) is True
+
+    async def test_blocks_requests_over_limit(self) -> None:
+        service = RateLimitService()
+        for _ in range(3):
+            await service.check_rate_limit("client-b", limit=3, window=60)
+        assert await service.check_rate_limit("client-b", limit=3, window=60) is False
+
+    async def test_identifiers_are_isolated(self) -> None:
+        service = RateLimitService()
+        for _ in range(2):
+            await service.check_rate_limit("client-c", limit=2, window=60)
+        assert await service.check_rate_limit("client-c", limit=2, window=60) is False
+        assert await service.check_rate_limit("client-d", limit=2, window=60) is True
+
+    async def test_reset_clears_identifier(self) -> None:
+        service = RateLimitService()
+        for _ in range(2):
+            await service.check_rate_limit("client-e", limit=2, window=60)
+        service.reset("client-e")
+        assert service.tracked_identifiers == 0
+        assert await service.check_rate_limit("client-e", limit=2, window=60) is True
+
+    async def test_retry_after_is_positive(self) -> None:
+        service = RateLimitService()
+        assert service.retry_after("unknown-client") == 1
+        for _ in range(2):
+            await service.check_rate_limit("client-f", limit=2, window=60)
+        retry = service.retry_after("client-f", window=60)
+        assert 1 <= retry <= 61
+
+
+class TestEnsureProductionSecret:
+    """Tests for the production secret guard."""
+
+    PLACEHOLDER = "change-me-to-a-random-secret-key"
+
+    def test_placeholder_secret_rejected_in_production(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("ENVIRONMENT", "production")
+        with pytest.raises(SecurityError):
+            ensure_production_secret(self.PLACEHOLDER)
+
+    def test_strong_secret_accepted_in_production(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("ENVIRONMENT", "production")
+        ensure_production_secret("a-very-strong-random-secret")
+
+    def test_placeholder_tolerated_outside_production(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("ENVIRONMENT", "development")
+        ensure_production_secret(self.PLACEHOLDER)
 
 
 class TestAuthSingletons:

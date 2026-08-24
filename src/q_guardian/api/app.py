@@ -17,6 +17,7 @@ from fastapi.responses import PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 
 from q_guardian.api.metrics import render_metrics
+from q_guardian.api.services.analysis import get_analysis_service
 from q_guardian.api.v1.router import api_v1_router
 from q_guardian.config.settings import get_settings
 from q_guardian.core.constants import API_V1_PREFIX, APP_DESCRIPTION, APP_TITLE, APP_VERSION
@@ -25,6 +26,7 @@ from q_guardian.exceptions.handlers import register_exception_handlers
 from q_guardian.logging.config import setup_logging
 from q_guardian.middleware.correlation import CorrelationIDMiddleware
 from q_guardian.middleware.exception import ExceptionLoggingMiddleware
+from q_guardian.middleware.rate_limit import RateLimitMiddleware
 from q_guardian.middleware.timing import ResponseTimingMiddleware
 from q_guardian.security.cors import get_cors_middleware
 from q_guardian.security.headers import SecurityHeadersMiddleware
@@ -71,6 +73,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     db_client = get_db_client()
     try:
         await db_client.connect()
+        await get_analysis_service().history_repository.ensure_indexes()
     except Exception as e:
         logger.warning("mongodb_connection_failed", error=str(e))
 
@@ -131,6 +134,9 @@ def _register_middleware(app: FastAPI) -> None:
 
     get_cors_middleware(app)
 
+    # Registered before SecurityHeaders so 429 responses still flow back
+    # out through the security-header middleware.
+    app.add_middleware(RateLimitMiddleware)
     app.add_middleware(SecurityHeadersMiddleware)
     app.add_middleware(ExceptionLoggingMiddleware)
     app.add_middleware(CorrelationIDMiddleware)

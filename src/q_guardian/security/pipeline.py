@@ -14,7 +14,12 @@ import unicodedata
 
 import structlog
 
+from q_guardian.security.encoding import (
+    decode_recursive,
+    detect_all_encodings,
+)
 from q_guardian.security.enums import PromptCategory, PromptSeverity, ValidationStatus
+from q_guardian.security.homoglyph import analyze_homoglyphs
 from q_guardian.security.models import (
     PromptFeatures,
     PromptFinding,
@@ -429,6 +434,38 @@ DEFAULT_RULES: list[PromptRule] = [
         confidence=0.7,
     ),
     PromptRule(
+        rule_id="enc-002",
+        name="Base64 Encoding Detection",
+        description="Detects Base64 encoded content that may hide malicious payloads",
+        category=PromptCategory.ENCODING,
+        severity=PromptSeverity.MEDIUM,
+        confidence=0.65,
+    ),
+    PromptRule(
+        rule_id="enc-003",
+        name="ROT13 Encoding Detection",
+        description="Detects ROT13 obfuscation that may hide malicious content",
+        category=PromptCategory.ENCODING,
+        severity=PromptSeverity.LOW,
+        confidence=0.5,
+    ),
+    PromptRule(
+        rule_id="enc-004",
+        name="Hex Encoding Detection",
+        description="Detects hexadecimal encoded content that may hide malicious payloads",
+        category=PromptCategory.ENCODING,
+        severity=PromptSeverity.MEDIUM,
+        confidence=0.6,
+    ),
+    PromptRule(
+        rule_id="enc-005",
+        name="URL Encoding Detection",
+        description="Detects URL percent-encoded content that may hide malicious payloads",
+        category=PromptCategory.ENCODING,
+        severity=PromptSeverity.MEDIUM,
+        confidence=0.6,
+    ),
+    PromptRule(
         rule_id="fmt-001",
         name="Suspicious Formatting",
         description="Unusual formatting patterns that may indicate injection",
@@ -471,6 +508,17 @@ DEFAULT_RULES: list[PromptRule] = [
             "show me the key",
         ],
         confidence=0.8,
+    ),
+    PromptRule(
+        rule_id="hg-001",
+        name="Homoglyph/Confusable Character Detection",
+        description=(
+            "Detects Unicode confusable characters "
+            "(Cyrillic/Greek lookalikes) and suspicious mixed-script text"
+        ),
+        category=PromptCategory.HOMOGLYPH,
+        severity=PromptSeverity.MEDIUM,
+        confidence=0.75,
     ),
 ]
 
@@ -560,6 +608,117 @@ class RuleEngine:
 
         for rule in self._rules.values():
             if not rule.enabled:
+                continue
+
+            # Special handling for homoglyph rule (hg-001)
+            if rule.rule_id == "hg-001":
+                homoglyph_results = analyze_homoglyphs(prompt)
+                if homoglyph_results["has_confusables"] or homoglyph_results["has_mixed_script"]:
+                    # Build a combined finding with all homoglyph details
+                    details: list[str] = []
+
+                    for conf in homoglyph_results["confusables"]:
+                        details.append(
+                            f"U+{conf['code_point'][2:]} "
+                            f"({conf['script']} '{conf['char']}' "
+                            f"lookalike: Latin '{conf['lookalike']}') "
+                            f"at position {conf['position']}"
+                        )
+
+                    for mixed in homoglyph_results["mixed_script"]:
+                        scripts = ", ".join(mixed["scripts"])
+                        details.append(
+                            f"Mixed-script segment '{mixed['segment']}' "
+                            f"(scripts: {scripts}, "
+                            f"confusables: {mixed['confusable_count']})"
+                        )
+
+                    matched_text = "; ".join(details[:5])  # Limit to first 5 for readability
+                    if len(details) > 5:
+                        matched_text += f" ... (+{len(details) - 5} more)"
+
+                    finding = PromptFinding(
+                        rule_id=rule.rule_id,
+                        rule_name=rule.name,
+                        category=rule.category,
+                        severity=rule.severity,
+                        description=rule.description,
+                        matched_text=matched_text,
+                        confidence=rule.confidence,
+                        metadata={
+                            "confusables": homoglyph_results["confusables"],
+                            "mixed_script": homoglyph_results["mixed_script"],
+                        },
+                    )
+                    findings.append(finding)
+                continue
+
+            # Special handling for encoding rules (enc-002 through enc-005)
+            if rule.rule_id in ("enc-002", "enc-003", "enc-004", "enc-005"):
+                encoding_type = rule.rule_id.split("-")[1]
+                encoding_map = {
+                    "002": "base64",
+                    "003": "rot13",
+                    "004": "hex",
+                    "005": "url",
+                }
+                target_encoding = encoding_map.get(encoding_type, encoding_type)
+
+                candidates = detect_all_encodings(prompt)
+                encoding_candidates = [c for c in candidates if c.encoding == target_encoding]
+
+                if encoding_candidates:
+                    # Use the highest confidence candidate
+                    best_candidate = max(encoding_candidates, key=lambda c: c.confidence)
+
+                    # Also check for nested decoding
+                    decode_results = decode_recursive(prompt)
+                    encoding_results = [
+                        r for r in decode_results if target_encoding in r.encoding_chain
+                    ]
+                    # Sort by depth descending to get the deepest (most complete) chain first
+                    encoding_results.sort(key=lambda r: r.depth, reverse=True)
+
+                    matched_text = best_candidate.matched_text
+                    if best_candidate.metadata.get("decoded_preview"):
+                        matched_text += f" -> {best_candidate.metadata['decoded_preview']}"
+
+                    # Build metadata with encoding context
+                    metadata = {
+                        "encoding": target_encoding,
+                        "confidence": best_candidate.confidence,
+                        "matched_text": best_candidate.matched_text,
+                        "decoded_preview": best_candidate.metadata.get("decoded_preview", ""),
+                        "decoded_length": best_candidate.metadata.get("decoded_length", 0),
+                        "encoding_context": {
+                            "encoding": target_encoding,
+                            "decoding_depth": 1,
+                            "encoding_chain": [target_encoding],
+                        },
+                    }
+
+                    # Add nested encoding info if found
+                    if encoding_results:
+                        max_depth = max(r.depth for r in encoding_results)
+                        full_chain = encoding_results[0].encoding_chain
+                        metadata["encoding_context"]["decoding_depth"] = max_depth
+                        metadata["encoding_context"]["encoding_chain"] = list(full_chain)
+                        if encoding_results[0].metadata.get("decoded_preview"):
+                            metadata["nested_decoded_preview"] = encoding_results[0].metadata[
+                                "decoded_preview"
+                            ]
+
+                    finding = PromptFinding(
+                        rule_id=rule.rule_id,
+                        rule_name=rule.name,
+                        category=rule.category,
+                        severity=rule.severity,
+                        description=rule.description,
+                        matched_text=matched_text[:200],
+                        confidence=rule.confidence,
+                        metadata=metadata,
+                    )
+                    findings.append(finding)
                 continue
 
             matched = False

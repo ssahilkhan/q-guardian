@@ -79,7 +79,7 @@ async def get_analysis(request: Request, analysis_id: str) -> ResponseSchema[Ana
     Returns:
         The stored analysis result.
     """
-    result = service.get(analysis_id)
+    result = await service.get(analysis_id)
     if result is None:
         raise HTTPException(status_code=404, detail="Analysis not found")
     return ResponseSchema(
@@ -103,7 +103,8 @@ async def list_analysis(
     Returns:
         A paginated list of analysis summaries.
     """
-    items = [_to_item(payload) for payload in service.history()[:limit]]
+    history = await service.history()
+    items = [_to_item(payload) for payload in history[:limit]]
     return PaginatedResponseSchema(
         success=True,
         message="History retrieved successfully",

@@ -83,7 +83,8 @@ def verify_password(plain_password: str, password_hash: str) -> bool:
     """
     try:
         return checkpw(plain_password.encode("utf-8"), password_hash.encode("utf-8"))
-    except (ValueError, TypeError):
+    except (ValueError, TypeError, AttributeError):
+        # Fail closed on malformed credential material (e.g. non-str inputs).
         return False
 
 
@@ -184,7 +185,7 @@ class JWTService:
             AuthenticationError: If the token is malformed, has an
                 invalid signature, or has expired.
         """
-        if not token:
+        if not token or not isinstance(token, str):
             raise AuthenticationError(
                 message="Missing authentication token",
                 details={"reason": "token_missing"},

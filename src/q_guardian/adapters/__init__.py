@@ -5,5 +5,6 @@ integrations (LangGraph, CrewAI, AutoGen, etc.).
 """
 
 from q_guardian.adapters.base import Adapter
+from q_guardian.adapters.langgraph import LangGraphAdapter, create_langgraph_adapter
 
-__all__ = ["Adapter"]
+__all__ = ["Adapter", "LangGraphAdapter", "create_langgraph_adapter"]

@@ -154,15 +154,30 @@ class TestXGBoostClassifier:
     def test_name(self) -> None:
         assert self.classifier.name == "xgboost-classifier"
 
-    def test_available(self) -> None:
-        assert self.classifier.is_available is True  # We installed xgboost
+    def test_untrained(self) -> None:
+        assert self.classifier.is_trained is False
 
+    @pytest.mark.skipif(
+        not XGBoostThreatClassifier().is_available,
+        reason="xgboost is not installed",
+    )
+    def test_available(self) -> None:
+        assert self.classifier.is_available is True
+
+    @pytest.mark.skipif(
+        not XGBoostThreatClassifier().is_available,
+        reason="xgboost is not installed",
+    )
     def test_train(self) -> None:
         x, y = _make_training_data(60)
         self.classifier.train(x, y)
         assert self.classifier.is_trained is True
 
     @pytest.mark.asyncio
+    @pytest.mark.skipif(
+        not XGBoostThreatClassifier().is_available,
+        reason="xgboost is not installed",
+    )
     async def test_classify_trained(self) -> None:
         x, y = _make_training_data(60)
         self.classifier.train(x, y)
@@ -171,6 +186,10 @@ class TestXGBoostClassifier:
         assert len(result) > 0
 
     @pytest.mark.asyncio
+    @pytest.mark.skipif(
+        not XGBoostThreatClassifier().is_available,
+        reason="xgboost is not installed",
+    )
     async def test_predict_trained(self) -> None:
         x, y = _make_training_data(60)
         self.classifier.train(x, y)

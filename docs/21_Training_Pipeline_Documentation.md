@@ -308,3 +308,62 @@ practically match the fused ensemble.
   caught by CI.
 - Verification for this change: **1,865 unit tests + 14 integration tests
   pass**; `ruff check` and `mypy` clean.
+
+## 12. arm_d diverse retraining (semantic feature mode)
+
+The training-diversity research track (`experiments/training_diversity/`)
+trains the same `HybridEvaluator` stack on the **arm_d diverse** dataset —
+6,269 samples (4,006 malicious / 2,263 benign) = control (deepset +
+dolly-benign) + TrustAIR jailbreaks + JailbreakV-28K subset + mlabonne
+harmful-behaviors, all contamination-filtered against the eval splits.
+
+### 12.1 Semantic embedding feature mode
+
+`HybridEvaluator` accepts two additional constructor flags (persisted in
+`params.json`, restored by `load_state`):
+
+| Param | Default | Meaning |
+|---|---|---|
+| `use_semantic_embedding` | `False` | Append a 384-dim normalized `all-MiniLM-L6-v2` sentence embedding to the 43 handcrafted features (427 total). Requires the optional `sentence-transformers` dependency. |
+| `rf_n_estimators` / `xgb_n_estimators` | `None` | Per-model estimator overrides (`None` = use `n_estimators`). |
+
+When enabled, `vector()` and the batched `feature_matrix()` produce identical
+rows (same normalizer → extractor → ML features → encoder), so training,
+evaluation and inference share one feature implementation. Existing
+checkpoints without these keys load unchanged (defaults off).
+
+### 12.2 Reproducing the arm_d checkpoint
+
+```bash
+# 1. deterministic base splits (seed 42; JBB external pool included)
+q-guardian dataset prepare --config configs/training.json --output-dir artifacts/training_xgboost_fix
+
+# 2. feature caches: 43 handcrafted + 384 MiniLM for arms + eval pools
+python experiments/semantic_features/run_experiment.py          # builds cache once (or reuse build_features())
+python experiments/training_diversity/04_build_features.py      # arm caches + eval pools
+
+# 3. train XGBoost + Random Forest on arm_d, evaluate, save checkpoint
+python experiments/training_diversity/08_train_arm_d_checkpoint.py
+
+# 3b. optional validation-only RF tuning (JBB never used for selection)
+python experiments/training_diversity/09_tune_arm_d_rf.py
+```
+
+Outputs land in `artifacts/training_arm_d/`: `model/hybrid_evaluator.joblib`
+(+ `params.json`), `training_config.json`, `metadata.json`, `evaluation.json`,
+and `verification.json` (reload-from-disk AUC match check).
+
+### 12.3 Measured results (threshold 0.5, seed 42)
+
+Training data: arm_d 6,269 (4,006 mal / 2,263 ben); evaluation pools:
+validation 110, internal test 116, JBB external 200 (100/100).
+RF estimator count (200) was selected by a validation-only grid;
+XGBoost keeps the frozen experiment config.
+
+| Model | Val ROC-AUC | Test ROC-AUC | JBB ROC-AUC | JBB PR-AUC | JBB F1 |
+|---|---:|---:|---:|---:|---:|
+| XGBoost (n_est=50, depth=6) | 0.9717 | 0.9363 | **0.7861** | 0.7881 | 0.7330 |
+| Random Forest (n_est=200) | 0.9556 | 0.9119 | **0.7915** | 0.7941 | 0.7290 |
+
+Both models exceed the JBB ROC-AUC ≥ 0.78 target; JBB was never used for
+training, scaling, calibration, or hyperparameter selection.
