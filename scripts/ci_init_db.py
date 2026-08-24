@@ -38,7 +38,7 @@ async def init_db() -> None:
 
     try:
         await client.connect()
-        db = client.get_database()
+        db = client.database  # Use property, not method
 
         # Create test users
         users_collection = db["users"]
