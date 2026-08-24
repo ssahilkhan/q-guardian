@@ -10,7 +10,7 @@
   "rewrites": [
     {
       "source": "/(.*)",
-      "destination": "/src/q_guardian/main.py"
+      "destination": "src/q_guardian/main.py"
     }
   ]
 }
