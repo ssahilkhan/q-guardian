@@ -1,5 +1,10 @@
 {
   "buildCommand": "pip install -e .",
   "installCommand": "pip install -e .",
-  "framework": "fastapi"
+  "functions": {
+    "api/index.py": {
+      "runtime": "python@3.12",
+      "maxDuration": 30
+    }
+  }
 }
