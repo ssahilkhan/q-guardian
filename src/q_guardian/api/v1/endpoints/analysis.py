@@ -14,7 +14,11 @@ from fastapi import APIRouter, HTTPException, Query, Request
 
 from q_guardian.api.services.analysis import get_analysis_service
 from q_guardian.schemas.base import PaginatedResponseSchema, ResponseSchema
-from q_guardian.schemas.console import AnalysisItemSchema, ScanRequestSchema
+from q_guardian.schemas.console import (
+    AnalysisItemSchema,
+    ScanOutputRequestSchema,
+    ScanRequestSchema,
+)
 
 logger = structlog.get_logger("api.analysis")
 
@@ -58,6 +62,33 @@ async def scan_prompt(
         The full analysis result wrapped in the standard envelope.
     """
     result = await service.scan(body.prompt, context_segments=body.context_segments)
+    item = _to_item(result)
+    return ResponseSchema(
+        success=True,
+        message=f"Analysis completed with decision {item.decision}",
+        data=item,
+    )
+
+
+@router.post("/scan-output", response_model=ResponseSchema[AnalysisItemSchema])
+async def scan_output(
+    request: Request, body: ScanOutputRequestSchema
+) -> ResponseSchema[AnalysisItemSchema]:
+    """Run output monitoring on agent output text (P3-3).
+
+    Args:
+        request: Incoming request (correlation ID hook).
+        body: The output text to analyze, with optional provenance label
+            and untrusted input segments for propagation correlation.
+
+    Returns:
+        The full analysis result wrapped in the standard envelope.
+    """
+    result = await service.scan_output(
+        body.output,
+        source_label=body.source_label,
+        context_segments=body.context_segments,
+    )
     item = _to_item(result)
     return ResponseSchema(
         success=True,

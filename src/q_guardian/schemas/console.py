@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any
+from typing import Any, ClassVar
 
 from pydantic import Field
 
@@ -57,6 +57,32 @@ class ScanRequestSchema(BaseSchema):
         description=(
             "Optional untrusted content segments (tool outputs, RAG context, "
             "documents) analyzed for indirect prompt injection"
+        ),
+    )
+
+
+class ScanOutputRequestSchema(BaseSchema):
+    """Request body for scanning agent output through output monitoring."""
+
+    MAX_OUTPUT_LENGTH: ClassVar[int] = 100_000
+
+    output: str = Field(
+        ...,
+        min_length=1,
+        max_length=MAX_OUTPUT_LENGTH,
+        description="Agent/model output text to analyze",
+    )
+    source_label: str = Field(
+        default="output",
+        min_length=1,
+        max_length=64,
+        description="Provenance label describing the output origin",
+    )
+    context_segments: list[ContextSegmentSchema] | None = Field(
+        default=None,
+        description=(
+            "Optional untrusted input segments correlated against the "
+            "output for propagation detection (om-007)"
         ),
     )
 

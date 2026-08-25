@@ -51,3 +51,15 @@ class PromptAllowed(Event):
     """Published when a prompt is allowed."""
 
     event_type: str = Field(default="security.prompt.allowed", init=False)
+
+
+class OutputScanCompleted(Event):
+    """Published when output monitoring analysis is complete."""
+
+    event_type: str = Field(default="security.output.scan_completed", init=False)
+
+
+class OutputBlocked(Event):
+    """Published when agent output is blocked by output monitoring."""
+
+    event_type: str = Field(default="security.output.blocked", init=False)

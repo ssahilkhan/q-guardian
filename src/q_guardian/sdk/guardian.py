@@ -456,6 +456,60 @@ class Guardian:
 
         return cast("dict[str, Any]", context.get("results", results))
 
+    async def scan_output(self, output: str, **kwargs: Any) -> dict[str, Any]:
+        """Scan agent output through registered output scanners (P3-3).
+
+        Dispatches to plugins implementing 'prompt_scanner' that expose a
+        ``scan_output`` method (direction-gated ``om-*`` analysis) and
+        publishes BeforePrompt/AfterPrompt bookend events with the output
+        payload.
+
+        Args:
+            output: The agent output text to scan.
+            **kwargs: Additional context forwarded to scanners
+                (e.g. ``source_label``, ``context_segments``).
+
+        Returns:
+            Aggregated scan results from all scanners, keyed by plugin name.
+        """
+        from q_guardian.events.standard import AfterPrompt, BeforePrompt
+
+        await self._hook_manager.execute_hook("before_prompt", prompt=output, **kwargs)
+
+        await self._event_bus.publish(
+            BeforePrompt(
+                source="guardian",
+                data={"output": output, "direction": "output", **kwargs},
+            )
+        )
+
+        scanners = self._plugin_registry.get_plugins_by_interface("prompt_scanner")
+        results: dict[str, Any] = {}
+        for scanner in scanners:
+            if hasattr(scanner, "scan_output"):
+                try:
+                    result = await scanner.scan_output(output, **kwargs)
+                    results[scanner.name] = result
+                except Exception:
+                    logger.error(
+                        "output_scanner_error",
+                        plugin=scanner.name,
+                        exc_info=True,
+                    )
+
+        context = await self._hook_manager.execute_hook(
+            "after_prompt", prompt=output, results=results, **kwargs
+        )
+
+        await self._event_bus.publish(
+            AfterPrompt(
+                source="guardian",
+                data={"output": output, "results": results},
+            )
+        )
+
+        return cast("dict[str, Any]", context.get("results", results))
+
     async def monitor(self, event_data: dict[str, Any]) -> dict[str, Any]:
         """Monitor runtime activity through registered monitors.
 

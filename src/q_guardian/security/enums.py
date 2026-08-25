@@ -30,6 +30,7 @@ class PromptCategory(StrEnum):
     HOMOGLYPH = "homoglyph"
     ENCODING = "encoding"
     INDIRECT_INJECTION = "indirect_injection"
+    OUTPUT_MONITORING = "output_monitoring"
     UNKNOWN = "unknown"
 
 

@@ -15,38 +15,24 @@ from q_guardian.adapters.base import Adapter
 from q_guardian.security.encoding import detect_all_encodings
 
 if TYPE_CHECKING:
+    from collections.abc import AsyncIterator, Iterator
+
+    from langgraph.checkpoint.base import BaseCheckpointSaver
+    from langgraph.graph import StateGraph
+    from langgraph.graph.state import CompiledStateGraph
+
     from q_guardian.sdk.guardian import Guardian
 
+# Runtime availability probe for the optional LangGraph dependency.
+# Annotation-only symbols are imported under TYPE_CHECKING above; with
+# ``from __future__ import annotations`` they never evaluate at runtime,
+# so no object-sentinel fallbacks are needed when the package is absent.
 try:
-    import langgraph
-    from langchain_core.messages import (
-        AIMessage,
-        BaseMessage,
-        HumanMessage,
-        SystemMessage,
-        ToolMessage,
-    )
-    from langgraph.checkpoint.base import BaseCheckpointSaver
-    from langgraph.checkpoint.memory import InMemorySaver
-    from langgraph.graph import START, StateGraph
-    from langgraph.graph.state import CompiledStateGraph
-    from langgraph.types import Command, interrupt
+    import langchain_core  # noqa: F401
+    import langgraph  # noqa: F401
 
     LANGGRAPH_AVAILABLE = True
 except ImportError:  # pragma: no cover - optional dependency
-    langgraph = None  # type: ignore[assignment]
-    StateGraph = object  # type: ignore[assignment]
-    START = object  # type: ignore[assignment]
-    CompiledStateGraph = object  # type: ignore[assignment]
-    BaseCheckpointSaver = object  # type: ignore[assignment]
-    InMemorySaver = object  # type: ignore[assignment]
-    interrupt = object  # type: ignore[assignment]
-    Command = object  # type: ignore[assignment]
-    HumanMessage = object  # type: ignore[assignment]
-    AIMessage = object  # type: ignore[assignment]
-    ToolMessage = object  # type: ignore[assignment]
-    SystemMessage = object  # type: ignore[assignment]
-    BaseMessage = object  # type: ignore[assignment]
     LANGGRAPH_AVAILABLE = False
 
 logger = logging.getLogger("q_guardian.adapters.langgraph")
@@ -58,6 +44,65 @@ class LangGraphSecurityError(Exception):
     def __init__(self, message: str, findings: list[dict[str, Any]] | None = None):
         super().__init__(message)
         self.findings = findings or []
+
+
+class _SecuredCompiledGraph:
+    """Duck-typed security wrapper around a compiled LangGraph state graph.
+
+    Delegates every attribute to the wrapped compiled graph while
+    intercepting ``invoke`` / ``ainvoke`` / ``stream`` / ``astream`` so
+    inputs are scanned before execution and outputs (including each
+    stream chunk) are scanned after. The wrapped graph instance is never
+    mutated, preserving the original object for the framework.
+    """
+
+    def __init__(
+        self,
+        compiled: CompiledStateGraph[Any, None, Any, Any],
+        adapter: LangGraphAdapter,
+    ) -> None:
+        self._compiled = compiled
+        self._adapter = adapter
+
+    def __getattr__(self, name: str) -> Any:
+        """Delegate attribute access to the wrapped compiled graph."""
+        if name.startswith("_"):
+            raise AttributeError(name)
+        return getattr(self._compiled, name)
+
+    def invoke(self, input_data: Any, config: Any = None, **kwargs: Any) -> Any:
+        """Scan input, execute synchronously, then scan output."""
+        self._adapter._scan_and_check_sync(input_data, "input")
+        result = self._compiled.invoke(input_data, config, **kwargs)
+        self._adapter._scan_and_check_sync(result, "output")
+        return result
+
+    async def ainvoke(self, input_data: Any, config: Any = None, **kwargs: Any) -> Any:
+        """Scan input, execute asynchronously, then scan output."""
+        await self._adapter._scan_and_check(input_data, "input")
+        result = await self._compiled.ainvoke(input_data, config, **kwargs)
+        await self._adapter._scan_and_check(result, "output")
+        return result
+
+    def stream(self, input_data: Any, config: Any = None, **kwargs: Any) -> Iterator[Any]:
+        """Synchronous streaming with per-chunk output scanning.
+
+        Chunks arrive from the underlying synchronous iterator and are
+        scanned with the synchronous scanner before being yielded.
+        """
+        self._adapter._scan_and_check_sync(input_data, "input")
+        for chunk in self._compiled.stream(input_data, config, **kwargs):
+            self._adapter._scan_and_check_sync(chunk, "stream_chunk")
+            yield chunk
+
+    async def astream(
+        self, input_data: Any, config: Any = None, **kwargs: Any
+    ) -> AsyncIterator[Any]:
+        """Asynchronous streaming with per-chunk output scanning."""
+        await self._adapter._scan_and_check(input_data, "input")
+        async for chunk in self._compiled.astream(input_data, config, **kwargs):
+            await self._adapter._scan_and_check(chunk, "stream_chunk")
+            yield chunk
 
 
 class LangGraphAdapter(Adapter):
@@ -85,7 +130,7 @@ class LangGraphAdapter(Adapter):
 
         self._guardian = guardian
         self._config = config or {}
-        self._compiled_graph: Any = None
+        self._compiled_graph: _SecuredCompiledGraph | None = None
         self._checkpointer: Any = None
 
     @property
@@ -215,7 +260,7 @@ class LangGraphAdapter(Adapter):
         if not text_content:
             return {}
 
-        features = {}
+        features: dict[str, Any] = {}
 
         # Basic features
         features["length"] = len(text_content)
@@ -250,12 +295,12 @@ class LangGraphAdapter(Adapter):
 
     def compile_graph(
         self,
-        graph: StateGraph,  # type: ignore[type-arg]
-        checkpointer: BaseCheckpointSaver | None = None,  # type: ignore[type-arg]
+        graph: StateGraph[Any],
+        checkpointer: BaseCheckpointSaver[Any] | None = None,
         interrupt_before: list[str] | None = None,
         interrupt_after: list[str] | None = None,
         **kwargs: Any,
-    ) -> CompiledStateGraph:  # type: ignore[type-arg]
+    ) -> _SecuredCompiledGraph:
         """Compile a LangGraph StateGraph with security wrapping.
 
         Args:
@@ -274,7 +319,7 @@ class LangGraphAdapter(Adapter):
         # Wrap node functions for security scanning
         self._wrap_graph_nodes(graph)
 
-        compile_kwargs = {}
+        compile_kwargs: dict[str, Any] = {}
         if checkpointer is not None:
             compile_kwargs["checkpointer"] = checkpointer
         if interrupt_before:
@@ -289,7 +334,9 @@ class LangGraphAdapter(Adapter):
         self._compiled_graph = self._wrap_compiled_graph(compiled)
         return self._compiled_graph
 
-    def wrap_graph(self, compiled_graph: CompiledStateGraph) -> CompiledStateGraph:  # type: ignore[type-arg]
+    def wrap_graph(
+        self, compiled_graph: CompiledStateGraph[Any, None, Any, Any]
+    ) -> _SecuredCompiledGraph:
         """Wrap an already compiled graph with security scanning.
 
         Args:
@@ -338,7 +385,7 @@ class LangGraphAdapter(Adapter):
     # Internal Implementation
     # ============================================================
 
-    def _wrap_graph_nodes(self, graph: StateGraph) -> StateGraph:
+    def _wrap_graph_nodes(self, graph: StateGraph[Any]) -> StateGraph[Any]:
         """Wrap node functions in a graph for security scanning.
 
         This creates a new graph with wrapped node functions.
@@ -347,62 +394,15 @@ class LangGraphAdapter(Adapter):
         # We handle security at the compiled graph level instead.
         return graph
 
-    def _wrap_compiled_graph(self, compiled: CompiledStateGraph) -> CompiledStateGraph:
-        """Wrap a compiled graph with security scanning."""
-        # Store original invoke/ainvoke methods
-        original_invoke = compiled.invoke
-        original_ainvoke = compiled.ainvoke
-        original_stream = compiled.stream
-        original_astream = compiled.astream
+    def _wrap_compiled_graph(
+        self, compiled: CompiledStateGraph[Any, None, Any, Any]
+    ) -> _SecuredCompiledGraph:
+        """Wrap a compiled graph with security scanning.
 
-        adapter = self
-
-        async def secured_ainvoke(input_data, config=None, **kwargs):
-            # Scan input
-            await adapter._scan_and_check(input_data, "input")
-            # Execute original
-            result = await original_ainvoke(input_data, config, **kwargs)
-            # Scan output
-            await adapter._scan_and_check(result, "output")
-            return result
-
-        def secured_invoke(input_data, config=None, **kwargs):
-            # Scan input
-            adapter._scan_and_check_sync(input_data, "input")
-            # Execute original
-            result = original_invoke(input_data, config, **kwargs)
-            # Scan output
-            adapter._scan_and_check_sync(result, "output")
-            return result
-
-        def secured_stream(input_data, config=None, **kwargs):
-            # Scan input
-            adapter._scan_and_check_sync(input_data, "input")
-
-            # Stream with output scanning
-            async def scan_stream():
-                async for chunk in original_stream(input_data, config, **kwargs):
-                    # Scan each chunk
-                    await adapter._scan_and_check(chunk, "stream_chunk")
-                    yield chunk
-
-            return scan_stream()
-
-        async def secured_astream(input_data, config=None, **kwargs):
-            # Scan input
-            await adapter._scan_and_check(input_data, "input")
-            # Stream with output scanning
-            async for chunk in original_astream(input_data, config, **kwargs):
-                await adapter._scan_and_check(chunk, "stream_chunk")
-                yield chunk
-
-        # Replace methods
-        compiled.invoke = secured_invoke
-        compiled.ainvoke = secured_ainvoke
-        compiled.stream = secured_stream
-        compiled.astream = secured_astream
-
-        return compiled
+        Returns a duck-typed wrapper that intercepts the invoke/stream
+        entry points; the original compiled graph object is not mutated.
+        """
+        return _SecuredCompiledGraph(compiled, self)
 
     async def _scan_and_check(self, data: Any, source: str) -> dict[str, Any]:
         """Scan data and raise exception if blocked."""
@@ -469,8 +469,10 @@ class LangGraphAdapter(Adapter):
         encoding_candidates = detect_all_encodings(text)
         homoglyph_results = analyze_homoglyphs(text)
 
-        # Add to features
-        features.encoding_candidates = [
+        # Add to features (PromptFeatures has no declared fields for these;
+        # provenance lives in metadata, matching the crewai adapter and the
+        # provenance-aware scanning path)
+        features.metadata["encoding_candidates"] = [
             {
                 "encoding": c.encoding,
                 "confidence": c.confidence,
@@ -478,7 +480,7 @@ class LangGraphAdapter(Adapter):
             }
             for c in encoding_candidates
         ]
-        features.homoglyph = {
+        features.metadata["homoglyph"] = {
             "has_confusables": homoglyph_results["has_confusables"],
             "has_mixed_script": homoglyph_results["has_mixed_script"],
         }
@@ -522,10 +524,6 @@ class LangGraphAdapter(Adapter):
             },
         }
 
-    async def _scan_text(self, text: str, source: str) -> dict[str, Any]:
-        """Scan text content using the existing security pipeline."""
-        return await self._scan_text(text, source)
-
     def _extract_text_content(self, data: Any) -> str:
         """Extract text content from various data types."""
         if isinstance(data, str):
@@ -557,10 +555,6 @@ class LangGraphAdapter(Adapter):
         elif hasattr(data, "content"):
             return str(data.content)
         return str(data)
-
-    def _extract_text_content(self, data: Any) -> str:
-        """Extract text content from various data types."""
-        return self._extract_text_content(data)
 
     def _extract_messages_text(self, messages: list[Any]) -> str:
         """Extract text from a list of LangChain messages."""
@@ -726,6 +720,331 @@ class LangGraphAdapter(Adapter):
                     1 for f in analysis.findings if f.rule_id.startswith("ii-")
                 ),
             }
+        return result
+
+    # ============================================================
+    # Output monitoring: direction-gated output scans (P3-3)
+    # ============================================================
+
+    @staticmethod
+    def _output_text_of(data: Any, _depth: int = 0) -> str:
+        """Extract scannable text from arbitrary LangGraph/framework data.
+
+        Self-contained helper for the P3-3 output-monitoring methods. It
+        intentionally does NOT reuse ``_extract_text_content`` (whose
+        recursive shadowing makes it unusable) and mirrors the provenance
+        method's self-containment policy.
+
+        Args:
+            data: Arbitrary output data (string, object with ``raw`` or
+                ``content``, dict, list, ...).
+            _depth: Internal recursion depth guard.
+
+        Returns:
+            Extracted text content (may be empty).
+        """
+        if data is None or _depth > 8:
+            return ""
+        if isinstance(data, str):
+            return data
+        if isinstance(data, bool):
+            return str(data)
+        if isinstance(data, (int, float)):
+            return str(data)
+        raw = getattr(data, "raw", None)
+        if isinstance(raw, str):
+            return raw
+        content = getattr(data, "content", None)
+        if isinstance(content, str):
+            return content
+        if isinstance(content, list):
+            parts: list[str] = []
+            for item in content:
+                if isinstance(item, dict) and item.get("type") == "text":
+                    text = item.get("text", "")
+                    if isinstance(text, str):
+                        parts.append(text)
+                elif isinstance(item, str):
+                    parts.append(item)
+            return "\n".join(parts)
+        if isinstance(data, dict):
+            return "\n".join(
+                part
+                for part in (
+                    LangGraphAdapter._output_text_of(value, _depth + 1) for value in data.values()
+                )
+                if part
+            )
+        if isinstance(data, (list, tuple)):
+            return "\n".join(
+                part
+                for part in (LangGraphAdapter._output_text_of(item, _depth + 1) for item in data)
+                if part
+            )
+        return ""
+
+    async def scan_output_text(
+        self,
+        output: Any,
+        *,
+        source: str = "output",
+        context_segments: list[Any] | None = None,
+    ) -> dict[str, Any]:
+        """Scan agent output text through output monitoring (P3-3).
+
+        Runs the shared pipeline in the output direction: the
+        direction-gated ``om-*`` rules fire on leakage, disclosure,
+        sensitive-data/credential exposure, actionable commands,
+        obfuscated payloads, and propagation of untrusted content.
+        Behavior is additive — no existing scanning path is modified.
+
+        Args:
+            output: Output text or arbitrary framework object with
+                extractable text (``raw`` / ``content`` / containers).
+            source: Label describing where the output came from.
+            context_segments: Optional untrusted input segments
+                (``ContentSegment`` or JSON-safe dicts) correlated against
+                the output by om-007.
+
+        Returns:
+            Scan result dictionary with decision, risk_score, findings,
+            source, encoding_context and (when active) output_context keys.
+
+        Raises:
+            ValueError: If the extracted output text is empty.
+        """
+        from q_guardian.output.monitor import build_output_context, resolve_output_config
+        from q_guardian.security.decision import SecurityDecisionEngine
+        from q_guardian.security.homoglyph import analyze_homoglyphs
+        from q_guardian.security.indirect import ContentSegment
+        from q_guardian.security.models import PromptAnalysis
+        from q_guardian.security.pipeline import (
+            PromptFeatureExtractor,
+            PromptNormalizer,
+            PromptValidator,
+            RuleEngine,
+        )
+
+        text = self._output_text_of(output)
+        if not text.strip():
+            raise ValueError("output must contain scannable text")
+
+        config = resolve_output_config(self._config.get("output_config"))
+        truncated = False
+        if len(text) > config.max_output_length:
+            text = text[: config.max_output_length]
+            truncated = True
+
+        normalizer = PromptNormalizer()
+        validator = PromptValidator()
+        normalized = normalizer.normalize(text)
+        validation_status, validation_errors = validator.validate(normalized)
+
+        feature_extractor = PromptFeatureExtractor()
+        features = feature_extractor.extract(normalized)
+
+        homoglyph_results = analyze_homoglyphs(normalized)
+        features.metadata["homoglyph"] = {
+            "has_confusables": homoglyph_results["has_confusables"],
+            "has_mixed_script": homoglyph_results["has_mixed_script"],
+        }
+
+        output_active = False
+        segments: list[ContentSegment] | None = None
+        if context_segments:
+            segments = [
+                seg if isinstance(seg, ContentSegment) else ContentSegment.model_validate(seg)
+                for seg in context_segments
+            ]
+        if config.enabled:
+            features.metadata["output_context"] = build_output_context(
+                normalized,
+                source,
+                config,
+                context_segments=segments,
+            )
+            output_active = True
+
+        engine = RuleEngine()
+        findings = engine.analyze(normalized, features)
+
+        analysis = PromptAnalysis(
+            original_prompt=text,
+            normalized_prompt=normalized,
+            is_valid=(validation_status.value == "valid"),
+            validation_status=validation_status,
+            validation_errors=validation_errors,
+            features=features,
+            findings=findings,
+        )
+        SecurityDecisionEngine().decide(analysis)
+
+        result: dict[str, Any] = {
+            "decision": analysis.decision.value,
+            "risk_score": analysis.risk_score,
+            "findings": [f.model_dump() for f in analysis.findings],
+            "recommendation": analysis.recommendation,
+            "source": source,
+            "encoding_context": {
+                "encoding_candidates": [
+                    {
+                        "encoding": c.encoding,
+                        "confidence": c.confidence,
+                        "decoded_preview": c.metadata.get("decoded_preview", "")[:200],
+                    }
+                    for c in detect_all_encodings(normalized)
+                ],
+                "homoglyph": {
+                    "has_confusables": homoglyph_results["has_confusables"],
+                    "has_mixed_script": homoglyph_results["has_mixed_script"],
+                },
+            },
+        }
+        if output_active:
+            result["output_context"] = {
+                "source_label": source,
+                "truncated": truncated,
+                "output_findings_count": sum(
+                    1 for f in analysis.findings if f.rule_id.startswith("om-")
+                ),
+            }
+        return result
+
+    async def scan_output_state(
+        self,
+        state: dict[str, Any],
+        untrusted_keys: list[str] | None = None,
+        *,
+        source: str = "state_output",
+    ) -> dict[str, Any]:
+        """Scan graph state in the output direction (P3-3).
+
+        Aggregates all string state values into one output text and runs
+        :meth:`scan_output_text` over it. When ``untrusted_keys`` is given,
+        the values under those keys are additionally treated as untrusted
+        input segments for om-007 propagation correlation.
+
+        Args:
+            state: The graph state dictionary.
+            untrusted_keys: Optional state keys whose values carry
+                untrusted external content to correlate.
+            source: Label describing where the state came from.
+
+        Returns:
+            The same result dictionary as :meth:`scan_output_text`.
+
+        Raises:
+            ValueError: If the state contains no string values.
+        """
+        if not state:
+            raise ValueError("state must not be empty")
+
+        text = "\n".join(str(v) for v in state.values() if isinstance(v, str))
+        if not text.strip():
+            raise ValueError("state must contain at least one non-empty string value")
+
+        segments: list[dict[str, Any]] | None = None
+        if untrusted_keys:
+            segments = [
+                {"content": str(state[key]), "source_type": "tool_output", "source_id": key}
+                for key in untrusted_keys
+                if key in state and str(state[key]).strip()
+            ] or None
+
+        return await self.scan_output_text(text, source=source, context_segments=segments)
+
+    async def aggregate_stream_output(
+        self,
+        chunks: Any,
+        *,
+        source: str = "stream_output",
+    ) -> dict[str, Any]:
+        """Aggregate a token stream and scan it end-of-stream (P3-3).
+
+        Collects all chunks into one buffer, then performs a single
+        output-direction scan of the complete aggregated text. Blocking on
+        the final aggregate prevents partial-payload evasion where a
+        credential is split across chunks. Chunks are concatenated without
+        separators so tokens split across chunk boundaries reassemble
+        exactly as the model emitted them.
+
+        Args:
+            chunks: Iterable (or async iterable) of stream chunks; each may
+                be a plain string or an object with extractable text.
+            source: Label describing where the stream came from.
+
+        Returns:
+            The same result dictionary as :meth:`scan_output_text`, plus
+            ``aggregated_length`` and (when caps were hit)
+            ``stream_truncated`` keys. Collection enforces strict limits:
+            at most ``max_stream_chunks`` chunks (default 10,000) and at
+            most ``max_output_length`` aggregated characters; excess
+            content is dropped and flagged rather than buffered.
+
+        Raises:
+            LangGraphSecurityError: If the aggregated output violates policy.
+            ValueError: If no chunk yields any text.
+        """
+        from q_guardian.output.monitor import resolve_output_config
+
+        config = resolve_output_config(self._config.get("output_config"))
+        collected: list[str] = []
+        total_length = 0
+        chunk_count = 0
+        truncated_stream = False
+
+        def _collect(piece: str) -> bool:
+            """Append a piece under strict size/chunk caps; False when full."""
+            nonlocal total_length, truncated_stream
+            remaining = config.max_output_length - total_length
+            if remaining <= 0:
+                truncated_stream = True
+                return False
+            collected.append(piece[:remaining])
+            total_length += len(collected[-1])
+            if total_length >= config.max_output_length:
+                truncated_stream = True
+                return False
+            return True
+
+        async def _drain(chunk_iter: Any, max_chunks: int) -> None:
+            nonlocal chunk_count, truncated_stream
+            while True:
+                try:
+                    chunk = await chunk_iter.__anext__()
+                except StopAsyncIteration:
+                    break
+                piece = self._output_text_of(chunk)
+                chunk_count += 1
+                if piece:
+                    _collect(piece)
+                if chunk_count >= max_chunks:
+                    truncated_stream = True
+                    break
+
+        max_chunks = int(self._config.get("max_stream_chunks", 10_000))
+        if hasattr(chunks, "__anext__") or hasattr(chunks, "__aiter__"):
+            await _drain(chunks, max_chunks)
+        else:
+            for chunk in chunks:
+                piece = self._output_text_of(chunk)
+                chunk_count += 1
+                if piece and not _collect(piece):
+                    break
+                if chunk_count >= max_chunks:
+                    truncated_stream = True
+                    break
+
+        aggregated = "".join(collected)
+        result = await self.scan_output_text(aggregated, source=source)
+        result["aggregated_length"] = len(aggregated)
+        if truncated_stream:
+            result["stream_truncated"] = True
+        if result.get("decision") == "block":
+            raise LangGraphSecurityError(
+                "Blocked by Q-Guardian security policy (aggregated stream output)",
+                findings=result.get("findings"),
+            )
         return result
 
     def health(self) -> dict[str, Any]:

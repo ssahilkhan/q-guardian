@@ -189,6 +189,36 @@ class AnalysisService:
         await self._history.add(result)
         return result
 
+    async def scan_output(
+        self,
+        output: str,
+        source_label: str = "output",
+        context_segments: list[Any] | None = None,
+    ) -> dict[str, Any]:
+        """Run output monitoring on agent output text and persist the result.
+
+        Reuses the shared pipeline in the output direction (P3-3): the
+        direction-gated ``om-*`` rules fire; the result is stored in the
+        same bounded history timeline as prompt scans.
+
+        Args:
+            output: The output text to analyze.
+            source_label: Provenance label describing the output origin.
+            context_segments: Optional untrusted input segments correlated
+                against the output for propagation detection.
+
+        Returns:
+            The serialized analysis payload (also persisted to history).
+        """
+        segments = _coerce_content_segments(context_segments)
+        result = await self._plugin.scan_output(
+            output,
+            source_label=source_label,
+            context_segments=segments,
+        )
+        await self._history.add(result)
+        return result
+
     async def history(self) -> list[dict[str, Any]]:
         """Return the bounded scan history (most recent first)."""
         return await self._history.list_recent()

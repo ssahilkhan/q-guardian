@@ -10,8 +10,13 @@ import structlog
 from q_guardian.ml.config import MLConfig
 from q_guardian.ml.inference.engine import InferenceEngine
 from q_guardian.ml.models.model_manager import ModelManager
+from q_guardian.output.monitor import build_output_context, resolve_output_config
 from q_guardian.plugins.base import Plugin
-from q_guardian.security.config import IndirectInjectionConfig, PromptSecurityConfig
+from q_guardian.security.config import (
+    IndirectInjectionConfig,
+    OutputMonitoringConfig,
+    PromptSecurityConfig,
+)
 from q_guardian.security.decision import SecurityDecisionEngine
 from q_guardian.security.enums import PromptDecision
 from q_guardian.security.indirect import ContentSegment, build_untrusted_context
@@ -62,8 +67,10 @@ class ThreatAnalysisPlugin(Plugin):
         # settings are honored.
         if isinstance(rule_config, PromptSecurityConfig):
             self._indirect_config: IndirectInjectionConfig = rule_config.indirect
+            self._output_config: OutputMonitoringConfig = resolve_output_config(rule_config.output)
         else:
             self._indirect_config = IndirectInjectionConfig()
+            self._output_config = OutputMonitoringConfig()
 
         # ML components
         self._model_manager = ModelManager()
@@ -76,6 +83,8 @@ class ThreatAnalysisPlugin(Plugin):
         self._scan_count: int = 0
         self._block_count: int = 0
         self._ml_findings_count: int = 0
+        self._output_scan_count: int = 0
+        self._output_block_count: int = 0
 
     @property
     def name(self) -> str:
@@ -249,6 +258,105 @@ class ThreatAnalysisPlugin(Plugin):
 
         return analysis.model_dump()
 
+    async def scan_output(
+        self,
+        output: str,
+        *,
+        source_label: str = "output",
+        context_segments: list[ContentSegment] | None = None,
+        **kwargs: Any,
+    ) -> dict[str, Any]:
+        """Scan agent/model output text through output monitoring (P3-3).
+
+        Runs the same shared pipeline as :meth:`scan_prompt` in the output
+        direction: normalization, validation, feature extraction, rule
+        analysis, and decision — with an ``output_context`` payload
+        attached so the direction-gated ``om-*`` rules can fire. ML
+        inference is intentionally skipped for output scans.
+
+        Args:
+            output: The output text to scan.
+            source_label: Provenance label describing the output origin.
+            context_segments: Optional untrusted input segments correlated
+                against the output by om-007 (propagation detection).
+            **kwargs: Reserved for future extensions.
+
+        Returns:
+            Serialized PromptAnalysis with decision fields and
+            ``direction="output"`` metadata.
+        """
+        start = time.monotonic()
+        self._scan_count += 1
+        self._output_scan_count += 1
+
+        config = resolve_output_config(self._output_config)
+        truncated = False
+        if len(output) > config.max_output_length:
+            output = output[: config.max_output_length]
+            truncated = True
+
+        # Step 1: Normalize & Validate (shared pipeline)
+        normalized = self._normalizer.normalize(output)
+        validation_status, validation_errors = self._validator.validate(normalized)
+
+        # Step 2: Extract features (+ attach output context when enabled)
+        features = self._feature_extractor.extract(normalized)
+        output_summary: dict[str, Any] = {
+            "source_label": source_label,
+            "decoded_variant_count": 0,
+            "segments_scanned": 0,
+            "segments_omitted": 0,
+            "trusted_count": 0,
+        }
+        if config.enabled:
+            payload = build_output_context(
+                normalized,
+                source_label,
+                config,
+                context_segments=context_segments,
+            )
+            features.metadata["output_context"] = payload
+            output_summary["decoded_variant_count"] = len(payload.get("decoded_variants", []))
+            output_summary["segments_scanned"] = len(payload.get("segments", []))
+            output_summary["segments_omitted"] = payload.get("segments_omitted", 0)
+            output_summary["trusted_count"] = payload.get("trusted_count", 0)
+
+        # Step 3: Rule analysis
+        rule_findings = self._rule_engine.analyze(normalized, features)
+
+        # Step 4: Build analysis (no ML inference in the output direction)
+        analysis = PromptAnalysis(
+            original_prompt=output,
+            normalized_prompt=normalized,
+            is_valid=(validation_status.value == "valid"),
+            validation_status=validation_status,
+            validation_errors=validation_errors,
+            features=features,
+            findings=rule_findings,
+        )
+
+        # Step 5: Decision
+        self._decision_engine.decide(analysis)
+
+        elapsed_ms = (time.monotonic() - start) * 1000
+        analysis.processing_time_ms = round(elapsed_ms, 2)
+        analysis.metadata["direction"] = "output"
+        analysis.metadata["output_summary"] = output_summary
+        analysis.metadata["output_findings_count"] = sum(
+            1 for f in rule_findings if f.rule_id.startswith("om-")
+        )
+        if truncated:
+            analysis.metadata["output_truncated"] = True
+
+        if analysis.decision == PromptDecision.BLOCK:
+            self._block_count += 1
+            self._output_block_count += 1
+
+        # Publish output-direction events
+        await self._publish_events(analysis, None, None, normalized, direction="output")
+
+        return analysis.model_dump()
+
     def _attach_untrusted_context(
         self,
         features: Any,
@@ -290,8 +398,18 @@ class ThreatAnalysisPlugin(Plugin):
         ml_result: Any = None,
         features: Any = None,
         normalized: str = "",
+        direction: str = "prompt",
     ) -> None:
-        """Publish analysis events including ML events."""
+        """Publish analysis events including ML events.
+
+        Args:
+            analysis: The completed analysis.
+            ml_result: Optional ML inference result (prompt direction only).
+            features: Optional extracted features (prompt direction only).
+            normalized: Normalized text length source.
+            direction: ``"prompt"`` (default) publishes prompt events;
+                ``"output"`` publishes output-monitoring events instead.
+        """
         if self._context is None or not hasattr(self._context, "event_bus"):
             return
 
@@ -306,10 +424,28 @@ class ThreatAnalysisPlugin(Plugin):
             ThreatClassified,
         )
         from q_guardian.security.events import (
+            OutputBlocked,
+            OutputScanCompleted,
             PromptAllowed,
             PromptAnalysisCompleted,
             PromptBlocked,
         )
+
+        if direction == "output":
+            await bus.publish(
+                OutputScanCompleted(
+                    source=source,
+                    data=analysis.to_security_dict(),
+                )
+            )
+            if analysis.decision == PromptDecision.BLOCK:
+                await bus.publish(
+                    OutputBlocked(
+                        source=source,
+                        data=analysis.to_security_dict(),
+                    )
+                )
+            return
 
         await bus.publish(
             PromptAnalysisCompleted(
@@ -415,6 +551,8 @@ class ThreatAnalysisPlugin(Plugin):
             "ml_detectors": self._inference_engine.detector_count,
             "ml_classifiers": self._inference_engine.classifier_count,
             "ml_enabled": self._ml_config.enabled,
+            "output_scan_count": self._output_scan_count,
+            "output_block_count": self._output_block_count,
         }
 
     def configuration(self) -> dict[str, Any]:

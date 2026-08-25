@@ -27,6 +27,7 @@ if TYPE_CHECKING:
     from q_guardian.events.bus import EventBus
     from q_guardian.framework.context import FrameworkContext
     from q_guardian.sdk.guardian import Guardian
+    from q_guardian.security.config import OutputMonitoringConfig
 
 try:
     from crewai import Crew, Process
@@ -43,6 +44,15 @@ logger = logging.getLogger("q_guardian.adapters.crewai")
 
 _BLOCKED_MESSAGE = "Blocked by Q-Guardian security policy"
 
+# Source labels that represent agent/tool OUTPUT (as opposed to user
+# inputs). When the adapter-level ``output_monitoring`` flag is enabled,
+# only scans carrying one of these labels are analyzed by the
+# direction-gated ``om-*`` rules; input scans keep prompt-direction
+# behavior (including P3-5 indirect injection analysis).
+_OUTPUT_SOURCE_LABELS: frozenset[str] = frozenset(
+    {"output", "task_output", "tool_output", "stream_output"}
+)
+
 
 def _resolve_indirect_config(raw: Any) -> IndirectInjectionConfig:
     """Coerce adapter config into an ``IndirectInjectionConfig``."""
@@ -51,6 +61,13 @@ def _resolve_indirect_config(raw: Any) -> IndirectInjectionConfig:
     if isinstance(raw, dict):
         return IndirectInjectionConfig.model_validate(raw)
     return IndirectInjectionConfig()
+
+
+def _resolve_output_config(raw: Any) -> OutputMonitoringConfig:
+    """Coerce adapter config into an ``OutputMonitoringConfig`` (P3-3)."""
+    from q_guardian.output.monitor import resolve_output_config
+
+    return resolve_output_config(raw)
 
 
 class CrewAISecurityError(Exception):
@@ -280,6 +297,10 @@ class CrewAIAdapter(Adapter):
         if self._event_bus is None and guardian is not None:
             self._event_bus = getattr(guardian, "event_bus", None)
         self._indirect_config = _resolve_indirect_config(cfg.get("indirect_config"))
+        # Output monitoring (P3-3): opt-in via 'output_monitoring' flag;
+        # tuning via optional 'output_config' dict/config instance.
+        self._output_config = _resolve_output_config(cfg.get("output_config"))
+        self._output_monitoring: bool = bool(cfg.get("output_monitoring", False))
 
     @property
     def name(self) -> str:
@@ -798,6 +819,8 @@ class CrewAIAdapter(Adapter):
         text: str,
         source: str,
         context_segments: list[ContentSegment] | None = None,
+        *,
+        output_monitoring: bool | None = None,
     ) -> dict[str, Any]:
         """Scan text content using the existing security pipeline.
 
@@ -805,13 +828,20 @@ class CrewAIAdapter(Adapter):
         encoding detection (P1-2), then applies the existing decision
         architecture (ALLOW/WARN/REVIEW/BLOCK). When untrusted context
         segments are supplied, indirect injection analysis (P3-5) runs on
-        them in addition to the direct rules.
+        them in addition to the direct rules. With output monitoring
+        enabled (P3-3), the direction-gated ``om-*`` rules run instead of
+        the ``ii-*`` rules and the output is analyzed for leakage.
 
         Args:
             text: The text content to scan.
             source: Label describing where the text came from.
             context_segments: Optional untrusted content segments enabling
-                indirect injection analysis.
+                indirect injection analysis (or om-007 correlation when
+                output monitoring is active).
+            output_monitoring: Force output monitoring on/off for this
+                scan; defaults to the adapter-level flag, which itself
+                applies only to output-source labels (inputs keep
+                prompt-direction behavior).
 
         Returns:
             Dictionary with decision, risk_score, findings, source, and
@@ -830,6 +860,11 @@ class CrewAIAdapter(Adapter):
         if not text or not text.strip():
             return {"decision": "allow", "risk_score": 0.0, "findings": [], "source": source}
 
+        if output_monitoring is not None:
+            effective_output = bool(output_monitoring)
+        else:
+            effective_output = self._output_monitoring and source.lower() in _OUTPUT_SOURCE_LABELS
+
         normalizer = PromptNormalizer()
         validator = PromptValidator()
 
@@ -846,7 +881,17 @@ class CrewAIAdapter(Adapter):
         }
 
         indirect_context: dict[str, Any] | None = None
-        if context_segments and self._indirect_config.enabled:
+        if effective_output:
+            from q_guardian.output.monitor import build_output_context
+
+            if self._output_config.enabled:
+                features.metadata["output_context"] = build_output_context(
+                    normalized,
+                    source,
+                    self._output_config,
+                    context_segments=context_segments,
+                )
+        elif context_segments and self._indirect_config.enabled:
             indirect_context = build_untrusted_context(context_segments, self._indirect_config)
             features.metadata["untrusted_context"] = indirect_context
 
@@ -898,6 +943,18 @@ class CrewAIAdapter(Adapter):
                     }
                 }
                 if indirect_context is not None
+                else {}
+            ),
+            **(
+                {
+                    "output_context": {
+                        "source_label": source,
+                        "output_findings_count": sum(
+                            1 for f in analysis.findings if f.rule_id.startswith("om-")
+                        ),
+                    }
+                }
+                if features.metadata.get("output_context") is not None
                 else {}
             ),
         }

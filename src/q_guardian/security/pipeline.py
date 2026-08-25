@@ -575,6 +575,88 @@ DEFAULT_RULES: list[PromptRule] = [
         severity=PromptSeverity.HIGH,
         confidence=0.7,
     ),
+    # ------------------------------------------------------------------
+    # Output monitoring rules (P3-3). Direction-gated: these rules never
+    # fire on ordinary prompt analysis; they require an output_context
+    # payload attached by an output-direction scan (plugin, adapter).
+    # ------------------------------------------------------------------
+    PromptRule(
+        rule_id="om-001",
+        name="Output: Instruction Leakage Framing",
+        description=(
+            "Agent output reveals instruction framing (leakage phrasing "
+            "rather than a direct request). Direction-gated to output scans."
+        ),
+        category=PromptCategory.SYSTEM_PROMPT_LEAK,
+        severity=PromptSeverity.MEDIUM,
+        confidence=0.75,
+    ),
+    PromptRule(
+        rule_id="om-002",
+        name="Output: System Prompt Disclosure",
+        description=(
+            "Agent output discloses system-prompt or persona structure. "
+            "Direction-gated to output scans."
+        ),
+        category=PromptCategory.SYSTEM_PROMPT_LEAK,
+        severity=PromptSeverity.HIGH,
+        confidence=0.85,
+    ),
+    PromptRule(
+        rule_id="om-003",
+        name="Output: Sensitive Data Exposure",
+        description=(
+            "Agent output contains sensitive data shapes (national ID, "
+            "payment card with valid Luhn checksum, IBAN). Direction-gated."
+        ),
+        category=PromptCategory.DATA_EXFILTRATION,
+        severity=PromptSeverity.HIGH,
+        confidence=0.8,
+    ),
+    PromptRule(
+        rule_id="om-004",
+        name="Output: Credential/API-Key Exposure",
+        description=(
+            "Agent output contains credential material (API keys, tokens, "
+            "private keys, bearer secrets). Direction-gated."
+        ),
+        category=PromptCategory.DATA_EXFILTRATION,
+        severity=PromptSeverity.CRITICAL,
+        confidence=0.95,
+    ),
+    PromptRule(
+        rule_id="om-005",
+        name="Output: Actionable Command/Tool Directive",
+        description=(
+            "Agent output contains directly actionable shell commands or "
+            "tool-call directives. Direction-gated."
+        ),
+        category=PromptCategory.PROMPT_INJECTION,
+        severity=PromptSeverity.MEDIUM,
+        confidence=0.7,
+    ),
+    PromptRule(
+        rule_id="om-006",
+        name="Output: Obfuscated Malicious Payload",
+        description=(
+            "Decoded output variant contains a malicious payload marker. "
+            "Fires only when decoding yields marker content. Direction-gated."
+        ),
+        category=PromptCategory.ENCODING,
+        severity=PromptSeverity.HIGH,
+        confidence=0.65,
+    ),
+    PromptRule(
+        rule_id="om-007",
+        name="Output: Untrusted Content Propagation",
+        description=(
+            "Agent output reproduces content originating from untrusted "
+            "input segments. Direction-gated correlation."
+        ),
+        category=PromptCategory.INDIRECT_INJECTION,
+        severity=PromptSeverity.HIGH,
+        confidence=0.8,
+    ),
 ]
 
 
@@ -716,6 +798,14 @@ class RuleEngine:
                 findings.extend(self._evaluate_indirect_rule(rule, features))
                 continue
 
+            # Special handling for output monitoring rules (om-001..om-007).
+            # Direction-gated: these rules never fire on ordinary prompt
+            # analysis; they require an output_context payload attached by
+            # an output-direction scan (plugin, adapter, or service).
+            if rule.rule_id.startswith("om-"):
+                findings.extend(self._evaluate_output_rule(rule, features, prompt))
+                continue
+
             # Special handling for encoding rules (enc-002 through enc-005)
             if rule.rule_id in ("enc-002", "enc-003", "enc-004", "enc-005"):
                 encoding_type = rule.rule_id.split("-")[1]
@@ -838,3 +928,27 @@ class RuleEngine:
         from q_guardian.security.indirect import evaluate_indirect_rule
 
         return evaluate_indirect_rule(rule.rule_id, context_payload)
+
+    def _evaluate_output_rule(
+        self,
+        rule: PromptRule,
+        features: PromptFeatures | None,
+        normalized: str,
+    ) -> list[PromptFinding]:
+        """Evaluate a single direction-gated output monitoring rule.
+
+        Returns an empty list unless an output-context payload was attached
+        to the features metadata by an output-direction scan. The heavy
+        lifting is delegated to :mod:`q_guardian.output.rules`.
+        """
+        if features is None:
+            return []
+        context_payload = features.metadata.get("output_context")
+        if not isinstance(context_payload, dict):
+            return []
+
+        from q_guardian.output.rules import evaluate_output_rule
+
+        merged = dict(context_payload)
+        merged.setdefault("normalized", normalized)
+        return evaluate_output_rule(rule.rule_id, merged)

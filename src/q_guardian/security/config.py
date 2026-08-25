@@ -59,6 +59,74 @@ class IndirectInjectionConfig(BaseModel):
     )
 
 
+class OutputMonitoringConfig(BaseModel):
+    """Configuration for output monitoring (P3-3).
+
+    Controls analysis of agent/model output text for leakage, sensitive
+    data exposure, actionable commands, obfuscated payloads, and
+    propagation of untrusted content. The ``om-*`` rules are
+    direction-gated: they never fire on ordinary prompt scans.
+    """
+
+    enabled: bool = Field(
+        default=True,
+        description="Enable output monitoring when an output scan is requested",
+    )
+    max_output_length: int = Field(
+        default=100_000,
+        ge=1,
+        description="Maximum output character count analyzed per scan",
+    )
+    disabled_rules: list[str] = Field(
+        default_factory=list,
+        description="om-* rule IDs excluded from output monitoring",
+    )
+    secret_entropy_threshold: float = Field(
+        default=3.0,
+        ge=0.0,
+        le=8.0,
+        description="Minimum Shannon entropy (bits/char) for entropy-gated secrets",
+    )
+    quote_discount: float = Field(
+        default=0.6,
+        ge=0.0,
+        le=1.0,
+        description="Confidence multiplier for quoted/attributed matches",
+    )
+    code_discount: float = Field(
+        default=0.7,
+        ge=0.0,
+        le=1.0,
+        description="Confidence multiplier for matches inside fenced code blocks",
+    )
+    max_decoded_variants: int = Field(
+        default=4,
+        ge=0,
+        description="Maximum decoded payload variants inspected by om-006",
+    )
+    decoded_preview_chars: int = Field(
+        default=5000,
+        ge=1,
+        description="Maximum characters retained per decoded variant",
+    )
+    correlation_shingle_words: int = Field(
+        default=5,
+        ge=2,
+        description="Word n-gram size used by om-007 propagation correlation",
+    )
+    correlation_min_shingles: int = Field(
+        default=6,
+        ge=1,
+        description="Minimum matching shingles before om-007 fires",
+    )
+    correlation_overlap_threshold: float = Field(
+        default=0.35,
+        ge=0.0,
+        le=1.0,
+        description="Minimum shingle containment ratio for om-007",
+    )
+
+
 class PromptSecurityConfig(BaseModel):
     """Configuration for the Prompt Security Engine.
 
@@ -125,6 +193,12 @@ class PromptSecurityConfig(BaseModel):
     indirect: IndirectInjectionConfig = Field(
         default_factory=IndirectInjectionConfig,
         description="Indirect prompt injection detection configuration",
+    )
+
+    # Output monitoring (P3-3)
+    output: OutputMonitoringConfig = Field(
+        default_factory=OutputMonitoringConfig,
+        description="Agent output monitoring configuration",
     )
 
     # Future ML configuration placeholders
