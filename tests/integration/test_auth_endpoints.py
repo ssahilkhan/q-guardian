@@ -6,13 +6,14 @@ import json
 
 import pytest
 
-from q_guardian.security.auth import get_authentication_service, reset_auth_singletons
+from q_guardian.security.auth import reset_auth_singletons
 
 
 @pytest.fixture(autouse=True)
 def _provision_user() -> None:
     """Provision a test user via AUTH_USERS and reset auth singletons."""
     import os
+
     from q_guardian.security.auth import hash_password
 
     os.environ["AUTH_USERS"] = json.dumps(
@@ -33,6 +34,7 @@ class TestAuthEndpoints:
         # authorized_client is already authenticated; test the unauthenticated
         # login endpoint directly using a fresh client
         from httpx import ASGITransport, AsyncClient
+
         from q_guardian.api.app import create_app
 
         app = create_app()
@@ -46,8 +48,8 @@ class TestAuthEndpoints:
         assert data["success"] is True
         assert "data" in data
         tokens = data["data"]["tokens"]
-        assert "access" in tokens and tokens["access"]
-        assert "refresh" in tokens and tokens["refresh"]
+        assert tokens.get("access")
+        assert tokens.get("refresh")
         assert data["data"]["username"] == "tester"
         assert "analyst" in data["data"]["roles"]
 
@@ -81,6 +83,7 @@ class TestAuthEndpoints:
     async def test_refresh_valid_token_returns_new_access(self, client) -> None:
         """A valid refresh token yields a new access token (refresh reused)."""
         from httpx import ASGITransport, AsyncClient
+
         from q_guardian.api.app import create_app
 
         app = create_app()
@@ -121,6 +124,7 @@ class TestAuthEndpoints:
     async def test_issued_token_works_on_protected_endpoint(self, client) -> None:
         """The access token from login authenticates a protected console endpoint."""
         from httpx import ASGITransport, AsyncClient
+
         from q_guardian.api.app import create_app
 
         app = create_app()
@@ -149,6 +153,7 @@ class TestConsoleEndpointsWithLoginToken:
 
     async def test_summary_with_login_token(self, client) -> None:
         from httpx import ASGITransport, AsyncClient
+
         from q_guardian.api.app import create_app
 
         app = create_app()
@@ -168,6 +173,7 @@ class TestConsoleEndpointsWithLoginToken:
 
     async def test_observability_with_login_token(self, client) -> None:
         from httpx import ASGITransport, AsyncClient
+
         from q_guardian.api.app import create_app
 
         app = create_app()
