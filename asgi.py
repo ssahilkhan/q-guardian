@@ -39,10 +39,12 @@ app.add_middleware(
 # Include API router
 app.include_router(api_router, prefix="/api/v1")
 
+
 # Health check endpoint
 @app.get("/health", tags=["health"])
 async def health_check():
     return {"status": "healthy", "version": settings.APP_VERSION}
+
 
 # Root endpoint
 @app.get("/", tags=["root"])

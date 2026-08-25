@@ -142,15 +142,13 @@ def pool_metrics(y_true: list[int], scores: list[float], threshold: float) -> di
 
 def git_commit() -> str | None:
     try:
-        return (
-            subprocess.run(
-                ["git", "rev-parse", "HEAD"],
-                cwd=str(ROOT),
-                capture_output=True,
-                text=True,
-                check=True,
-            ).stdout.strip()
-        )
+        return subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=str(ROOT),
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout.strip()
     except Exception:
         return None
 
@@ -164,8 +162,10 @@ def main() -> None:
     texts = [r["text"] for r in train_rows]
     labels = [int(r["label"]) for r in train_rows]
     assert len(texts) == len(labels), "arm_d text/label mismatch"
-    print(f"[data] arm_d: {len(texts)} samples "
-          f"({sum(labels)} malicious / {len(labels) - sum(labels)} benign)")
+    print(
+        f"[data] arm_d: {len(texts)} samples "
+        f"({sum(labels)} malicious / {len(labels) - sum(labels)} benign)"
+    )
 
     pools = {name: load_jsonl(path) for name, path in POOL_FILES.items()}
 
@@ -179,8 +179,10 @@ def main() -> None:
     )
     print("[train] fitting HybridEvaluator on arm_d (semantic features) ...")
     evaluator.fit(texts, labels)
-    print(f"[train] fitted in {time.monotonic() - t0:.1f}s "
-          f"(scaler dims={len(evaluator.scaler.mean_)})")
+    print(
+        f"[train] fitted in {time.monotonic() - t0:.1f}s "
+        f"(scaler dims={len(evaluator.scaler.mean_)})"
+    )
 
     # ------------------------------------------------------------- evaluation
     PROVIDER_ORDER = ("random-forest", "xgboost", "isolation-forest", "rule-engine", "fusion")
@@ -193,14 +195,20 @@ def main() -> None:
             for provider in PROVIDER_ORDER
             if provider in result
         }
-        print(f"[eval] {name}: " + " | ".join(
-            f"{p} auc={v['roc_auc']:.4f}" for p, v in evaluation[name].items()
-        ))
+        print(
+            f"[eval] {name}: "
+            + " | ".join(f"{p} auc={v['roc_auc']:.4f}" for p, v in evaluation[name].items())
+        )
 
     # ------------------------------------------------------------ persist all
     (OUT / "training_config.json").write_text(
-        json.dumps({"training_data": "experiments/training_diversity/train_sets/arm_d.jsonl",
-                    **TRAINING_CONFIG}, indent=2),
+        json.dumps(
+            {
+                "training_data": "experiments/training_diversity/train_sets/arm_d.jsonl",
+                **TRAINING_CONFIG,
+            },
+            indent=2,
+        ),
         encoding="utf-8",
     )
 
@@ -224,8 +232,7 @@ def main() -> None:
         "created_utc": datetime.now(timezone.utc).isoformat(),
         "git_commit": git_commit(),
         "model_type": (
-            "HybridEvaluator (rule-engine + isolation-forest + "
-            "random-forest + xgboost fusion)"
+            "HybridEvaluator (rule-engine + isolation-forest + random-forest + xgboost fusion)"
         ),
         "dataset": {
             "name": "arm_d (diverse)",

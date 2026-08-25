@@ -239,10 +239,12 @@ The `ModelStorage` class (`ml/storage.py`) uses `joblib.dump()` and `joblib.load
 ```python
 # ml/storage.py:46-52
 import joblib
+
 joblib.dump(model, artifact_path)
 
 # ml/storage.py:81-92
 import joblib
+
 model = joblib.load(artifact_path)
 ```
 

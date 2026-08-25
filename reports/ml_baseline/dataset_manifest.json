@@ -1,0 +1,456 @@
+{
+  "generated_at": "2026-08-24T05:52:09.580437+00:00",
+  "datasets": [
+    {
+      "name": "prompt_injections",
+      "source": "HF deepset/prompt-injections",
+      "purpose": "control training pool (in-domain prompt injections)",
+      "files": [
+        {
+          "path": "data/prompt_injections.jsonl",
+          "samples": 662,
+          "malicious": 263,
+          "benign": 399,
+          "unlabeled": 0,
+          "implied_malicious": 0,
+          "implied_benign": 0,
+          "skipped_rows": 0,
+          "label_ratio": 0.3973,
+          "download_status": "local"
+        }
+      ],
+      "present": true,
+      "samples": 662,
+      "malicious": 263,
+      "benign": 399
+    },
+    {
+      "name": "benchmark_prompts",
+      "source": "internal curation",
+      "purpose": "small held-out QA smoke set",
+      "files": [
+        {
+          "path": "data/benchmark_prompts.jsonl",
+          "samples": 62,
+          "malicious": 32,
+          "benign": 30,
+          "unlabeled": 0,
+          "implied_malicious": 0,
+          "implied_benign": 0,
+          "skipped_rows": 0,
+          "label_ratio": 0.5161,
+          "download_status": "local"
+        }
+      ],
+      "present": true,
+      "samples": 62,
+      "malicious": 32,
+      "benign": 30
+    },
+    {
+      "name": "trustair_jailbreaks",
+      "source": "HF TrustAIRLab/in-the-wild-jailbreak-prompts (jailbreak_2023_12_25)",
+      "purpose": "diverse training arm A/D (real-user jailbreaks, label=jailbreak:true)",
+      "files": [
+        {
+          "path": "experiments/training_diversity/data_raw/trustair_jailbreaks.jsonl",
+          "samples": 1405,
+          "malicious": 1405,
+          "benign": 0,
+          "unlabeled": 0,
+          "implied_malicious": 0,
+          "implied_benign": 0,
+          "skipped_rows": 0,
+          "label_ratio": 1.0,
+          "download_status": "local"
+        }
+      ],
+      "present": true,
+      "samples": 1405,
+      "malicious": 1405,
+      "benign": 0
+    },
+    {
+      "name": "trustair_regular",
+      "source": "HF TrustAIRLab/in-the-wild-jailbreak-prompts (regular_2023_12_25)",
+      "purpose": "diverse benign pool (capped at 2000 when building arms)",
+      "files": [
+        {
+          "path": "experiments/training_diversity/data_raw/trustair_regular.jsonl",
+          "samples": 3500,
+          "malicious": 0,
+          "benign": 3500,
+          "unlabeled": 0,
+          "implied_malicious": 0,
+          "implied_benign": 0,
+          "skipped_rows": 0,
+          "label_ratio": 0.0,
+          "download_status": "local"
+        }
+      ],
+      "present": true,
+      "samples": 3500,
+      "malicious": 0,
+      "benign": 3500
+    },
+    {
+      "name": "jailbreakv",
+      "source": "HF JailbreakV-28K/JailBreakV-28k (partial download, max_rows=5900)",
+      "purpose": "diverse training arm B/D (seeded 2000-sample subset, seed=42)",
+      "files": [
+        {
+          "path": "experiments/training_diversity/data_raw/jailbreakv.jsonl",
+          "samples": 5900,
+          "malicious": 5900,
+          "benign": 0,
+          "unlabeled": 0,
+          "implied_malicious": 5900,
+          "implied_benign": 0,
+          "skipped_rows": 0,
+          "label_ratio": 0.0,
+          "download_status": "local"
+        }
+      ],
+      "present": true,
+      "samples": 5900,
+      "malicious": 5900,
+      "benign": 0
+    },
+    {
+      "name": "harmful_behaviors_train",
+      "source": "HF mlabonne/harmful_behaviors (train split)",
+      "purpose": "diverse training arm C/D (unlabeled rows; malicious by source, contamination-filtered at arm build time)",
+      "files": [
+        {
+          "path": "experiments/training_diversity/data_raw/harmful_behaviors_train.jsonl",
+          "samples": 416,
+          "malicious": 416,
+          "benign": 0,
+          "unlabeled": 0,
+          "implied_malicious": 416,
+          "implied_benign": 0,
+          "skipped_rows": 0,
+          "label_ratio": 0.0,
+          "download_status": "local"
+        }
+      ],
+      "present": true,
+      "samples": 416,
+      "malicious": 416,
+      "benign": 0
+    },
+    {
+      "name": "harmful_behaviors_test",
+      "source": "HF mlabonne/harmful_behaviors (test split)",
+      "purpose": "diverse training arm C/D (unlabeled rows; malicious by source, contamination-filtered at arm build time)",
+      "files": [
+        {
+          "path": "experiments/training_diversity/data_raw/harmful_behaviors_test.jsonl",
+          "samples": 104,
+          "malicious": 104,
+          "benign": 0,
+          "unlabeled": 0,
+          "implied_malicious": 104,
+          "implied_benign": 0,
+          "skipped_rows": 0,
+          "label_ratio": 0.0,
+          "download_status": "local"
+        }
+      ],
+      "present": true,
+      "samples": 104,
+      "malicious": 104,
+      "benign": 0
+    },
+    {
+      "name": "arm_control",
+      "source": "deepset-prompt-injections + dolly-benign",
+      "purpose": "control training arm (2425 samples)",
+      "files": [
+        {
+          "path": "experiments/training_diversity/train_sets/control.jsonl",
+          "samples": 2425,
+          "malicious": 162,
+          "benign": 2263,
+          "unlabeled": 0,
+          "implied_malicious": 0,
+          "implied_benign": 0,
+          "skipped_rows": 0,
+          "label_ratio": 0.0668,
+          "download_status": "local"
+        }
+      ],
+      "present": true,
+      "samples": 2425,
+      "malicious": 162,
+      "benign": 2263
+    },
+    {
+      "name": "arm_a",
+      "source": "control + trustair_jailbreaks",
+      "purpose": "training-diversity experiment arm A",
+      "files": [
+        {
+          "path": "experiments/training_diversity/train_sets/arm_a.jsonl",
+          "samples": 3767,
+          "malicious": 1504,
+          "benign": 2263,
+          "unlabeled": 0,
+          "implied_malicious": 0,
+          "implied_benign": 0,
+          "skipped_rows": 0,
+          "label_ratio": 0.3993,
+          "download_status": "local"
+        }
+      ],
+      "present": true,
+      "samples": 3767,
+      "malicious": 1504,
+      "benign": 2263
+    },
+    {
+      "name": "arm_b",
+      "source": "control + jailbreakv subset",
+      "purpose": "training-diversity experiment arm B",
+      "files": [
+        {
+          "path": "experiments/training_diversity/train_sets/arm_b.jsonl",
+          "samples": 4425,
+          "malicious": 2162,
+          "benign": 2263,
+          "unlabeled": 0,
+          "implied_malicious": 0,
+          "implied_benign": 0,
+          "skipped_rows": 0,
+          "label_ratio": 0.4886,
+          "download_status": "local"
+        }
+      ],
+      "present": true,
+      "samples": 4425,
+      "malicious": 2162,
+      "benign": 2263
+    },
+    {
+      "name": "arm_c",
+      "source": "control + harmful_behaviors (filtered)",
+      "purpose": "training-diversity experiment arm C",
+      "files": [
+        {
+          "path": "experiments/training_diversity/train_sets/arm_c.jsonl",
+          "samples": 2927,
+          "malicious": 664,
+          "benign": 2263,
+          "unlabeled": 0,
+          "implied_malicious": 0,
+          "implied_benign": 0,
+          "skipped_rows": 0,
+          "label_ratio": 0.2269,
+          "download_status": "local"
+        }
+      ],
+      "present": true,
+      "samples": 2927,
+      "malicious": 664,
+      "benign": 2263
+    },
+    {
+      "name": "arm_d",
+      "source": "control + trustair + jailbreakv + harmful_behaviors",
+      "purpose": "DIVERSE training arm D (production retrain candidate)",
+      "files": [
+        {
+          "path": "experiments/training_diversity/train_sets/arm_d.jsonl",
+          "samples": 6269,
+          "malicious": 4006,
+          "benign": 2263,
+          "unlabeled": 0,
+          "implied_malicious": 0,
+          "implied_benign": 0,
+          "skipped_rows": 0,
+          "label_ratio": 0.639,
+          "download_status": "local"
+        }
+      ],
+      "present": true,
+      "samples": 6269,
+      "malicious": 4006,
+      "benign": 2263
+    },
+    {
+      "name": "split_train",
+      "source": "derived from control pool",
+      "purpose": "frozen internal train split",
+      "files": [
+        {
+          "path": "artifacts/training_xgboost_fix/splits/train.jsonl",
+          "samples": 2425,
+          "malicious": 162,
+          "benign": 2263,
+          "unlabeled": 0,
+          "implied_malicious": 0,
+          "implied_benign": 0,
+          "skipped_rows": 0,
+          "label_ratio": 0.0668,
+          "download_status": "local"
+        }
+      ],
+      "present": true,
+      "samples": 2425,
+      "malicious": 162,
+      "benign": 2263
+    },
+    {
+      "name": "split_validation",
+      "source": "deepset-prompt-injections",
+      "purpose": "calibration + threshold selection ONLY",
+      "files": [
+        {
+          "path": "artifacts/training_xgboost_fix/splits/validation.jsonl",
+          "samples": 110,
+          "malicious": 41,
+          "benign": 69,
+          "unlabeled": 0,
+          "implied_malicious": 0,
+          "implied_benign": 0,
+          "skipped_rows": 0,
+          "label_ratio": 0.3727,
+          "download_status": "local"
+        }
+      ],
+      "present": true,
+      "samples": 110,
+      "malicious": 41,
+      "benign": 69
+    },
+    {
+      "name": "split_test",
+      "source": "deepset-prompt-injections",
+      "purpose": "internal test (evaluation only, never fitted)",
+      "files": [
+        {
+          "path": "artifacts/training_xgboost_fix/splits/test.jsonl",
+          "samples": 116,
+          "malicious": 60,
+          "benign": 56,
+          "unlabeled": 0,
+          "implied_malicious": 0,
+          "implied_benign": 0,
+          "skipped_rows": 0,
+          "label_ratio": 0.5172,
+          "download_status": "local"
+        }
+      ],
+      "present": true,
+      "samples": 116,
+      "malicious": 60,
+      "benign": 56
+    },
+    {
+      "name": "split_external_eval_jbb",
+      "source": "HF JailbreakBench/JBB-Behaviors (public splits harmful+benign)",
+      "purpose": "EXTERNAL held-out evaluation (never fitted/selected on)",
+      "files": [
+        {
+          "path": "artifacts/training_xgboost_fix/splits/external_eval.jsonl",
+          "samples": 200,
+          "malicious": 100,
+          "benign": 100,
+          "unlabeled": 0,
+          "implied_malicious": 0,
+          "implied_benign": 0,
+          "skipped_rows": 0,
+          "label_ratio": 0.5,
+          "download_status": "local"
+        }
+      ],
+      "present": true,
+      "samples": 200,
+      "malicious": 100,
+      "benign": 100
+    }
+  ],
+  "benchmark_registry": [
+    {
+      "dataset_id": "advbench",
+      "hf_source": "DeepMind/AdvBench",
+      "license": "research-only",
+      "requires_token": true,
+      "available_without_auth": false
+    },
+    {
+      "dataset_id": "agentdojo",
+      "hf_source": "ibm/agentdojo",
+      "license": "CC BY 4.0",
+      "requires_token": true,
+      "available_without_auth": false
+    },
+    {
+      "dataset_id": "cyberseceval-prompt-injections",
+      "hf_source": "facebook/CyberSecEval-PromptInjections",
+      "license": "research-only",
+      "requires_token": true,
+      "available_without_auth": false
+    },
+    {
+      "dataset_id": "deepset-prompt-injections",
+      "hf_source": "deepset/prompt-injections",
+      "license": "Apache-2.0",
+      "requires_token": false,
+      "available_without_auth": true
+    },
+    {
+      "dataset_id": "dolly-benign",
+      "hf_source": "databricks/databricks-dolly-15k",
+      "license": "CC BY-SA 3.0",
+      "requires_token": false,
+      "available_without_auth": true
+    },
+    {
+      "dataset_id": "harmbench-behaviors",
+      "hf_source": "cais/harmbench_behaviors",
+      "license": "research-only",
+      "requires_token": true,
+      "available_without_auth": false
+    },
+    {
+      "dataset_id": "hex-phi",
+      "hf_source": "walledai/HEx-PHI",
+      "license": "research-only",
+      "requires_token": true,
+      "available_without_auth": false
+    },
+    {
+      "dataset_id": "jailbreakbench-attacks",
+      "hf_source": "JailbreakBench/JBB-Attacks",
+      "license": "public",
+      "requires_token": true,
+      "available_without_auth": false
+    },
+    {
+      "dataset_id": "jbb-behaviors",
+      "hf_source": "JailbreakBench/JBB-Behaviors",
+      "license": "public",
+      "requires_token": false,
+      "available_without_auth": true
+    },
+    {
+      "dataset_id": "pal",
+      "hf_source": "ProtectAI/PAL",
+      "license": "research-only",
+      "requires_token": true,
+      "available_without_auth": false
+    },
+    {
+      "dataset_id": "wildjailbreak",
+      "hf_source": "allenai/wildjailbreak",
+      "license": "MIT",
+      "requires_token": true,
+      "available_without_auth": false
+    }
+  ],
+  "notes": [
+    "Gated benchmark datasets (wildjailbreak, harmbench-behaviors, advbench, hex-phi, pal, agentdojo, cyberseceval-prompt-injections, jailbreakbench-attacks) require accepting Hub terms and setting the HF_TOKEN environment variable; they are NOT downloaded here.",
+    "No credentials are stored by this tool."
+  ]
+}

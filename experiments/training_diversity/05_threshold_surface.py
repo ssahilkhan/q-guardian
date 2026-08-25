@@ -20,7 +20,12 @@ import numpy as np
 
 from q_guardian.evaluation.metrics import detection_metrics
 
-OUT = Path(__file__).resolve().parent.parent.parent / "artifacts" / "training" / "generalization_experiment"
+OUT = (
+    Path(__file__).resolve().parent.parent.parent
+    / "artifacts"
+    / "training"
+    / "generalization_experiment"
+)
 RESULTS = OUT / "results.json"
 
 GRID = [round(t, 2) for t in np.arange(0.01, 1.0, 0.01)]
@@ -32,14 +37,16 @@ def operating_points(scores: list[float], y: list[int]) -> dict:
     rows = []
     for t in GRID:
         m = detection_metrics(y, scores, threshold=t)
-        rows.append({
-            "threshold": t,
-            "detection": round(m["recall"], 4),
-            "fpr": round(m["false_positive_rate"], 4),
-            "precision": round(m["precision"], 4),
-            "f1": round(m["f1_score"], 4),
-            "youden": round(m["recall"] - m["false_positive_rate"], 4),
-        })
+        rows.append(
+            {
+                "threshold": t,
+                "detection": round(m["recall"], 4),
+                "fpr": round(m["false_positive_rate"], 4),
+                "precision": round(m["precision"], 4),
+                "f1": round(m["f1_score"], 4),
+                "youden": round(m["recall"] - m["false_positive_rate"], 4),
+            }
+        )
     f1_opt = max(rows, key=lambda r: r["f1"])
     youden_opt = max(rows, key=lambda r: r["youden"])
     fpr05 = max((r for r in rows if r["fpr"] <= 0.05), key=lambda r: r["detection"])
@@ -54,7 +61,12 @@ def main() -> None:
     r = json.loads(RESULTS.read_text(encoding="utf-8"))
 
     # Labels are not stored in results.json; reload them from the split files.
-    RUN = Path(__file__).resolve().parent.parent.parent / "artifacts" / "training_xgboost_fix" / "splits"
+    RUN = (
+        Path(__file__).resolve().parent.parent.parent
+        / "artifacts"
+        / "training_xgboost_fix"
+        / "splits"
+    )
 
     def load_labels(name: str) -> list[int]:
         rows = []
@@ -83,7 +95,9 @@ def main() -> None:
 
     for model in ("rf", "xgb"):
         print(f"\n== {model.upper()} JBB operating points ==")
-        print(f"{'config':<16} {'f1-opt t':<9} {'det':>6} {'fpr':>6} | {'youden t':<9} {'det':>6} {'fpr':>6} | {'fpr<=5% t':<9} {'det':>6} {'fpr':>6} {'prec':>6}")
+        print(
+            f"{'config':<16} {'f1-opt t':<9} {'det':>6} {'fpr':>6} | {'youden t':<9} {'det':>6} {'fpr':>6} | {'fpr<=5% t':<9} {'det':>6} {'fpr':>6} {'prec':>6}"
+        )
         for cfg in CONFIGS:
             s = surface[cfg][model]["jbb"]
             f1, yj, f5 = s["f1_optimal"], s["youden_optimal"], s["fpr05_max_detection"]

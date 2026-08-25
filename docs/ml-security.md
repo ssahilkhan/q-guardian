@@ -44,6 +44,7 @@ Common interface for all ML models. Every algorithm (Isolation Forest, Random Fo
 ```python
 from q_guardian.ml import BaseThreatModel
 
+
 class MyModel(BaseThreatModel):
     @property
     def metadata(self) -> ModelMetadata: ...
@@ -213,9 +214,7 @@ print(result["detection_rate"])
 
 # Research metrics with severity weighting
 research = ResearchMetrics()
-result = research.compute_prompt_security_metrics(
-    y_true, y_pred, y_true_severity, y_pred_severity
-)
+result = research.compute_prompt_security_metrics(y_true, y_pred, y_true_severity, y_pred_severity)
 ```
 
 ## Configuration
@@ -256,6 +255,7 @@ To add a quantum model (e.g., QSVM):
 
 ```python
 from q_guardian.security.extensibility import ThreatClassifier
+
 
 class QSVMModel(ThreatClassifier, BaseThreatModel):
     async def classify_quantum(self, prompt, features):

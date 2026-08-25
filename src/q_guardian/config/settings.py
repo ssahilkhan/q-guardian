@@ -158,6 +158,9 @@ class RateLimitSettings(BaseSettings):
     enabled: bool = Field(default=False, description="Enable API rate limiting")
     requests: int = Field(default=100, ge=1, description="Max requests per window")
     window_seconds: int = Field(default=60, ge=1, description="Sliding window in seconds")
+    trust_x_forwarded_for: bool = Field(
+        default=True, description="Trust X-Forwarded-For header for client identification"
+    )
 
 
 class LoggingSettings(BaseSettings):

@@ -175,6 +175,10 @@ markers = [
     "slow: Slow running tests",
 ]
 
+# CI-specific configuration
+# Use: pytest -c pytest-ci.ini  or  pytest -o "addopts=-c pytest-ci.ini"
+# The pytest-ci.ini file contains CI-specific mocking and configuration
+
 [tool.coverage.run]
 source = ["src/q_guardian"]
 omit = ["tests/*", "**/__init__.py"]

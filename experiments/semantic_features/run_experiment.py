@@ -140,16 +140,15 @@ def build_features() -> dict[str, dict]:
     CACHE.mkdir(parents=True, exist_ok=True)
     np.savez_compressed(
         cache_file,
-        **{
-            f"{pool}_texts": np.array(out[pool]["texts"], dtype=object)
-            for pool in POOLS
-        },
+        **{f"{pool}_texts": np.array(out[pool]["texts"], dtype=object) for pool in POOLS},
         **{f"{pool}_y": np.array(out[pool]["y"]) for pool in POOLS},
         **{f"{pool}_x43": out[pool]["x43"] for pool in POOLS},
         **{f"{pool}_xemb": out[pool]["xemb"] for pool in POOLS},
     )
-    print(f"[features] cache written to {cache_file} "
-          f"(load={load_time:.1f}s, encode={encode_time:.1f}s)")
+    print(
+        f"[features] cache written to {cache_file} "
+        f"(load={load_time:.1f}s, encode={encode_time:.1f}s)"
+    )
     return out
 
 
@@ -227,7 +226,9 @@ def run_primary() -> dict:
             for pool in ("test", "validation", "jbb"):
                 t0 = time.monotonic()
                 x_eval_s = scaler.transform(representation_matrix(pool, rep))
-                metrics, scores = eval_scores(model, x_train_s, y_train, x_eval_s, FEATURES[pool]["y"])
+                metrics, scores = eval_scores(
+                    model, x_train_s, y_train, x_eval_s, FEATURES[pool]["y"]
+                )
                 entry["timing"][pool] = round(time.monotonic() - t0, 3)
                 entry["eval"][pool] = summarize(metrics)
                 if pool == "jbb":
@@ -245,7 +246,10 @@ def run_cv() -> dict:
         out[rep] = {}
         for model in MODELS:
             folds_metrics: dict[str, list[float]] = {
-                "roc_auc": [], "pr_auc": [], "f1": [], "accuracy": []
+                "roc_auc": [],
+                "pr_auc": [],
+                "f1": [],
+                "accuracy": [],
             }
             for train_ds, test_ds_fold in folds:
                 train_texts = {s.text for s in train_ds}
@@ -326,19 +330,13 @@ def main() -> None:
 
     baseline = {
         "representation": "handcrafted (43 features)",
-        "models": {
-            model: {"eval": primary["handcrafted"][model]["eval"]}
-            for model in MODELS
-        },
+        "models": {model: {"eval": primary["handcrafted"][model]["eval"]} for model in MODELS},
         "cv": cv["handcrafted"],
         "timing": primary["handcrafted"],
     }
     semantic = {
         "representation": "handcrafted (43) + semantic embedding (384)",
-        "models": {
-            model: {"eval": primary["combined"][model]["eval"]}
-            for model in MODELS
-        },
+        "models": {model: {"eval": primary["combined"][model]["eval"]} for model in MODELS},
         "cv": cv["combined"],
         "timing": primary["combined"],
     }
@@ -371,15 +369,9 @@ def main() -> None:
         ],
     }
 
-    (OUT / "baseline_metrics.json").write_text(
-        json.dumps(baseline, indent=2), encoding="utf-8"
-    )
-    (OUT / "semantic_metrics.json").write_text(
-        json.dumps(semantic, indent=2), encoding="utf-8"
-    )
-    (OUT / "comparison.json").write_text(
-        json.dumps(comparison, indent=2), encoding="utf-8"
-    )
+    (OUT / "baseline_metrics.json").write_text(json.dumps(baseline, indent=2), encoding="utf-8")
+    (OUT / "semantic_metrics.json").write_text(json.dumps(semantic, indent=2), encoding="utf-8")
+    (OUT / "comparison.json").write_text(json.dumps(comparison, indent=2), encoding="utf-8")
 
     write_csv(primary, cv)
     write_report(primary, cv, jbb_dist)
@@ -419,9 +411,7 @@ def write_log(log: list[str], primary: dict, cv: dict) -> None:
     for rep in REPRESENTATIONS:
         for model in MODELS:
             m = primary[rep][model]["eval"]["test"]
-            lines.append(
-                f"  {rep:<11} {model:<3} roc_auc={m['roc_auc']:.4f} f1={m['f1']:.4f}"
-            )
+            lines.append(f"  {rep:<11} {model:<3} roc_auc={m['roc_auc']:.4f} f1={m['f1']:.4f}")
     lines.append("")
     lines.append("JBB results:")
     for rep in REPRESENTATIONS:

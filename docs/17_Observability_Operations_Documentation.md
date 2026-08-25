@@ -303,9 +303,10 @@ trace.finish_trace(ctx.trace_id)
 
 alerts = AlertEngine()
 alerts.initialize(metrics_engine=metrics)
-alerts.add_rule(AlertRule(name="high-latency", metric_name="latency_ms",
-                          condition="gt", threshold=100))
-alerts.evaluate_rules()          # fires when threshold crossed (respecting cooldown)
+alerts.add_rule(
+    AlertRule(name="high-latency", metric_name="latency_ms", condition="gt", threshold=100)
+)
+alerts.evaluate_rules()  # fires when threshold crossed (respecting cooldown)
 ```
 
 ---

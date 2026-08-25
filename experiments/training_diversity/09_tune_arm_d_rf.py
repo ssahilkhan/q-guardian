@@ -78,12 +78,14 @@ def main() -> None:
     X_val_s = scaler.transform(X_val)
     X_jbb_s = scaler.transform(X_jbb)
 
-    grid = list(itertools.product(
-        (50, 200),              # n_estimators
-        (None, 20),             # max_depth
-        (1, 2),                 # min_samples_leaf
-        (None, "balanced_subsample"),  # class_weight
-    ))
+    grid = list(
+        itertools.product(
+            (50, 200),  # n_estimators
+            (None, 20),  # max_depth
+            (1, 2),  # min_samples_leaf
+            (None, "balanced_subsample"),  # class_weight
+        )
+    )
 
     results = []
     print(f"[tune] {len(grid)} configurations, selection = validation ROC-AUC")
@@ -106,12 +108,14 @@ def main() -> None:
             "class_weight": cw,
             "random_state": SEED,
         }
-        results.append({
-            "config": cfg,
-            "validation_roc_auc": round(m_val["roc_auc"], 4),
-            "validation_pr_auc": round(m_val["pr_auc"], 4),
-            "validation_f1": round(m_val["f1_score"], 4),
-        })
+        results.append(
+            {
+                "config": cfg,
+                "validation_roc_auc": round(m_val["roc_auc"], 4),
+                "validation_pr_auc": round(m_val["pr_auc"], 4),
+                "validation_f1": round(m_val["f1_score"], 4),
+            }
+        )
         print(f"  {cfg} -> val auc={m_val['roc_auc']:.4f} f1={m_val['f1_score']:.4f}")
 
     best = max(results, key=lambda r: (r["validation_roc_auc"], r["validation_pr_auc"]))
@@ -169,8 +173,10 @@ def main() -> None:
         "frozen_baseline_validation_roc_auc": round(baseline_val["roc_auc"], 4),
     }
     (OUT / "rf_tuning_results.json").write_text(json.dumps(output, indent=2), encoding="utf-8")
-    print(f"[final] validation auc={m_val_f['roc_auc']:.4f} | "
-          f"JBB auc={m_jbb_f['roc_auc']:.4f} (single evaluation)")
+    print(
+        f"[final] validation auc={m_val_f['roc_auc']:.4f} | "
+        f"JBB auc={m_jbb_f['roc_auc']:.4f} (single evaluation)"
+    )
     print(f"[done] {time.monotonic() - t0:.1f}s")
 
 

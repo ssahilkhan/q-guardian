@@ -35,9 +35,11 @@ from q_guardian import (
 # Mock Google ADK Types (no external deps required)
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class FunctionDeclaration:
     """Simulated Google ADK function declaration."""
+
     name: str
     description: str
     parameters: dict[str, Any] = field(default_factory=dict)
@@ -46,6 +48,7 @@ class FunctionDeclaration:
 @dataclass
 class AgentConfig:
     """Simulated Google ADK agent configuration."""
+
     name: str
     model: str = "gemini-pro"
     instruction: str = ""
@@ -56,6 +59,7 @@ class AgentConfig:
 @dataclass
 class AgentResponse:
     """Simulated Google ADK response."""
+
     agent_name: str
     text: str
     function_calls: list[str] = field(default_factory=list)
@@ -79,6 +83,7 @@ class MockGoogleAgent:
 # ---------------------------------------------------------------------------
 # Q-Guardian Secured Google ADK Application
 # ---------------------------------------------------------------------------
+
 
 class SecuredGoogleADKApp:
     """Google ADK application with Q-Guardian security pipeline."""
@@ -114,22 +119,26 @@ class SecuredGoogleADKApp:
         self._log_detection(analysis)
 
         # 2. Risk
-        risk_dict = await self._guardian.calculate_risk({
-            "prompt": user_input,
-            "agent_name": agent_name,
-            "model": agent.config.model,
-        })
+        risk_dict = await self._guardian.calculate_risk(
+            {
+                "prompt": user_input,
+                "agent_name": agent_name,
+                "model": agent.config.model,
+            }
+        )
         risk = RiskContext(**risk_dict.get("risk-engine", {})) if risk_dict else RiskContext()
         print(f"  [Risk] score={risk.score:.2f} factors={risk.factors or 'none'}")
 
         # 3. Policy + Response
         if analysis.decision == PromptDecision.BLOCK:
             print(f"  [Policy] BLOCKED - {analysis.recommendation}")
-            self._cross_agent_alerts.append({
-                "agent": agent_name,
-                "action": "blocked",
-                "reason": analysis.recommendation,
-            })
+            self._cross_agent_alerts.append(
+                {
+                    "agent": agent_name,
+                    "action": "blocked",
+                    "reason": analysis.recommendation,
+                }
+            )
             return f"Blocked by Q-Guardian: {analysis.recommendation}"
 
         if analysis.decision in (PromptDecision.WARN, PromptDecision.REVIEW):
@@ -149,12 +158,14 @@ class SecuredGoogleADKApp:
             )
 
         # 4. Observability
-        await self._guardian.monitor({
-            "event": "agent_completed",
-            "agent": agent_name,
-            "function_calls": len(response.function_calls),
-            "risk_score": risk.score,
-        })
+        await self._guardian.monitor(
+            {
+                "event": "agent_completed",
+                "agent": agent_name,
+                "function_calls": len(response.function_calls),
+                "risk_score": risk.score,
+            }
+        )
 
         return response.text
 
@@ -188,8 +199,9 @@ class SecuredGoogleADKApp:
         finding_summary = []
         for f in analysis.findings:
             finding_summary.append(f"{f.category.value}:{f.severity.value}")
-        print(f"  [Detection] decision={analysis.decision.value} "
-              f"findings={finding_summary or 'none'}")
+        print(
+            f"  [Detection] decision={analysis.decision.value} findings={finding_summary or 'none'}"
+        )
 
     def _log_cross_agent_summary(self) -> None:
         print(f"\n[Cross-Agent Security Summary]")
@@ -202,6 +214,7 @@ class SecuredGoogleADKApp:
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
+
 
 async def main() -> None:
     """Run the Google ADK + Q-Guardian example."""
@@ -216,22 +229,26 @@ async def main() -> None:
 
     app = SecuredGoogleADKApp(guardian)
 
-    app.register_agent(AgentConfig(
-        name="router",
-        model="gemini-pro",
-        instruction="Route requests to appropriate sub-agents.",
-        tools=[FunctionDeclaration(name="route_request", description="Route to sub-agent")],
-        sub_agents=["researcher"],
-    ))
-    app.register_agent(AgentConfig(
-        name="researcher",
-        model="gemini-pro",
-        instruction="Research and answer questions.",
-        tools=[
-            FunctionDeclaration(name="web_search", description="Search the web"),
-            FunctionDeclaration(name="summarize", description="Summarize text"),
-        ],
-    ))
+    app.register_agent(
+        AgentConfig(
+            name="router",
+            model="gemini-pro",
+            instruction="Route requests to appropriate sub-agents.",
+            tools=[FunctionDeclaration(name="route_request", description="Route to sub-agent")],
+            sub_agents=["researcher"],
+        )
+    )
+    app.register_agent(
+        AgentConfig(
+            name="researcher",
+            model="gemini-pro",
+            instruction="Research and answer questions.",
+            tools=[
+                FunctionDeclaration(name="web_search", description="Search the web"),
+                FunctionDeclaration(name="summarize", description="Summarize text"),
+            ],
+        )
+    )
 
     prompts = [
         "What is the current state of renewable energy adoption?",

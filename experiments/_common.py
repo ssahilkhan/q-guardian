@@ -27,9 +27,7 @@ PROVIDER_IDS = ("rule-engine", "isolation-forest", "random-forest", "fusion")
 
 
 def silence_logging() -> None:
-    structlog.configure(
-        wrapper_class=structlog.make_filtering_bound_logger(logging.WARNING)
-    )
+    structlog.configure(wrapper_class=structlog.make_filtering_bound_logger(logging.WARNING))
 
 
 def load_pools() -> dict[str, PromptBenchmarkDataset]:
@@ -97,5 +95,6 @@ def provider_scores(pool: str) -> tuple[list[float], ...]:
     """Return (rule, if, rf, fusion) score lists for a pool from the cache."""
     rows = score_provider_pools()[pool]
     return tuple(
-        [float(r[pid]) for r in rows] for pid in ("rule-engine", "isolation-forest", "random-forest", "fusion")
+        [float(r[pid]) for r in rows]
+        for pid in ("rule-engine", "isolation-forest", "random-forest", "fusion")
     )

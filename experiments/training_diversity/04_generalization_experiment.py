@@ -40,7 +40,9 @@ import structlog
 from sklearn.ensemble import IsolationForest, RandomForestClassifier
 from sklearn.preprocessing import StandardScaler
 
-structlog.configure(wrapper_class=structlog.make_filtering_bound_logger(__import__("logging").CRITICAL))
+structlog.configure(
+    wrapper_class=structlog.make_filtering_bound_logger(__import__("logging").CRITICAL)
+)
 
 from q_guardian.evaluation.dataset import PromptBenchmarkDataset
 from q_guardian.evaluation.metrics import detection_metrics
@@ -66,7 +68,14 @@ POOL_FILES = {
 }
 
 RF_KWARGS = dict(n_estimators=50, random_state=42, class_weight=None)
-XGB_KWARGS = dict(n_estimators=50, max_depth=6, random_state=42, use_label_encoder=False, eval_metric="mlogloss", verbosity=0)
+XGB_KWARGS = dict(
+    n_estimators=50,
+    max_depth=6,
+    random_state=42,
+    use_label_encoder=False,
+    eval_metric="mlogloss",
+    verbosity=0,
+)
 IF_KWARGS = dict(n_estimators=50, contamination=0.2, random_state=42)
 MODELS = ("rf", "xgb", "if")
 
@@ -98,7 +107,7 @@ def shingles(text: str, k: int = 5) -> set[str]:
     n = normalize(text)
     if len(n) < k:
         return {n} if n else set()
-    return {n[i:i + k] for i in range(len(n) - k + 1)}
+    return {n[i : i + k] for i in range(len(n) - k + 1)}
 
 
 def max_jaccard(text: str, ref_sets: list[set[str]], ref_postings: dict[str, list[int]]) -> float:
@@ -139,6 +148,7 @@ def load_jsonl(path: Path) -> list[dict]:
 # ---------------------------------------------------------------------------
 # Features
 # ---------------------------------------------------------------------------
+
 
 def build_features() -> dict[str, dict]:
     """Control pools from semantic cache; diverse additions computed + cached."""
@@ -289,7 +299,9 @@ def run_condition(cfg_name: str, data_name: str, rep: str) -> dict:
         for pool in ("train", "validation", "test", "jbb"):
             x_eval_s = scaler.transform(representation_matrix(pool, rep))
             scores = fit_predict(model, x_train_s, y_train, x_eval_s)
-            entry["eval"][pool] = summarize(detection_metrics(FEATURES[pool]["y"], scores, threshold=0.5))
+            entry["eval"][pool] = summarize(
+                detection_metrics(FEATURES[pool]["y"], scores, threshold=0.5)
+            )
             entry["scores"][pool] = scores
 
         sel_t, val_f1 = select_threshold(entry["scores"]["validation"], FEATURES["validation"]["y"])
@@ -299,7 +311,9 @@ def run_condition(cfg_name: str, data_name: str, rep: str) -> dict:
             "validation_f1_at_selected": round(val_f1, 4),
             "validation_metrics_at_05": entry["eval"]["validation"],
             "validation_metrics_at_selected": summarize(
-                detection_metrics(FEATURES["validation"]["y"], entry["scores"]["validation"], threshold=sel_t)
+                detection_metrics(
+                    FEATURES["validation"]["y"], entry["scores"]["validation"], threshold=sel_t
+                )
             ),
             "test_metrics_at_selected": summarize(
                 detection_metrics(FEATURES["test"]["y"], entry["scores"]["test"], threshold=sel_t)
@@ -333,7 +347,10 @@ def run_cv(rep: str, model: str) -> dict:
         vals["f1"].append(m["f1_score"])
         vals["accuracy"].append(m["accuracy"])
     return {
-        k: {"mean": round(statistics.fmean(v), 4), "std": round(statistics.stdev(v), 4) if len(v) > 1 else 0.0}
+        k: {
+            "mean": round(statistics.fmean(v), 4),
+            "std": round(statistics.stdev(v), 4) if len(v) > 1 else 0.0,
+        }
         for k, v in vals.items()
     }
 
@@ -342,10 +359,17 @@ def run_cv(rep: str, model: str) -> dict:
 # Leakage verification
 # ---------------------------------------------------------------------------
 
+
 def verify_leakage() -> dict:
-    splits = {n: load_jsonl(RUN / f"{n}.jsonl") for n in ("train", "validation", "test", "external_eval")}
+    splits = {
+        n: load_jsonl(RUN / f"{n}.jsonl") for n in ("train", "validation", "test", "external_eval")
+    }
     additions = load_jsonl(DIVERSE_TRAIN)
-    eval_texts = [r["text"] for r in splits["validation"]] + [r["text"] for r in splits["test"]] + [r["text"] for r in splits["external_eval"]]
+    eval_texts = (
+        [r["text"] for r in splits["validation"]]
+        + [r["text"] for r in splits["test"]]
+        + [r["text"] for r in splits["external_eval"]]
+    )
     ref_sets = [shingles(t) for t in eval_texts]
     postings: dict[str, list[int]] = {}
     for i, s in enumerate(ref_sets):
@@ -385,6 +409,7 @@ def verify_leakage() -> dict:
 # Generalization analysis
 # ---------------------------------------------------------------------------
 
+
 def cohens_d(a: np.ndarray, b: np.ndarray) -> float:
     na, nb = len(a), len(b)
     if na < 2 or nb < 2:
@@ -396,7 +421,9 @@ def cohens_d(a: np.ndarray, b: np.ndarray) -> float:
     return (a.mean() - b.mean()) / sp
 
 
-def nn_distance(texts: list[str], train_xemb: np.ndarray, train_y: list[int], want_label: int) -> list[float]:
+def nn_distance(
+    texts: list[str], train_xemb: np.ndarray, train_y: list[int], want_label: int
+) -> list[float]:
     """Mean cosine distance to the nearest train example of the wanted label."""
     from sentence_transformers import SentenceTransformer
 
@@ -456,12 +483,21 @@ def generalization_analysis() -> dict:
     for label, tag in ((1, "malicious"), (0, "benign")):
         want = "control"
         ctrl_nn = nn_distance(FEATURES["jbb"]["texts"], FEATURES["train"]["xemb"], ytr, label)
-        div_nn = nn_distance(FEATURES["jbb"]["texts"],
-                             np.vstack([FEATURES["train"]["xemb"], FEATURES["additions"]["xemb"]]),
-                             list(ytr) + list(add_y), label)
+        div_nn = nn_distance(
+            FEATURES["jbb"]["texts"],
+            np.vstack([FEATURES["train"]["xemb"], FEATURES["additions"]["xemb"]]),
+            list(ytr) + list(add_y),
+            label,
+        )
         out["nn_distance_to_train"][tag] = {
-            "control_train": {"mean": round(statistics.fmean(ctrl_nn), 4), "min": round(min(ctrl_nn), 4)},
-            "diverse_train": {"mean": round(statistics.fmean(div_nn), 4), "min": round(min(div_nn), 4)},
+            "control_train": {
+                "mean": round(statistics.fmean(ctrl_nn), 4),
+                "min": round(min(ctrl_nn), 4),
+            },
+            "diverse_train": {
+                "mean": round(statistics.fmean(div_nn), 4),
+                "min": round(min(div_nn), 4),
+            },
         }
     return out
 
@@ -469,6 +505,7 @@ def generalization_analysis() -> dict:
 # ---------------------------------------------------------------------------
 # Report
 # ---------------------------------------------------------------------------
+
 
 def cell(r: dict, cfg: str, model: str, pool: str) -> dict:
     return r["conditions"][cfg]["models"][model]["eval"][pool]
@@ -486,19 +523,34 @@ def write_report(results: dict, leakage: dict, gen: dict) -> None:
             t = cell(r, cfg, model, "test")
             j = cell(r, cfg, model, "jbb")
             sel_j = r["conditions"][cfg]["models"][model]["threshold"]["jbb_metrics_at_selected"]
-            rows.append([cfg, f"{t['roc_auc']:.4f}", f"{t['f1']:.4f}", f"{j['roc_auc']:.4f}",
-                         f"{j['f1']:.4f}", f"{sel_j['detection_rate']:.3f}", f"{sel_j['fpr']:.3f}"])
+            rows.append(
+                [
+                    cfg,
+                    f"{t['roc_auc']:.4f}",
+                    f"{t['f1']:.4f}",
+                    f"{j['roc_auc']:.4f}",
+                    f"{j['f1']:.4f}",
+                    f"{sel_j['detection_rate']:.3f}",
+                    f"{sel_j['fpr']:.3f}",
+                ]
+            )
         return rows
 
     def threshold_table(model: str) -> list[list]:
         rows = []
         for cfg in ("baseline_43", "exp1_diverse_43", "exp2_semantic_427", "exp3_diverse_427"):
             th = r["conditions"][cfg]["models"][model]["threshold"]
-            rows.append([cfg, f"{th['selected']:.2f}", f"{th['validation_f1_at_selected']:.4f}",
-                         f"{th['jbb_metrics_at_selected']['detection_rate']:.3f}",
-                         f"{th['jbb_metrics_at_selected']['fpr']:.3f}",
-                         f"{th['jbb_metrics_at_selected']['precision']:.3f}",
-                         f"{th['jbb_metrics_at_selected']['f1']:.3f}"])
+            rows.append(
+                [
+                    cfg,
+                    f"{th['selected']:.2f}",
+                    f"{th['validation_f1_at_selected']:.4f}",
+                    f"{th['jbb_metrics_at_selected']['detection_rate']:.3f}",
+                    f"{th['jbb_metrics_at_selected']['fpr']:.3f}",
+                    f"{th['jbb_metrics_at_selected']['precision']:.3f}",
+                    f"{th['jbb_metrics_at_selected']['f1']:.3f}",
+                ]
+            )
         return rows
 
     def surface_table(model: str) -> list[list]:
@@ -506,20 +558,36 @@ def write_report(results: dict, leakage: dict, gen: dict) -> None:
         for cfg in ("baseline_43", "exp1_diverse_43", "exp2_semantic_427", "exp3_diverse_427"):
             s = r["threshold_surface"][cfg][model]["jbb"]
             f1, yj, f5 = s["f1_optimal"], s["youden_optimal"], s["fpr05_max_detection"]
-            rows.append([cfg, f"{f1['threshold']:.2f}", f"{f1['detection']:.3f}", f"{f1['fpr']:.3f}",
-                         f"{yj['threshold']:.2f}", f"{yj['detection']:.3f}", f"{yj['fpr']:.3f}",
-                         f"{f5['threshold']:.2f}", f"{f5['detection']:.3f}", f"{f5['fpr']:.3f}",
-                         f"{f5['precision']:.3f}"])
+            rows.append(
+                [
+                    cfg,
+                    f"{f1['threshold']:.2f}",
+                    f"{f1['detection']:.3f}",
+                    f"{f1['fpr']:.3f}",
+                    f"{yj['threshold']:.2f}",
+                    f"{yj['detection']:.3f}",
+                    f"{yj['fpr']:.3f}",
+                    f"{f5['threshold']:.2f}",
+                    f"{f5['detection']:.3f}",
+                    f"{f5['fpr']:.3f}",
+                    f"{f5['precision']:.3f}",
+                ]
+            )
         return rows
 
     def cv_table(model: str) -> list[list]:
         rows = []
         for cfg in ("baseline_43", "exp1_diverse_43", "exp2_semantic_427", "exp3_diverse_427"):
             c = r["cv"][cfg][model]
-            rows.append([cfg, f"{c['roc_auc']['mean']:.4f}+-{c['roc_auc']['std']:.4f}",
-                         f"{c['pr_auc']['mean']:.4f}+-{c['pr_auc']['std']:.4f}",
-                         f"{c['f1']['mean']:.4f}+-{c['f1']['std']:.4f}",
-                         f"{c['accuracy']['mean']:.4f}+-{c['accuracy']['std']:.4f}"])
+            rows.append(
+                [
+                    cfg,
+                    f"{c['roc_auc']['mean']:.4f}+-{c['roc_auc']['std']:.4f}",
+                    f"{c['pr_auc']['mean']:.4f}+-{c['pr_auc']['std']:.4f}",
+                    f"{c['f1']['mean']:.4f}+-{c['f1']['std']:.4f}",
+                    f"{c['accuracy']['mean']:.4f}+-{c['accuracy']['std']:.4f}",
+                ]
+            )
         return rows
 
     def cond_lines(cfg: str, label: str) -> list[str]:
@@ -531,7 +599,13 @@ def write_report(results: dict, leakage: dict, gen: dict) -> None:
         ]
 
     # ---- recommendation logic ----
-    met = sc["S1_internal_not_collapsed"]["met"], sc["S2_jbb_roc_auc"]["met"], sc["S3_jbb_detection"]["met"], sc["S4_jbb_fpr"]["met"], sc["S5_no_leakage"]["met"]
+    met = (
+        sc["S1_internal_not_collapsed"]["met"],
+        sc["S2_jbb_roc_auc"]["met"],
+        sc["S3_jbb_detection"]["met"],
+        sc["S4_jbb_fpr"]["met"],
+        sc["S5_no_leakage"]["met"],
+    )
     s1, s2, s3, s4, s5 = met
     if s1 and s2 and s3 and s4 and s5:
         recommendation = "SHIP IMPROVEMENT"
@@ -545,8 +619,10 @@ def write_report(results: dict, leakage: dict, gen: dict) -> None:
         recommendation = "KEEP EXPERIMENTAL"
 
     feature_decision = (
-        "ADDED" if recommendation == "SHIP IMPROVEMENT"
-        else "EXPERIMENTAL" if recommendation in ("KEEP EXPERIMENTAL", "MORE DATA REQUIRED")
+        "ADDED"
+        if recommendation == "SHIP IMPROVEMENT"
+        else "EXPERIMENTAL"
+        if recommendation in ("KEEP EXPERIMENTAL", "MORE DATA REQUIRED")
         else "REJECTED"
     )
 
@@ -636,7 +712,10 @@ def write_report(results: dict, leakage: dict, gen: dict) -> None:
     if recommendation == "SHIP IMPROVEMENT":
         best = "exp3_diverse_427"
     else:
-        aucs = {cfg: cell(r, cfg, "rf", "jbb")["roc_auc"] for cfg in ("baseline_43", "exp1_diverse_43", "exp2_semantic_427", "exp3_diverse_427")}
+        aucs = {
+            cfg: cell(r, cfg, "rf", "jbb")["roc_auc"]
+            for cfg in ("baseline_43", "exp1_diverse_43", "exp2_semantic_427", "exp3_diverse_427")
+        }
         best = max(aucs, key=aucs.get)
     lines += cond_lines(best, "Best condition")
     for model in ("rf", "xgb", "if"):
@@ -751,7 +830,9 @@ def write_report(results: dict, leakage: dict, gen: dict) -> None:
         a0 = cell(r, "baseline_43", model, "jbb")["roc_auc"]
         a1 = cell(r, "exp1_diverse_43", model, "jbb")["roc_auc"]
         a2 = cell(r, "exp2_semantic_427", model, "jbb")["roc_auc"]
-        lines.append(f"| {model.upper()} | {a3:.4f} | {a3 - a0:+.4f} | {a3 - a1:+.4f} | {a3 - a2:+.4f} |")
+        lines.append(
+            f"| {model.upper()} | {a3:.4f} | {a3 - a0:+.4f} | {a3 - a1:+.4f} | {a3 - a2:+.4f} |"
+        )
     lines += [
         "",
         "## 10. Internal Performance (5-fold CV on internal test, threshold 0.5)",
@@ -777,7 +858,9 @@ def write_report(results: dict, leakage: dict, gen: dict) -> None:
         "| --- | ---: | ---: | ---: | ---: |",
     ]
     for k, v in gen["feature_profile"].items():
-        lines.append(f"| {k} | {v['n']} | {v['mean_length']:.1f} | {v['mean_keyword_count']:.3f} | {v['mean_punct_ratio']:.4f} |")
+        lines.append(
+            f"| {k} | {v['n']} | {v['mean_length']:.1f} | {v['mean_keyword_count']:.3f} | {v['mean_punct_ratio']:.4f} |"
+        )
     lines += [
         "",
         "Top features (largest absolute Cohen's d) separating JBB-malicious from "
@@ -799,7 +882,9 @@ def write_report(results: dict, leakage: dict, gen: dict) -> None:
     for label in ("malicious", "benign"):
         c = gen["nn_distance_to_train"][label]["control_train"]
         d = gen["nn_distance_to_train"][label]["diverse_train"]
-        lines.append(f"| {label} | {c['mean']:.4f} / {c['min']:.4f} | {d['mean']:.4f} / {d['min']:.4f} |")
+        lines.append(
+            f"| {label} | {c['mean']:.4f} / {c['min']:.4f} | {d['mean']:.4f} / {d['min']:.4f} |"
+        )
     lines += [
         "",
         "## 12. DATA LEAKAGE",
@@ -938,7 +1023,9 @@ def write_report(results: dict, leakage: dict, gen: dict) -> None:
         )
 
     (OUT / "report.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
-    print(f"[report] report.md written (recommendation={recommendation}, feature={feature_decision})")
+    print(
+        f"[report] report.md written (recommendation={recommendation}, feature={feature_decision})"
+    )
 
 
 def main() -> None:
@@ -980,19 +1067,33 @@ def main() -> None:
         },
         "S2_jbb_roc_auc": {
             "criterion": SUCCESS_CRITERIA["S2_jbb_roc_auc"],
-            "baseline_43_rf_jbb_roc_auc": conditions["baseline_43"]["models"]["rf"]["eval"]["jbb"]["roc_auc"],
-            "exp3_rf_jbb_roc_auc": conditions["exp3_diverse_427"]["models"]["rf"]["eval"]["jbb"]["roc_auc"],
+            "baseline_43_rf_jbb_roc_auc": conditions["baseline_43"]["models"]["rf"]["eval"]["jbb"][
+                "roc_auc"
+            ],
+            "exp3_rf_jbb_roc_auc": conditions["exp3_diverse_427"]["models"]["rf"]["eval"]["jbb"][
+                "roc_auc"
+            ],
             "met": conditions["exp3_diverse_427"]["models"]["rf"]["eval"]["jbb"]["roc_auc"] >= 0.65,
         },
         "S3_jbb_detection": {
             "criterion": SUCCESS_CRITERIA["S3_jbb_detection"],
-            "exp3_rf_jbb_detection_at_selected": conditions["exp3_diverse_427"]["models"]["rf"]["threshold"]["jbb_metrics_at_selected"]["detection_rate"],
-            "met": conditions["exp3_diverse_427"]["models"]["rf"]["threshold"]["jbb_metrics_at_selected"]["detection_rate"] >= 0.20,
+            "exp3_rf_jbb_detection_at_selected": conditions["exp3_diverse_427"]["models"]["rf"][
+                "threshold"
+            ]["jbb_metrics_at_selected"]["detection_rate"],
+            "met": conditions["exp3_diverse_427"]["models"]["rf"]["threshold"][
+                "jbb_metrics_at_selected"
+            ]["detection_rate"]
+            >= 0.20,
         },
         "S4_jbb_fpr": {
             "criterion": SUCCESS_CRITERIA["S4_jbb_fpr"],
-            "exp3_rf_jbb_fpr_at_selected": conditions["exp3_diverse_427"]["models"]["rf"]["threshold"]["jbb_metrics_at_selected"]["fpr"],
-            "met": conditions["exp3_diverse_427"]["models"]["rf"]["threshold"]["jbb_metrics_at_selected"]["fpr"] <= 0.05,
+            "exp3_rf_jbb_fpr_at_selected": conditions["exp3_diverse_427"]["models"]["rf"][
+                "threshold"
+            ]["jbb_metrics_at_selected"]["fpr"],
+            "met": conditions["exp3_diverse_427"]["models"]["rf"]["threshold"][
+                "jbb_metrics_at_selected"
+            ]["fpr"]
+            <= 0.05,
         },
         "S5_no_leakage": {
             "criterion": SUCCESS_CRITERIA["S5_no_leakage"],
@@ -1042,7 +1143,9 @@ def main() -> None:
                     csv_lines.append(f"{cfg},{model},{pool},{k},{v},0.5")
             for tkey in ("test_metrics_at_selected", "jbb_metrics_at_selected"):
                 for k, v in conditions[cfg]["models"][model]["threshold"][tkey].items():
-                    csv_lines.append(f"{cfg},{model},{tkey.replace('_metrics_at_selected','')}_sel,{k},{v},{conditions[cfg]['models'][model]['threshold']['selected']}")
+                    csv_lines.append(
+                        f"{cfg},{model},{tkey.replace('_metrics_at_selected', '')}_sel,{k},{v},{conditions[cfg]['models'][model]['threshold']['selected']}"
+                    )
     for cfg in ("baseline_43", "exp1_diverse_43", "exp2_semantic_427", "exp3_diverse_427"):
         for model in MODELS:
             for k, v in cv[cfg][model].items():
@@ -1064,6 +1167,7 @@ def main() -> None:
 # Threshold decision surface
 # ---------------------------------------------------------------------------
 
+
 def compute_threshold_surface(conditions: dict) -> dict:
     def load_labels(name: str) -> list[int]:
         rows = []
@@ -1082,18 +1186,22 @@ def compute_threshold_surface(conditions: dict) -> dict:
         rows = []
         for t in grid:
             m = detection_metrics(y, scores, threshold=t)
-            rows.append({
-                "threshold": t,
-                "detection": round(m["recall"], 4),
-                "fpr": round(m["false_positive_rate"], 4),
-                "precision": round(m["precision"], 4),
-                "f1": round(m["f1_score"], 4),
-                "youden": round(m["recall"] - m["false_positive_rate"], 4),
-            })
+            rows.append(
+                {
+                    "threshold": t,
+                    "detection": round(m["recall"], 4),
+                    "fpr": round(m["false_positive_rate"], 4),
+                    "precision": round(m["precision"], 4),
+                    "f1": round(m["f1_score"], 4),
+                    "youden": round(m["recall"] - m["false_positive_rate"], 4),
+                }
+            )
         return {
             "f1_optimal": max(rows, key=lambda r: r["f1"]),
             "youden_optimal": max(rows, key=lambda r: r["youden"]),
-            "fpr05_max_detection": max((r for r in rows if r["fpr"] <= 0.05), key=lambda r: r["detection"]),
+            "fpr05_max_detection": max(
+                (r for r in rows if r["fpr"] <= 0.05), key=lambda r: r["detection"]
+            ),
         }
 
     surface: dict = {}

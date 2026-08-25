@@ -32,9 +32,7 @@ def main() -> None:
     OUTPUT.mkdir(parents=True, exist_ok=True)
     score_provider_pools()  # ensure cache
 
-    labels = {
-        pool: [r["label"] for r in score_provider_pools()[pool]] for pool in POOLS
-    }
+    labels = {pool: [r["label"] for r in score_provider_pools()[pool]] for pool in POOLS}
 
     report: dict = {"per_provider_at_threshold_0_5": {}, "leave_one_out_fusion": {}}
 
@@ -69,8 +67,7 @@ def main() -> None:
 
     # RF-only dominance check: correlation between RF score and fusion score.
     report["rf_fusion_correlation"] = {
-        pool: pearson(provider_scores(pool)[2], provider_scores(pool)[3])
-        for pool in POOLS
+        pool: pearson(provider_scores(pool)[2], provider_scores(pool)[3]) for pool in POOLS
     }
 
     (OUTPUT / "metrics.json").write_text(json.dumps(report, indent=2), encoding="utf-8")

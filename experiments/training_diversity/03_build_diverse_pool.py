@@ -43,8 +43,45 @@ OUT = ROOT / "artifacts" / "training" / "generalization_experiment"
 
 _PUNCT = re.compile(r"[\s\W_]+", flags=re.UNICODE)
 
-EN_STOP = {"the", "and", "is", "are", "a", "an", "to", "of", "for", "with", "that", "this", "you", "your"}
-DE_STOP = {"der", "die", "das", "und", "ist", "nicht", "ein", "eine", "ich", "du", "sie", "mit", "von", "den", "dem", "auf", "für", "sind", "im", "als", "bei"}
+EN_STOP = {
+    "the",
+    "and",
+    "is",
+    "are",
+    "a",
+    "an",
+    "to",
+    "of",
+    "for",
+    "with",
+    "that",
+    "this",
+    "you",
+    "your",
+}
+DE_STOP = {
+    "der",
+    "die",
+    "das",
+    "und",
+    "ist",
+    "nicht",
+    "ein",
+    "eine",
+    "ich",
+    "du",
+    "sie",
+    "mit",
+    "von",
+    "den",
+    "dem",
+    "auf",
+    "für",
+    "sind",
+    "im",
+    "als",
+    "bei",
+}
 FR_STOP = {"le", "la", "les", "des", "est", "et", "un", "une", "que", "qui", "pour", "dans", "avec"}
 ES_STOP = {"el", "la", "los", "las", "es", "y", "un", "una", "que", "de", "para", "con", "por"}
 _CYR = re.compile(r"[\u0400-\u04FF]")
@@ -87,7 +124,7 @@ def shingles(text: str, k: int = 5) -> set[str]:
     n = normalize(text)
     if len(n) < k:
         return {n} if n else set()
-    return {n[i:i + k] for i in range(len(n) - k + 1)}
+    return {n[i : i + k] for i in range(len(n) - k + 1)}
 
 
 class NearDupIndex:
@@ -237,6 +274,7 @@ def family_counts(texts: list[str]) -> tuple[dict[str, int], int, dict[str, list
 # Pool build
 # ---------------------------------------------------------------------------
 
+
 def load_jsonl(path: Path) -> list[dict]:
     rows = []
     with open(path, encoding="utf-8") as f:
@@ -248,9 +286,16 @@ def load_jsonl(path: Path) -> list[dict]:
 
 
 def main() -> None:
-    splits = {n: load_jsonl(SPLITS / f"{n}.jsonl") for n in ("train", "validation", "test", "external_eval")}
+    splits = {
+        n: load_jsonl(SPLITS / f"{n}.jsonl")
+        for n in ("train", "validation", "test", "external_eval")
+    }
 
-    eval_texts = [r["text"] for r in splits["validation"]] + [r["text"] for r in splits["test"]] + [r["text"] for r in splits["external_eval"]]
+    eval_texts = (
+        [r["text"] for r in splits["validation"]]
+        + [r["text"] for r in splits["test"]]
+        + [r["text"] for r in splits["external_eval"]]
+    )
     eval_index = NearDupIndex(eval_texts)
     norm_eval_set = set(normalize(t) for t in eval_texts)
     norm_control_set = set(normalize(r["text"]) for r in splits["train"])
@@ -301,8 +346,10 @@ def main() -> None:
             "validation": len(splits["validation"]),
             "test": len(splits["test"]),
             "external_eval_jbb": len(splits["external_eval"]),
-            "label": {"benign": sum(1 for r in splits["train"] if r["label"] == 0),
-                       "malicious": sum(1 for r in splits["train"] if r["label"] == 1)},
+            "label": {
+                "benign": sum(1 for r in splits["train"] if r["label"] == 0),
+                "malicious": sum(1 for r in splits["train"] if r["label"] == 1),
+            },
         },
         "excluded_entire_datasets": excluded_entire,
         "exclusion_rule": (
@@ -322,7 +369,13 @@ def main() -> None:
         rows = load_jsonl(src["file"])
         raw_n = len(rows)
         kept = []
-        excluded = {"exact_in_eval": 0, "near_dup_eval": 0, "jbb_goal_substring": 0, "dup_control": 0, "dup_within": 0}
+        excluded = {
+            "exact_in_eval": 0,
+            "near_dup_eval": 0,
+            "jbb_goal_substring": 0,
+            "dup_control": 0,
+            "dup_within": 0,
+        }
         for r in rows:
             text = r[src["text_key"]]
             if not text or not str(text).strip():
@@ -367,31 +420,45 @@ def main() -> None:
     (OUT / "splits").mkdir(parents=True, exist_ok=True)
     out_rows = []
     for r in selected:
-        out_rows.append({
-            "text": r["text"],
-            "label": r["label"],
-            "source": r["source"],
-            "split": "train",
-            "category": "malicious" if r["label"] == 1 else "benign",
-            "metadata": {"raw": {"text": r["text"], "label": r["label"], "source": r["source"]}},
-        })
+        out_rows.append(
+            {
+                "text": r["text"],
+                "label": r["label"],
+                "source": r["source"],
+                "split": "train",
+                "category": "malicious" if r["label"] == 1 else "benign",
+                "metadata": {
+                    "raw": {"text": r["text"], "label": r["label"], "source": r["source"]}
+                },
+            }
+        )
     (OUT / "splits" / "train_diverse.jsonl").write_text(
         "\n".join(json.dumps(r, ensure_ascii=False) for r in out_rows) + "\n", encoding="utf-8"
     )
 
     build_log["pool"] = {
         "diverse_additions": len(out_rows),
-        "diverse_additions_label": {"benign": sum(1 for r in out_rows if r["label"] == 0),
-                                    "malicious": sum(1 for r in out_rows if r["label"] == 1)},
+        "diverse_additions_label": {
+            "benign": sum(1 for r in out_rows if r["label"] == 0),
+            "malicious": sum(1 for r in out_rows if r["label"] == 1),
+        },
         "combined_pool": len(out_rows) + len(splits["train"]),
         "combined_label": {
-            "benign": sum(1 for r in out_rows if r["label"] == 0) + sum(1 for r in splits["train"] if r["label"] == 0),
-            "malicious": sum(1 for r in out_rows if r["label"] == 1) + sum(1 for r in splits["train"] if r["label"] == 1),
+            "benign": sum(1 for r in out_rows if r["label"] == 0)
+            + sum(1 for r in splits["train"] if r["label"] == 0),
+            "malicious": sum(1 for r in out_rows if r["label"] == 1)
+            + sum(1 for r in splits["train"] if r["label"] == 1),
         },
-        "combined_source_breakdown": dict(collections.Counter([r["source"] for r in out_rows] + ["control-deepset+dolly"] * len(splits["train"]))),
+        "combined_source_breakdown": dict(
+            collections.Counter(
+                [r["source"] for r in out_rows] + ["control-deepset+dolly"] * len(splits["train"])
+            )
+        ),
         "output": str(OUT / "splits" / "train_diverse.jsonl"),
     }
-    (OUT / "pool_build_log.json").write_text(json.dumps(build_log, indent=2, ensure_ascii=False), encoding="utf-8")
+    (OUT / "pool_build_log.json").write_text(
+        json.dumps(build_log, indent=2, ensure_ascii=False), encoding="utf-8"
+    )
 
     print(json.dumps(build_log["pool"], indent=2))
 
@@ -408,7 +475,11 @@ def main() -> None:
         "diverse_total": control_texts + diverse_texts,
         "jbb_malicious_eval": jbb_mal,
     }
-    fam_out: dict = {"family_order": list(DETECTOR_BASIS.keys()), "detector_basis": DETECTOR_BASIS, "sets": {}}
+    fam_out: dict = {
+        "family_order": list(DETECTOR_BASIS.keys()),
+        "detector_basis": DETECTOR_BASIS,
+        "sets": {},
+    }
     for set_name, texts in sets.items():
         counts, no_match, examples = family_counts(texts)
         fam_out["sets"][set_name] = {
@@ -418,7 +489,9 @@ def main() -> None:
             "examples": examples,
         }
 
-    (OUT / "attack_families.json").write_text(json.dumps(fam_out, indent=2, ensure_ascii=False), encoding="utf-8")
+    (OUT / "attack_families.json").write_text(
+        json.dumps(fam_out, indent=2, ensure_ascii=False), encoding="utf-8"
+    )
 
     md = [
         "# Q-Guardian Generalization Experiment: Attack-Family Coverage",

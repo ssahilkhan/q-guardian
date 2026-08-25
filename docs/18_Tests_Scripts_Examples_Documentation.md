@@ -405,7 +405,9 @@ and the dataset table.
 from q_guardian.benchmark import BenchmarkRunner
 
 runner = BenchmarkRunner()
-report = runner.run("deepset-prompt-injections", k=3)   # real HF API, cached under ~/.qguardian/benchmark
+report = runner.run(
+    "deepset-prompt-injections", k=3
+)  # real HF API, cached under ~/.qguardian/benchmark
 print(report.metrics.fusion())
 print(report.ranking())
 report.as_dict()["dataset"]["validation"]

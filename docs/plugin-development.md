@@ -11,6 +11,7 @@ Plugins are the primary extension mechanism for Q-Guardian. They allow you to ad
 ```python
 from q_guardian import Plugin, PluginMetadata
 
+
 class SecurityPlugin(Plugin):
     @property
     def name(self) -> str:
@@ -84,13 +85,12 @@ await registry.stop_all()
 ```python
 from q_guardian.events.standard import ThreatDetected
 
+
 class ThreatPlugin(Plugin):
     async def scan(self, prompt: str):
         if self.detect_threat(prompt):
             event = ThreatDetected(
-                threat_type="prompt_injection",
-                severity="high",
-                source=self.name
+                threat_type="prompt_injection", severity="high", source=self.name
             )
             await self.event_bus.publish(event)
 ```
@@ -100,10 +100,7 @@ class ThreatPlugin(Plugin):
 ```python
 class ResponsePlugin(Plugin):
     async def initialize(self, context) -> None:
-        await context.event_bus.subscribe(
-            "threat.detected",
-            self.handle_threat
-        )
+        await context.event_bus.subscribe("threat.detected", self.handle_threat)
 
     async def handle_threat(self, event):
         print(f"Threat detected: {event.threat_type}")
@@ -116,10 +113,7 @@ class ResponsePlugin(Plugin):
 ```python
 class ValidationPlugin(Plugin):
     async def initialize(self, context) -> None:
-        context.hook_manager.register(
-            "before_scan",
-            self.validate_prompt
-        )
+        context.hook_manager.register("before_scan", self.validate_prompt)
 
     async def validate_prompt(self, context):
         prompt = context.get("prompt", "")
@@ -147,6 +141,7 @@ Provide metadata for plugin discovery:
 ```python
 from q_guardian.plugins import PluginMetadata
 
+
 class MyPlugin(Plugin):
     @property
     def metadata(self) -> PluginMetadata:
@@ -156,7 +151,7 @@ class MyPlugin(Plugin):
             description="My custom plugin",
             author="Developer",
             tags=["security", "custom"],
-            dependencies=["requests>=2.0"]
+            dependencies=["requests>=2.0"],
         )
 ```
 

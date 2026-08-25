@@ -120,12 +120,12 @@ The central object passed to all plugins during execution. Plugins MUST NOT dire
 from q_guardian import RuntimeContext
 
 # RuntimeContext provides shortcuts
-ctx.agent_id        # current agent ID
-ctx.session_id      # current session ID
-ctx.prompt          # current prompt text
-ctx.is_blocked      # whether execution is blocked
-ctx.tool_count      # number of tool invocations
-ctx.threat_count    # number of detected threats
+ctx.agent_id  # current agent ID
+ctx.session_id  # current session ID
+ctx.prompt  # current prompt text
+ctx.is_blocked  # whether execution is blocked
+ctx.tool_count  # number of tool invocations
+ctx.threat_count  # number of detected threats
 
 # Track operations
 ctx.add_tool_invocation(invocation)
@@ -213,7 +213,7 @@ session = await guardian.create_session(user_id="user-1")
 
 # Access runtime context
 rt = guardian.runtime
-print(rt.agent_id)    # "bot-1"
+print(rt.agent_id)  # "bot-1"
 print(rt.session_id)  # session.session_id
 
 # Use trackers

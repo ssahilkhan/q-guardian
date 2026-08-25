@@ -24,12 +24,51 @@ OUT.mkdir(parents=True, exist_ok=True)
 
 _PUNCT = re.compile(r"[\s\W_]+", flags=re.UNICODE)
 
-EN_STOP = {"the", "and", "is", "are", "a", "an", "to", "of", "for", "with", "that", "this", "you", "your"}
-DE_STOP = {"der", "die", "das", "und", "ist", "nicht", "ein", "eine", "ich", "du", "sie", "mit", "von", "den", "dem", "auf", "für", "sind", "im", "als", "bei"}
+EN_STOP = {
+    "the",
+    "and",
+    "is",
+    "are",
+    "a",
+    "an",
+    "to",
+    "of",
+    "for",
+    "with",
+    "that",
+    "this",
+    "you",
+    "your",
+}
+DE_STOP = {
+    "der",
+    "die",
+    "das",
+    "und",
+    "ist",
+    "nicht",
+    "ein",
+    "eine",
+    "ich",
+    "du",
+    "sie",
+    "mit",
+    "von",
+    "den",
+    "dem",
+    "auf",
+    "für",
+    "sind",
+    "im",
+    "als",
+    "bei",
+}
 FR_STOP = {"le", "la", "les", "des", "est", "et", "un", "une", "que", "qui", "pour", "dans", "avec"}
 ES_STOP = {"el", "la", "los", "las", "es", "y", "un", "una", "que", "de", "para", "con", "por"}
 
-NON_LATIN = re.compile(r"[^\u0000-\u024F\u0370-\u1FFF]")  # not basic latin / latin-ext / greek / cyrillic
+NON_LATIN = re.compile(
+    r"[^\u0000-\u024F\u0370-\u1FFF]"
+)  # not basic latin / latin-ext / greek / cyrillic
 
 _CYR = re.compile(r"[\u0400-\u04FF]")
 _CJK = re.compile(r"[\u3000-\u9FFF\uAC00-\uD7AF\u3040-\u30FF]")
@@ -81,7 +120,7 @@ def shingles(text: str, k: int = 5) -> set[str]:
     n = normalize(text)
     if len(n) < k:
         return {n} if n else set()
-    return {n[i:i + k] for i in range(len(n) - k + 1)}
+    return {n[i : i + k] for i in range(len(n) - k + 1)}
 
 
 class NearDupIndex:
@@ -146,7 +185,8 @@ def main() -> None:
     norm_train_set = set(normalize(t) for t in train_texts)
 
     datasets = {
-        "deepset-prompt-injections": RAW / "prompt_injections.jsonl",  # note: this is data/prompt_injections.jsonl copy
+        "deepset-prompt-injections": RAW
+        / "prompt_injections.jsonl",  # note: this is data/prompt_injections.jsonl copy
         "trustair-jailbreaks": RAW / "trustair_jailbreaks.jsonl",
         "trustair-regular": RAW / "trustair_regular.jsonl",
         "jailbreakv": RAW / "jailbreakv.jsonl",
@@ -155,15 +195,33 @@ def main() -> None:
     }
 
     out: dict = {"control": {}, "datasets": {}, "contamination": {}}
-    out["control"]["train"] = {"samples": len(splits["train"]), "benign": collections.Counter(r["label"] for r in splits["train"])[0], "malicious": collections.Counter(r["label"] for r in splits["train"])[1]}
-    out["control"]["validation"] = {"samples": len(splits["validation"]), "benign": collections.Counter(r["label"] for r in splits["validation"])[0], "malicious": collections.Counter(r["label"] for r in splits["validation"])[1]}
-    out["control"]["test"] = {"samples": len(splits["test"]), "benign": collections.Counter(r["label"] for r in splits["test"])[0], "malicious": collections.Counter(r["label"] for r in splits["test"])[1]}
-    out["control"]["external_eval_jbb"] = {"samples": len(splits["external_eval"]), "benign": collections.Counter(r["label"] for r in splits["external_eval"])[0], "malicious": collections.Counter(r["label"] for r in splits["external_eval"])[1]}
+    out["control"]["train"] = {
+        "samples": len(splits["train"]),
+        "benign": collections.Counter(r["label"] for r in splits["train"])[0],
+        "malicious": collections.Counter(r["label"] for r in splits["train"])[1],
+    }
+    out["control"]["validation"] = {
+        "samples": len(splits["validation"]),
+        "benign": collections.Counter(r["label"] for r in splits["validation"])[0],
+        "malicious": collections.Counter(r["label"] for r in splits["validation"])[1],
+    }
+    out["control"]["test"] = {
+        "samples": len(splits["test"]),
+        "benign": collections.Counter(r["label"] for r in splits["test"])[0],
+        "malicious": collections.Counter(r["label"] for r in splits["test"])[1],
+    }
+    out["control"]["external_eval_jbb"] = {
+        "samples": len(splits["external_eval"]),
+        "benign": collections.Counter(r["label"] for r in splits["external_eval"])[0],
+        "malicious": collections.Counter(r["label"] for r in splits["external_eval"])[1],
+    }
 
     # deepset snapshot used as control component lives in data/prompt_injections.jsonl
     deepset_rows = load_jsonl(ROOT / "data" / "prompt_injections.jsonl")
 
-    def audit(name: str, rows: list[dict], text_key: str, label_key: str | None, domain: str) -> None:
+    def audit(
+        name: str, rows: list[dict], text_key: str, label_key: str | None, domain: str
+    ) -> None:
         texts = [r[text_key] for r in rows]
         labels: list[int] = []
         if label_key is not None:
@@ -234,19 +292,55 @@ def main() -> None:
             },
         }
         out["datasets"][name] = d
-        print(f"audited {name}: {len(rows)} samples, jbb-substr={sub_hits}, near-jbb={near['jbb_eval']['jaccard_ge_08']}")
+        print(
+            f"audited {name}: {len(rows)} samples, jbb-substr={sub_hits}, near-jbb={near['jbb_eval']['jaccard_ge_08']}"
+        )
 
     audit("deepset-prompt-injections", deepset_rows, "text", "label", "prompt-injection (control)")
-    audit("trustair-jailbreaks", load_jsonl(datasets["trustair-jailbreaks"]), "prompt", "jailbreak", "in-the-wild jailbreak prompts")
-    audit("trustair-regular", load_jsonl(datasets["trustair-regular"]), "prompt", "jailbreak", "in-the-wild regular prompts (benign)")
-    audit("jailbreakv", load_jsonl(datasets["jailbreakv"]), "jailbreak_query", None, "JailbreakV-28K jailbreak prompts")
-    audit("harmful-behaviors", load_jsonl(datasets["harmful-behaviors"]), "text", None, "harmful behavior requests (AdvBench-style)")
-    audit("harmful-behaviors-test", load_jsonl(datasets["harmful-behaviors-test"]), "text", None, "harmful behavior requests (AdvBench-style)")
+    audit(
+        "trustair-jailbreaks",
+        load_jsonl(datasets["trustair-jailbreaks"]),
+        "prompt",
+        "jailbreak",
+        "in-the-wild jailbreak prompts",
+    )
+    audit(
+        "trustair-regular",
+        load_jsonl(datasets["trustair-regular"]),
+        "prompt",
+        "jailbreak",
+        "in-the-wild regular prompts (benign)",
+    )
+    audit(
+        "jailbreakv",
+        load_jsonl(datasets["jailbreakv"]),
+        "jailbreak_query",
+        None,
+        "JailbreakV-28K jailbreak prompts",
+    )
+    audit(
+        "harmful-behaviors",
+        load_jsonl(datasets["harmful-behaviors"]),
+        "text",
+        None,
+        "harmful behavior requests (AdvBench-style)",
+    )
+    audit(
+        "harmful-behaviors-test",
+        load_jsonl(datasets["harmful-behaviors-test"]),
+        "text",
+        None,
+        "harmful behavior requests (AdvBench-style)",
+    )
 
-    (OUT / "dataset_composition.json").write_text(json.dumps(out, indent=2, ensure_ascii=False), encoding="utf-8")
+    (OUT / "dataset_composition.json").write_text(
+        json.dumps(out, indent=2, ensure_ascii=False), encoding="utf-8"
+    )
 
     md = ["# Q-Guardian Training-Diversity: Dataset Composition & Contamination Audit", ""]
-    md.append("| Dataset | Samples | Malicious | Benign | Domain | Languages | New | Exact-in-eval | Near-dup>=0.8 (jbb) | JBB-substr |")
+    md.append(
+        "| Dataset | Samples | Malicious | Benign | Domain | Languages | New | Exact-in-eval | Near-dup>=0.8 (jbb) | JBB-substr |"
+    )
     md.append("| --- | ---: | ---: | ---: | --- | --- | --- | ---: | ---: | ---: |")
     for name, d in out["datasets"].items():
         lang = ",".join(f"{k}:{v}" for k, v in list(d["language_distribution"].items())[:3])
@@ -260,7 +354,11 @@ def main() -> None:
     md.append("## Contamination details")
     for name, d in out["datasets"].items():
         ov = d["overlap"]
-        md.append(f"- **{name}**: exact-in-eval={ov['exact_match_in_any_eval_split']}, exact-in-control-train={ov['exact_match_in_control_train']}, within={ov['exact_duplicates_within']}; near-dup (>=0.8): " + ", ".join(f"{p}={v['jaccard_ge_08']}" for p, v in ov["near_duplicates"].items()) + f"; JBB substring hits={ov['jbb_goal_substring_hits']}")
+        md.append(
+            f"- **{name}**: exact-in-eval={ov['exact_match_in_any_eval_split']}, exact-in-control-train={ov['exact_match_in_control_train']}, within={ov['exact_duplicates_within']}; near-dup (>=0.8): "
+            + ", ".join(f"{p}={v['jaccard_ge_08']}" for p, v in ov["near_duplicates"].items())
+            + f"; JBB substring hits={ov['jbb_goal_substring_hits']}"
+        )
         for ex in ov["jbb_substring_examples"]:
             md.append(f"  - prompt: `{ex['prompt']}`")
             md.append(f"    goal: `{ex['jbb_goal']}`")

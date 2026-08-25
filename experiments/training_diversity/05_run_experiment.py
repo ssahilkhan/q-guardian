@@ -171,7 +171,10 @@ def main() -> None:
         y_train = labels[arm]
         for model in MODELS:
             fold_metrics: dict[str, list[float]] = {
-                "roc_auc": [], "pr_auc": [], "f1": [], "accuracy": []
+                "roc_auc": [],
+                "pr_auc": [],
+                "f1": [],
+                "accuracy": [],
             }
             for train_ds, test_ds_fold in folds:
                 tr_texts = {s.text for s in train_ds}
@@ -231,12 +234,14 @@ def main() -> None:
             rows = []
             for t in [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]:
                 m = detection_metrics(labels["jbb"], scores, threshold=t)
-                rows.append({
-                    "threshold": t,
-                    "f1": round(m["f1_score"], 4),
-                    "detection_rate": round(m["recall"], 4),
-                    "benign_rejection": round(m["specificity"], 4),
-                })
+                rows.append(
+                    {
+                        "threshold": t,
+                        "f1": round(m["f1_score"], 4),
+                        "detection_rate": round(m["recall"], 4),
+                        "benign_rejection": round(m["specificity"], 4),
+                    }
+                )
             sweep[arm][model] = rows
 
     # --- write outputs ---
@@ -246,7 +251,9 @@ def main() -> None:
 
 def _load_train_rows(arm: str) -> list[dict]:
     rows = []
-    with open(Path(__file__).resolve().parent / "train_sets" / f"{arm}.jsonl", encoding="utf-8") as f:
+    with open(
+        Path(__file__).resolve().parent / "train_sets" / f"{arm}.jsonl", encoding="utf-8"
+    ) as f:
         for line in f:
             line = line.strip()
             if line:
@@ -267,10 +274,7 @@ def _load_eval_rows(pool: str) -> list[dict]:
 
 def write_outputs(primary, cv, score_dist, sweep, timing, labels, log: list[str]) -> None:
     def clean_primary(arm: str) -> dict:
-        return {
-            model: {"eval": primary[arm][model]["eval"]}
-            for model in MODELS
-        }
+        return {model: {"eval": primary[arm][model]["eval"]} for model in MODELS}
 
     control_metrics = {
         "representation": "43 handcrafted + 384 all-MiniLM-L6-v2 (427)",
@@ -278,10 +282,7 @@ def write_outputs(primary, cv, score_dist, sweep, timing, labels, log: list[str]
         "models": clean_primary("control"),
         "cv": cv["control"],
     }
-    diverse_metrics = {
-        arm: {"models": clean_primary(arm), "cv": cv[arm]}
-        for arm in ARMS[1:]
-    }
+    diverse_metrics = {arm: {"models": clean_primary(arm), "cv": cv[arm]} for arm in ARMS[1:]}
 
     comp = {
         "representation": {"handcrafted": 43, "semantic": 384, "total": 427},
@@ -320,15 +321,23 @@ def write_outputs(primary, cv, score_dist, sweep, timing, labels, log: list[str]
             j = primary[arm][model]["eval"]["jbb"]["roc_auc"]
             i = primary[arm][model]["eval"]["test"]["roc_auc"]
             comp["arms"][arm][f"{model}_jbb_auc_abs_gain"] = round(j - ctrl_jbb, 4)
-            comp["arms"][arm][f"{model}_jbb_auc_pct_gain"] = round((j - ctrl_jbb) / ctrl_jbb * 100, 1) if ctrl_jbb else None
+            comp["arms"][arm][f"{model}_jbb_auc_pct_gain"] = (
+                round((j - ctrl_jbb) / ctrl_jbb * 100, 1) if ctrl_jbb else None
+            )
             comp["arms"][arm][f"{model}_internal_auc_abs_change"] = round(i - ctrl_int, 4)
 
-    (OUT / "control_metrics.json").write_text(json.dumps(control_metrics, indent=2), encoding="utf-8")
-    (OUT / "diverse_metrics.json").write_text(json.dumps(diverse_metrics, indent=2), encoding="utf-8")
+    (OUT / "control_metrics.json").write_text(
+        json.dumps(control_metrics, indent=2), encoding="utf-8"
+    )
+    (OUT / "diverse_metrics.json").write_text(
+        json.dumps(diverse_metrics, indent=2), encoding="utf-8"
+    )
     (OUT / "comparison.json").write_text(json.dumps(comp, indent=2), encoding="utf-8")
     (OUT / "score_distribution.json").write_text(json.dumps(score_dist, indent=2), encoding="utf-8")
 
-    csv_lines = ["arm,model,dataset,roc_auc,pr_auc,f1,accuracy,precision,recall,detection_rate,benign_rejection,fpr,fnr"]
+    csv_lines = [
+        "arm,model,dataset,roc_auc,pr_auc,f1,accuracy,precision,recall,detection_rate,benign_rejection,fpr,fnr"
+    ]
     for arm in ARMS:
         for model in MODELS:
             for pool in EVAL_POOLS:
@@ -386,13 +395,23 @@ def write_report(primary, cv, score_dist, labels) -> None:
         "| Dataset | Samples | Malicious | Benign | Purpose |",
         "| --- | ---: | ---: | ---: | --- |",
     ]
-    lines.append("| deepset-prompt-injections | 662 | 263 | 399 | control malicious+benign (prompt injection) |")
+    lines.append(
+        "| deepset-prompt-injections | 662 | 263 | 399 | control malicious+benign (prompt injection) |"
+    )
     lines.append("| dolly-benign | 1989 | 0 | 1989 | control benign |")
-    lines.append("| TrustAIR in-the-wild jailbreaks | 1342 kept | 1342 | 0 | DIVERSE A (real-user jailbreaks) |")
-    lines.append("| JailbreakV-28K (subset) | 2000 kept | 2000 | 0 | DIVERSE B (multilingual jailbreak prompts) |")
-    lines.append("| mlabonne/harmful_behaviors | 502 kept | 502 | 0 | DIVERSE C (harmful behavior requests) |")
+    lines.append(
+        "| TrustAIR in-the-wild jailbreaks | 1342 kept | 1342 | 0 | DIVERSE A (real-user jailbreaks) |"
+    )
+    lines.append(
+        "| JailbreakV-28K (subset) | 2000 kept | 2000 | 0 | DIVERSE B (multilingual jailbreak prompts) |"
+    )
+    lines.append(
+        "| mlabonne/harmful_behaviors | 502 kept | 502 | 0 | DIVERSE C (harmful behavior requests) |"
+    )
     lines.append("")
-    lines.append("Full per-dataset composition + contamination audit: `dataset_composition.json` / `dataset_composition.md`;")
+    lines.append(
+        "Full per-dataset composition + contamination audit: `dataset_composition.json` / `dataset_composition.md`;"
+    )
     lines.append("per-arm counts: `train_sets_summary.json`.")
     lines.append("")
     lines.append("| Arm | Samples | Malicious | Benign | Mal ratio |")
@@ -420,8 +439,7 @@ def write_report(primary, cv, score_dist, labels) -> None:
         "- **Models (fixed)**: Random Forest (n_estimators=50, seed 42), XGBoost "
         "(n_estimators=50, depth 6, seed 42); Isolation Forest supplementary "
         "(n=50, contamination 0.2).",
-        "- **Scaling**: StandardScaler fitted only on the training arm, per arm and "
-        "per CV fold.",
+        "- **Scaling**: StandardScaler fitted only on the training arm, per arm and per CV fold.",
         "- **Evaluation pools**: internal validation (110), internal test (116), "
         "held-out JBB external eval (200). JBB never trained on.",
         "- **Threshold**: 0.5 fixed; exploratory sweep on JBB only (section below).",
@@ -496,8 +514,16 @@ def write_report(primary, cv, score_dist, labels) -> None:
     ]
     comp_arm = {
         arm: {
-            "rf_jbb_auc_abs_gain": round(primary[arm]["rf"]["eval"]["jbb"]["roc_auc"] - primary["control"]["rf"]["eval"]["jbb"]["roc_auc"], 4),
-            "xgb_jbb_auc_abs_gain": round(primary[arm]["xgb"]["eval"]["jbb"]["roc_auc"] - primary["control"]["xgb"]["eval"]["jbb"]["roc_auc"], 4),
+            "rf_jbb_auc_abs_gain": round(
+                primary[arm]["rf"]["eval"]["jbb"]["roc_auc"]
+                - primary["control"]["rf"]["eval"]["jbb"]["roc_auc"],
+                4,
+            ),
+            "xgb_jbb_auc_abs_gain": round(
+                primary[arm]["xgb"]["eval"]["jbb"]["roc_auc"]
+                - primary["control"]["xgb"]["eval"]["jbb"]["roc_auc"],
+                4,
+            ),
         }
         for arm in ARMS[1:]
     }

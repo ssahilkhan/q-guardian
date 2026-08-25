@@ -100,7 +100,9 @@ def main() -> None:
             x43s.append(np.asarray(vec, dtype=np.float64))
         x43_all = np.vstack(x43s)
         print("[features] encoding embeddings ...")
-        emb_all = model.encode(to_encode, normalize_embeddings=True, batch_size=64, show_progress_bar=False)
+        emb_all = model.encode(
+            to_encode, normalize_embeddings=True, batch_size=64, show_progress_bar=False
+        )
         emb_all = np.asarray(emb_all, dtype=np.float64)
         for i, t in enumerate(to_encode):
             known[t] = (x43_all[i], emb_all[i])

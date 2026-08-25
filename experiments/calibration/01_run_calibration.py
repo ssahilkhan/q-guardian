@@ -79,7 +79,9 @@ def load_split_labels(pool: str) -> list[int]:
 
 def load_arm_d_labels() -> list[int]:
     rows = []
-    with open(ROOT / "experiments/training_diversity/train_sets/arm_d.jsonl", encoding="utf-8") as f:
+    with open(
+        ROOT / "experiments/training_diversity/train_sets/arm_d.jsonl", encoding="utf-8"
+    ) as f:
         for line in f:
             line = line.strip()
             if line:
@@ -94,6 +96,7 @@ def X_pool(pool: str, cache: dict) -> np.ndarray:
 
 def fit_xgb(X, y):
     import xgboost as xgb
+
     clf = xgb.XGBClassifier(**XGB_PARAMS)
     clf.fit(np.asarray(X, dtype=np.float32), np.asarray(y, dtype=np.int32))
     return clf
@@ -101,6 +104,7 @@ def fit_xgb(X, y):
 
 def fit_rf(X, y):
     from sklearn.ensemble import RandomForestClassifier
+
     clf = RandomForestClassifier(**RF_PARAMS)
     clf.fit(X, y)
     return clf
@@ -203,8 +207,18 @@ def score_dist(scores: list[float], labels: list[int]) -> dict:
     mal = [s for s, l in zip(scores, labels, strict=True) if l == 1]
     ben = [s for s, l in zip(scores, labels, strict=True) if l == 0]
     return {
-        "malicious": {"p10": round(pct(mal, 10), 4), "p50": round(pct(mal, 50), 4), "p90": round(pct(mal, 90), 4), "mean": round(np.mean(mal), 4)},
-        "benign": {"p10": round(pct(ben, 10), 4), "p50": round(pct(ben, 50), 4), "p90": round(pct(ben, 90), 4), "mean": round(np.mean(ben), 4)},
+        "malicious": {
+            "p10": round(pct(mal, 10), 4),
+            "p50": round(pct(mal, 50), 4),
+            "p90": round(pct(mal, 90), 4),
+            "mean": round(np.mean(mal), 4),
+        },
+        "benign": {
+            "p10": round(pct(ben, 10), 4),
+            "p50": round(pct(ben, 50), 4),
+            "p90": round(pct(ben, 90), 4),
+            "mean": round(np.mean(ben), 4),
+        },
     }
 
 
@@ -279,8 +293,15 @@ def main() -> None:
             cal_sweep[model][cal_method] = [threshold_metrics(y, oof_scores, t) for t in THRESHOLDS]
             best_cal = max(cal_sweep[model][cal_method], key=lambda r: r["f1"])
             best_cal_fp = [r for r in cal_sweep[model][cal_method] if r["fpr"] <= 0.10]
-            best_cal_fp = max(best_cal_fp, key=lambda r: r["f1"]) if best_cal_fp else cal_sweep[model][cal_method][0]
-            cal_best[model][cal_method] = {"max_f1": best_cal["threshold"], "max_f1_fpr01": best_cal_fp["threshold"]}
+            best_cal_fp = (
+                max(best_cal_fp, key=lambda r: r["f1"])
+                if best_cal_fp
+                else cal_sweep[model][cal_method][0]
+            )
+            cal_best[model][cal_method] = {
+                "max_f1": best_cal["threshold"],
+                "max_f1_fpr01": best_cal_fp["threshold"],
+            }
     print("[threshold] cal thresholds:", cal_best)
 
     cal_scores = {}
@@ -304,7 +325,9 @@ def main() -> None:
                 else:
                     scores = cal_scores[(model, method, pool)]
                 key = f"{method}_{pool}"
-                comparison[model][key] = summarize(detection_metrics(pool_labels[pool], scores, threshold=0.5))
+                comparison[model][key] = summarize(
+                    detection_metrics(pool_labels[pool], scores, threshold=0.5)
+                )
 
         for thresh_key in ("max_f1", "max_f1_fpr01"):
             t_raw = best_thresholds[model][thresh_key]
@@ -325,7 +348,10 @@ def main() -> None:
                         "selected_threshold": t_cal,
                     }
 
-    (OUT / "calibration_metrics.json").write_text(json.dumps(calibrators_meta(comparison, oof_cal, cal_sweep, cal_best), indent=2), encoding="utf-8")
+    (OUT / "calibration_metrics.json").write_text(
+        json.dumps(calibrators_meta(comparison, oof_cal, cal_sweep, cal_best), indent=2),
+        encoding="utf-8",
+    )
     (OUT / "comparison.json").write_text(json.dumps(comparison, indent=2), encoding="utf-8")
 
     print("[score_dist] computing raw + calibrated score distributions ...")
@@ -363,7 +389,7 @@ def write_csv(comparison: dict, best: dict, cal_best: dict) -> None:
             lines.append(
                 f"{model},{key},_,{val['roc_auc']},{val['f1']},{val['precision']},"
                 f"{val['recall']},{val['detection_rate']},{val['fpr']},{val['fnr']},"
-                f"{val.get('brier','-')},{val.get('ece','-')}"
+                f"{val.get('brier', '-')},{val.get('ece', '-')}"
             )
     (OUT / "comparison.csv").write_text("\n".join(lines) + "\n", encoding="utf-8")
 
@@ -384,7 +410,9 @@ def write_log(baseline: dict, best: dict, cal_best: dict, t0: float) -> None:
     ]
     for model in ("xgb", "rf"):
         b = baseline[model]
-        lines.append(f"  {model}: test AUC={b['test']['roc_auc']} F1={b['test']['f1']} | JBB AUC={b['jbb']['roc_auc']} F1={b['jbb']['f1']}")
+        lines.append(
+            f"  {model}: test AUC={b['test']['roc_auc']} F1={b['test']['f1']} | JBB AUC={b['jbb']['roc_auc']} F1={b['jbb']['f1']}"
+        )
     lines.append(f"\ntotal: {time.monotonic() - t0:.1f}s")
     (OUT / "experiment_log.txt").write_text("\n".join(lines) + "\n", encoding="utf-8")
 
@@ -452,8 +480,10 @@ def write_report(baseline, sweep, cal_sweep, comparison, sd, best, cal_best, poo
             f"{r['f1']:.4f} | {r['fpr']:.4f} | {r['fnr']:.4f} |"
         )
     lines.append("")
-    lines.append(f"**Best raw validation F1**: threshold = {best_t['max_f1']:.2f} "
-                 f"(F1 = {max(r['f1'] for r in sweep[xgb]):.4f})")
+    lines.append(
+        f"**Best raw validation F1**: threshold = {best_t['max_f1']:.2f} "
+        f"(F1 = {max(r['f1'] for r in sweep[xgb]):.4f})"
+    )
     lines.append(f"**Best F1 subject to FPR <= 0.10**: threshold = {best_t['max_f1_fpr01']:.2f}")
 
     lines += [
@@ -464,8 +494,10 @@ def write_report(baseline, sweep, cal_sweep, comparison, sd, best, cal_best, poo
     for cal_method in ("platt", "isotonic"):
         t_opt = cal_best[xgb][cal_method]["max_f1"]
         best_f1 = max(r["f1"] for r in cal_sweep[xgb][cal_method])
-        lines.append(f"- **{cal_method.capitalize()}** best F1={best_f1:.4f} at threshold={t_opt:.2f} "
-                     f"(vs raw best F1={max(r['f1'] for r in sweep[xgb]):.4f} at {best_t['max_f1']:.2f})")
+        lines.append(
+            f"- **{cal_method.capitalize()}** best F1={best_f1:.4f} at threshold={t_opt:.2f} "
+            f"(vs raw best F1={max(r['f1'] for r in sweep[xgb]):.4f} at {best_t['max_f1']:.2f})"
+        )
 
     lines += [
         "",
@@ -579,8 +611,10 @@ def write_report(baseline, sweep, cal_sweep, comparison, sd, best, cal_best, poo
         t_val = best[xgb][thresh_key]
         v_jbb = comparison[xgb][f"raw_{thresh_key}_jbb"]
         v_test = comparison[xgb][f"raw_{thresh_key}_test"]
-        lines.append(f"- **{label}** (threshold={t_val:.2f}): JBB recall={v_jbb['recall']:.4f}, "
-                     f"JBB FPR={v_jbb['fpr']:.4f}, test recall={v_test['recall']:.4f}, test FPR={v_test['fpr']:.4f}")
+        lines.append(
+            f"- **{label}** (threshold={t_val:.2f}): JBB recall={v_jbb['recall']:.4f}, "
+            f"JBB FPR={v_jbb['fpr']:.4f}, test recall={v_test['recall']:.4f}, test FPR={v_test['fpr']:.4f}"
+        )
 
     for cal in ("platt", "isotonic"):
         lines.append(f"\n#### {cal.capitalize()} calibrated scores")
@@ -591,8 +625,10 @@ def write_report(baseline, sweep, cal_sweep, comparison, sd, best, cal_best, poo
             t_val = cal_best[xgb][cal][thresh_key]
             v_jbb = comparison[xgb][f"{cal}_{thresh_key}_jbb"]
             v_test = comparison[xgb][f"{cal}_{thresh_key}_test"]
-            lines.append(f"- **{label}** (threshold={t_val:.2f}): JBB recall={v_jbb['recall']:.4f}, "
-                         f"JBB FPR={v_jbb['fpr']:.4f}, test recall={v_test['recall']:.4f}, test FPR={v_test['fpr']:.4f}")
+            lines.append(
+                f"- **{label}** (threshold={t_val:.2f}): JBB recall={v_jbb['recall']:.4f}, "
+                f"JBB FPR={v_jbb['fpr']:.4f}, test recall={v_test['recall']:.4f}, test FPR={v_test['fpr']:.4f}"
+            )
 
     lines += [
         "",

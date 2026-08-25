@@ -39,9 +39,11 @@ from q_guardian import (
 # Mock LangGraph Workflow (no external deps required)
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class GraphState:
     """Simulated LangGraph workflow state."""
+
     messages: list[str] = field(default_factory=list)
     current_node: str = "start"
     tool_calls: list[str] = field(default_factory=list)
@@ -50,6 +52,7 @@ class GraphState:
 @dataclass
 class NodeResult:
     """Result from executing a graph node."""
+
     node_name: str
     output: str
     tool_calls: list[str] = field(default_factory=list)
@@ -68,6 +71,7 @@ def mock_tool_executor(tool_name: str, args: dict[str, Any]) -> str:
 # ---------------------------------------------------------------------------
 # Q-Guardian Secured LangGraph Agent
 # ---------------------------------------------------------------------------
+
 
 class SecuredLangGraphAgent:
     """LangGraph agent with Q-Guardian security integration."""
@@ -108,21 +112,25 @@ class SecuredLangGraphAgent:
             self._log_detection(prompt_analysis)
 
             # Step 2: Risk assessment
-            risk_data = await self._guardian.calculate_risk({
-                "prompt": user_input,
-                "node": node_name,
-                "agent_id": self._agent.id,
-                "analysis": prompt_analysis.to_security_dict(),
-            })
+            risk_data = await self._guardian.calculate_risk(
+                {
+                    "prompt": user_input,
+                    "node": node_name,
+                    "agent_id": self._agent.id,
+                    "analysis": prompt_analysis.to_security_dict(),
+                }
+            )
             risk = RiskContext(**risk_data.get("risk-engine", {})) if risk_data else RiskContext()
             self._log_risk(risk, node_name)
 
             # Step 3: Policy enforcement
-            policy_result = await self._guardian.enforce_policy({
-                "decision": prompt_analysis.decision.value,
-                "risk_score": risk.score,
-                "node": node_name,
-            })
+            policy_result = await self._guardian.enforce_policy(
+                {
+                    "decision": prompt_analysis.decision.value,
+                    "risk_score": risk.score,
+                    "node": node_name,
+                }
+            )
             blocked = policy_result.get("policy-engine", {}).get("blocked", False)
 
             # Step 4: Response action (block or proceed)
@@ -147,12 +155,14 @@ class SecuredLangGraphAgent:
                 )
 
             # Step 6: Observability
-            await self._guardian.monitor({
-                "event": "node_completed",
-                "node": node_name,
-                "risk_score": risk.score,
-                "decision": prompt_analysis.decision.value,
-            })
+            await self._guardian.monitor(
+                {
+                    "event": "node_completed",
+                    "node": node_name,
+                    "risk_score": risk.score,
+                    "decision": prompt_analysis.decision.value,
+                }
+            )
 
         final_output = state.messages[-1] if state.messages else "No output"
         self._log_observability()
@@ -178,13 +188,14 @@ class SecuredLangGraphAgent:
         if analysis.findings:
             worst = max(analysis.findings, key=lambda f: list(PromptSeverity).index(f.severity))
             severity = worst.severity.value.upper()
-        print(f"  [Detection] decision={analysis.decision.value} "
-              f"risk={analysis.risk_score:.2f} findings={analysis.finding_count} "
-              f"worst_severity={severity}")
+        print(
+            f"  [Detection] decision={analysis.decision.value} "
+            f"risk={analysis.risk_score:.2f} findings={analysis.finding_count} "
+            f"worst_severity={severity}"
+        )
 
     def _log_risk(self, risk: RiskContext, node: str) -> None:
-        print(f"  [Risk] node={node} score={risk.score:.2f} "
-              f"factors={risk.factors or 'none'}")
+        print(f"  [Risk] node={node} score={risk.score:.2f} factors={risk.factors or 'none'}")
 
     def _log_response(self, action: str, node: str) -> None:
         print(f"  [Response] action={action} at node={node}")
@@ -192,14 +203,17 @@ class SecuredLangGraphAgent:
     def _log_observability(self) -> None:
         runtime = self._guardian.runtime
         if runtime:
-            print(f"\n[Observability] session={runtime.session_id} "
-                  f"tools_called={runtime.tool_count} threats={runtime.threat_count} "
-                  f"blocked={runtime.is_blocked}")
+            print(
+                f"\n[Observability] session={runtime.session_id} "
+                f"tools_called={runtime.tool_count} threats={runtime.threat_count} "
+                f"blocked={runtime.is_blocked}"
+            )
 
 
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
+
 
 async def main() -> None:
     """Run the LangGraph + Q-Guardian example."""

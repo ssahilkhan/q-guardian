@@ -579,12 +579,7 @@ def angle_encode(features: list[float], num_qubits: int) -> QuantumCircuit:
 ```python
 class QuantumBackend(ABC):
     @abstractmethod
-    def execute_circuit(
-        self,
-        circuit: Any,
-        shots: int = 1024,
-        **kwargs
-    ) -> CircuitResult:
+    def execute_circuit(self, circuit: Any, shots: int = 1024, **kwargs) -> CircuitResult:
         """Execute a quantum circuit and return measurement results."""
 
     @abstractmethod
@@ -822,31 +817,40 @@ class QuantumConfig(MLConfig):
 # Quantum-specific events (Module 6)
 class QuantumCircuitExecuted(Event):
     """Published after a quantum circuit is executed."""
+
     circuit_depth: int
     gate_count: int
     execution_time_ms: float
     backend: str
 
+
 class QuantumModelTrained(Event):
     """Published after quantum model training completes."""
+
     model_name: str
     accuracy: float
     training_time_ms: float
 
+
 class QuantumPredictionCompleted(Event):
     """Published after quantum prediction."""
+
     model_name: str
     prediction: dict
     confidence: float
 
+
 class QuantumBackendSwitched(Event):
     """Published when quantum backend changes."""
+
     old_backend: str
     new_backend: str
     reason: str
 
+
 class QuantumFusionCompleted(Event):
     """Published after fusion of classical and quantum predictions."""
+
     fusion_strategy: str
     quantum_contribution: float
     classical_contribution: float

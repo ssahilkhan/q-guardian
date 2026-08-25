@@ -50,9 +50,7 @@ def main() -> None:
     for row in rows:
         cat = cats.get(row["text"], "unknown")
         pred = 1 if row["fusion"] >= THRESHOLD else 0
-        bucket = cat_rows.setdefault(
-            cat, {"n": 0, "malicious": 0, "detected": 0, "fp": 0, "tp": 0}
-        )
+        bucket = cat_rows.setdefault(cat, {"n": 0, "malicious": 0, "detected": 0, "fp": 0, "tp": 0})
         bucket["n"] += 1
         if row["label"] == 1:
             bucket["malicious"] += 1
@@ -94,12 +92,7 @@ def _examples(
     top: int | None = None,
     min_score: float = 0.5,
 ) -> list[dict]:
-    sub = [
-        r
-        for r in rows
-        if r["label"] == label
-        and r["fusion"] >= min_score
-    ]
+    sub = [r for r in rows if r["label"] == label and r["fusion"] >= min_score]
     sub.sort(key=lambda r: r["fusion"], reverse=True)
     if top is not None:
         sub = sub[:top]
@@ -123,15 +116,19 @@ def _score_bucket(rows: list[dict], label: int, pred: int) -> list[dict]:
     for p in (0, 10, 25, 50, 75, 90, 95, 100):
         idx = min(n - 1, max(0, int(n * p / 100))) if n else 0
         pcts.append(round(scores[idx], 4) if scores else None)
-    return {"n": n, "min": round(scores[0], 4) if scores else None, "percentiles": pcts, "max": round(scores[-1], 4) if scores else None}
+    return {
+        "n": n,
+        "min": round(scores[0], 4) if scores else None,
+        "percentiles": pcts,
+        "max": round(scores[-1], 4) if scores else None,
+    }
 
 
 def render(report: dict) -> str:
     lines = [
         "# JBB Error Analysis (frozen baseline, threshold 0.5)",
         "",
-        "Post-hoc diagnostic only. JBB labels never influence training or "
-        "threshold selection.",
+        "Post-hoc diagnostic only. JBB labels never influence training or threshold selection.",
         "",
         f"## Confusion at threshold {report['threshold']}",
         "",
@@ -147,9 +144,7 @@ def render(report: dict) -> str:
         "| --- | --- | --- | --- | --- |",
     ]
     for cat, b in report["categories"].items():
-        lines.append(
-            f"| {cat} | {b['samples']} | {b['malicious']} | {b['detected']} | {b['fp']} |"
-        )
+        lines.append(f"| {cat} | {b['samples']} | {b['malicious']} | {b['detected']} | {b['fp']} |")
     lines.append("")
     lines.append("## Detected attacks (TP examples)")
     lines.append("")

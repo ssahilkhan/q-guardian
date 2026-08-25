@@ -45,6 +45,7 @@ def p(msg: str) -> None:
 # Data loading (cached features only)
 # ---------------------------------------------------------------------------
 
+
 def build_features() -> dict[str, dict]:
     out: dict[str, dict] = {}
     data = np.load(SEMANTIC_CACHE, allow_pickle=True)
@@ -80,6 +81,7 @@ def pool_x(pool: str) -> np.ndarray:
 # Metrics
 # ---------------------------------------------------------------------------
 
+
 def summarize(y: list[int], scores: list[float], threshold: float) -> dict:
     tp = sum(1 for yi, si in zip(y, scores) if yi == 1 and si >= threshold)
     fp = sum(1 for yi, si in zip(y, scores) if yi == 0 and si >= threshold)
@@ -100,7 +102,9 @@ def summarize(y: list[int], scores: list[float], threshold: float) -> dict:
     }
 
 
-def find_fpr_constrained_threshold(y: list[int], scores: list[float], budget: float = FPR_BUDGET) -> float:
+def find_fpr_constrained_threshold(
+    y: list[int], scores: list[float], budget: float = FPR_BUDGET
+) -> float:
     n_pos = sum(y)
     n_neg = len(y) - n_pos
     if n_neg == 0:
@@ -137,8 +141,15 @@ def fast_threshold_sweep(y: list[int], scores: list[float], steps: int = 99) -> 
         fpr = fp / n_neg if n_neg else 0
         prec = tp / (tp + fp) if (tp + fp) else 0
         f1 = 2 * prec * det / (prec + det) if (prec + det) else 0
-        rows.append({"threshold": round(float(t), 4), "detection": round(det, 4),
-                      "fpr": round(fpr, 4), "precision": round(prec, 4), "f1": round(f1, 4)})
+        rows.append(
+            {
+                "threshold": round(float(t), 4),
+                "detection": round(det, 4),
+                "fpr": round(fpr, 4),
+                "precision": round(prec, 4),
+                "f1": round(f1, 4),
+            }
+        )
     return rows
 
 
@@ -150,8 +161,15 @@ def fit_rf_predict(x_train, y_train, *eval_sets):
 
 def fit_xgb_predict(x_train, y_train, *eval_sets):
     import xgboost as xgb
-    clf = xgb.XGBClassifier(n_estimators=50, max_depth=6, random_state=42,
-                            use_label_encoder=False, eval_metric="mlogloss", verbosity=0)
+
+    clf = xgb.XGBClassifier(
+        n_estimators=50,
+        max_depth=6,
+        random_state=42,
+        use_label_encoder=False,
+        eval_metric="mlogloss",
+        verbosity=0,
+    )
     xtr = np.asarray(x_train, dtype=np.float32)
     ytr = np.asarray(y_train, dtype=np.int32)
     clf.fit(xtr, ytr)
@@ -161,6 +179,7 @@ def fit_xgb_predict(x_train, y_train, *eval_sets):
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
+
 
 def main() -> None:
     t0 = time.monotonic()
@@ -197,13 +216,15 @@ def main() -> None:
     p("[2] fitting RF ...")
     t1 = time.monotonic()
     rf_val, rf_test, rf_jbb_interim, rf_jbb_withheld = fit_rf_predict(
-        x_all_s, train_y, x_val, x_test, jbb_interim_s, jbb_withheld_s)
+        x_all_s, train_y, x_val, x_test, jbb_interim_s, jbb_withheld_s
+    )
     p(f"  RF done in {time.monotonic() - t1:.1f}s")
 
     p("[3] fitting XGB ...")
     t1 = time.monotonic()
     xgb_val, xgb_test, xgb_jbb_interim, xgb_jbb_withheld = fit_xgb_predict(
-        x_all_s, train_y, x_val, x_test, jbb_interim_s, jbb_withheld_s)
+        x_all_s, train_y, x_val, x_test, jbb_interim_s, jbb_withheld_s
+    )
     p(f"  XGB done in {time.monotonic() - t1:.1f}s")
 
     # --- FPR-constrained thresholds on validation ---
@@ -216,9 +237,10 @@ def main() -> None:
     exp3_test = summarize(FEATURES["test"]["y"], rf_test, 0.5)
     exp3_jbb = summarize(FEATURES["jbb"]["y"], rf_jbb_interim + rf_jbb_withheld, 0.5)
     # Proper full JBB at 0.5
-    exp3_jbb_full = summarize(jbb_interim_y + jbb_withheld_y,
-                              rf_jbb_interim + rf_jbb_withheld, 0.5)
-    p(f"[exp3] val AUC proxy det@0.5={exp3_val['detection_rate']}, test={exp3_test['detection_rate']}, jbb={exp3_jbb_full['detection_rate']}")
+    exp3_jbb_full = summarize(jbb_interim_y + jbb_withheld_y, rf_jbb_interim + rf_jbb_withheld, 0.5)
+    p(
+        f"[exp3] val AUC proxy det@0.5={exp3_val['detection_rate']}, test={exp3_test['detection_rate']}, jbb={exp3_jbb_full['detection_rate']}"
+    )
 
     # --- RF/XGB operating points ---
     rf_op = {
@@ -235,8 +257,12 @@ def main() -> None:
         "jbb_interim": summarize(jbb_interim_y, xgb_jbb_interim, xgb_t_fpr),
         "jbb_withheld": summarize(jbb_withheld_y, xgb_jbb_withheld, xgb_t_fpr),
     }
-    p(f"[5] RF op: JBB withheld det={rf_op['jbb_withheld']['detection_rate']}, fpr={rf_op['jbb_withheld']['fpr']}")
-    p(f"    XGB op: JBB withheld det={xgb_op['jbb_withheld']['detection_rate']}, fpr={xgb_op['jbb_withheld']['fpr']}")
+    p(
+        f"[5] RF op: JBB withheld det={rf_op['jbb_withheld']['detection_rate']}, fpr={rf_op['jbb_withheld']['fpr']}"
+    )
+    p(
+        f"    XGB op: JBB withheld det={xgb_op['jbb_withheld']['detection_rate']}, fpr={xgb_op['jbb_withheld']['fpr']}"
+    )
 
     # --- Fusion retuning ---
     p("[6] fusion retuning ...")
@@ -270,24 +296,46 @@ def main() -> None:
         "jbb_interim": summarize(jbb_interim_y, fused_jbb_interim, fused_t_fpr),
         "jbb_withheld": summarize(jbb_withheld_y, fused_jbb_withheld, fused_t_fpr),
     }
-    p(f"    fused: RF weight={best_w:.2f}, threshold={fused_t_fpr}, JBB det={fused_op['jbb_withheld']['detection_rate']}")
+    p(
+        f"    fused: RF weight={best_w:.2f}, threshold={fused_t_fpr}, JBB det={fused_op['jbb_withheld']['detection_rate']}"
+    )
 
     # --- Fusion configs ---
     fusion_configs = {
-        "rf_only": {"scores_val": rf_val, "scores_test": rf_test,
-                     "scores_jbb_interim": rf_jbb_interim, "scores_jbb_withheld": rf_jbb_withheld},
-        "xgb_only": {"scores_val": xgb_val, "scores_test": xgb_test,
-                      "scores_jbb_interim": xgb_jbb_interim, "scores_jbb_withheld": xgb_jbb_withheld},
-        "50_50": {"scores_val": [0.5*a+0.5*b for a,b in zip(rf_val,xgb_val)],
-                   "scores_test": [0.5*a+0.5*b for a,b in zip(rf_test,xgb_test)],
-                   "scores_jbb_interim": [0.5*a+0.5*b for a,b in zip(rf_jbb_interim,xgb_jbb_interim)],
-                   "scores_jbb_withheld": [0.5*a+0.5*b for a,b in zip(rf_jbb_withheld,xgb_jbb_withheld)]},
-        "val_selected": {"scores_val": fused_val, "scores_test": fused_test,
-                          "scores_jbb_interim": fused_jbb_interim, "scores_jbb_withheld": fused_jbb_withheld},
+        "rf_only": {
+            "scores_val": rf_val,
+            "scores_test": rf_test,
+            "scores_jbb_interim": rf_jbb_interim,
+            "scores_jbb_withheld": rf_jbb_withheld,
+        },
+        "xgb_only": {
+            "scores_val": xgb_val,
+            "scores_test": xgb_test,
+            "scores_jbb_interim": xgb_jbb_interim,
+            "scores_jbb_withheld": xgb_jbb_withheld,
+        },
+        "50_50": {
+            "scores_val": [0.5 * a + 0.5 * b for a, b in zip(rf_val, xgb_val)],
+            "scores_test": [0.5 * a + 0.5 * b for a, b in zip(rf_test, xgb_test)],
+            "scores_jbb_interim": [
+                0.5 * a + 0.5 * b for a, b in zip(rf_jbb_interim, xgb_jbb_interim)
+            ],
+            "scores_jbb_withheld": [
+                0.5 * a + 0.5 * b for a, b in zip(rf_jbb_withheld, xgb_jbb_withheld)
+            ],
+        },
+        "val_selected": {
+            "scores_val": fused_val,
+            "scores_test": fused_test,
+            "scores_jbb_interim": fused_jbb_interim,
+            "scores_jbb_withheld": fused_jbb_withheld,
+        },
     }
     fusion_detail = {}
     for fname, fdata in fusion_configs.items():
-        t = find_fpr_constrained_threshold(FEATURES["validation"]["y"], fdata["scores_val"], FPR_BUDGET)
+        t = find_fpr_constrained_threshold(
+            FEATURES["validation"]["y"], fdata["scores_val"], FPR_BUDGET
+        )
         fusion_detail[fname] = {
             "threshold": t,
             "val": summarize(FEATURES["validation"]["y"], fdata["scores_val"], t),
@@ -321,8 +369,15 @@ def main() -> None:
         rf_fp = sum(1 for yi, si in zip(y_te, rf_sc) if yi == 0 and si >= rf_t)
         # XGB
         import xgboost as xgb
-        xgb_clf = xgb.XGBClassifier(n_estimators=50, max_depth=6, random_state=42,
-                                     use_label_encoder=False, eval_metric="mlogloss", verbosity=0)
+
+        xgb_clf = xgb.XGBClassifier(
+            n_estimators=50,
+            max_depth=6,
+            random_state=42,
+            use_label_encoder=False,
+            eval_metric="mlogloss",
+            verbosity=0,
+        )
         xgb_clf.fit(np.asarray(x_tr_s, dtype=np.float32), np.asarray(y_tr, dtype=np.int32))
         xgb_sc = xgb_clf.predict_proba(np.asarray(x_te_s, dtype=np.float32))[:, 1].tolist()
         xgb_t = find_fpr_constrained_threshold(y_te, xgb_sc, FPR_BUDGET)
@@ -331,60 +386,88 @@ def main() -> None:
         xgb_n_pos = rf_n_pos
         xgb_n_neg = rf_n_neg
         return {
-            "rf_t": rf_t, "rf_det": rf_tp / rf_n_pos if rf_n_pos else 0,
+            "rf_t": rf_t,
+            "rf_det": rf_tp / rf_n_pos if rf_n_pos else 0,
             "rf_fpr": rf_fp / rf_n_neg if rf_n_neg else 0,
-            "xgb_t": xgb_t, "xgb_det": xgb_tp / xgb_n_pos if xgb_n_pos else 0,
+            "xgb_t": xgb_t,
+            "xgb_det": xgb_tp / xgb_n_pos if xgb_n_pos else 0,
             "xgb_fpr": xgb_fp / xgb_n_neg if xgb_n_neg else 0,
         }
 
     t1 = time.monotonic()
     all_splits = list(rskf.split(x_all, combined_y_arr))
     cv_results_raw = Parallel(n_jobs=-1, verbose=0)(
-        delayed(cv_fold)(tr, te) for tr, te in all_splits)
+        delayed(cv_fold)(tr, te) for tr, te in all_splits
+    )
     p(f"  CV done in {time.monotonic() - t1:.1f}s ({len(all_splits)} folds)")
 
     def cv_stats(key):
         vals = [r[key] for r in cv_results_raw]
-        return {"mean": round(statistics.fmean(vals), 4),
-                "std": round(statistics.stdev(vals), 4) if len(vals) > 1 else 0.0}
+        return {
+            "mean": round(statistics.fmean(vals), 4),
+            "std": round(statistics.stdev(vals), 4) if len(vals) > 1 else 0.0,
+        }
 
     cv_results = {
-        "rf": {"roc_auc": cv_stats("rf_det"), "fpr": cv_stats("rf_fpr"), "detection": cv_stats("rf_det"),
-               "thresholds": {"mean": round(statistics.fmean([r["rf_t"] for r in cv_results_raw]), 4),
-                               "std": round(statistics.stdev([r["rf_t"] for r in cv_results_raw]), 4),
-                               "min": round(min(r["rf_t"] for r in cv_results_raw), 4),
-                               "max": round(max(r["rf_t"] for r in cv_results_raw), 4)}},
-        "xgb": {"roc_auc": cv_stats("xgb_det"), "fpr": cv_stats("xgb_fpr"), "detection": cv_stats("xgb_det"),
-                 "thresholds": {"mean": round(statistics.fmean([r["xgb_t"] for r in cv_results_raw]), 4),
-                                 "std": round(statistics.stdev([r["xgb_t"] for r in cv_results_raw]), 4),
-                                 "min": round(min(r["xgb_t"] for r in cv_results_raw), 4),
-                                 "max": round(max(r["xgb_t"] for r in cv_results_raw), 4)}},
+        "rf": {
+            "roc_auc": cv_stats("rf_det"),
+            "fpr": cv_stats("rf_fpr"),
+            "detection": cv_stats("rf_det"),
+            "thresholds": {
+                "mean": round(statistics.fmean([r["rf_t"] for r in cv_results_raw]), 4),
+                "std": round(statistics.stdev([r["rf_t"] for r in cv_results_raw]), 4),
+                "min": round(min(r["rf_t"] for r in cv_results_raw), 4),
+                "max": round(max(r["rf_t"] for r in cv_results_raw), 4),
+            },
+        },
+        "xgb": {
+            "roc_auc": cv_stats("xgb_det"),
+            "fpr": cv_stats("xgb_fpr"),
+            "detection": cv_stats("xgb_det"),
+            "thresholds": {
+                "mean": round(statistics.fmean([r["xgb_t"] for r in cv_results_raw]), 4),
+                "std": round(statistics.stdev([r["xgb_t"] for r in cv_results_raw]), 4),
+                "min": round(min(r["xgb_t"] for r in cv_results_raw), 4),
+                "max": round(max(r["xgb_t"] for r in cv_results_raw), 4),
+            },
+        },
     }
-    p(f"    RF threshold: {cv_results['rf']['thresholds']['mean']} +/- {cv_results['rf']['thresholds']['std']}")
-    p(f"    XGB threshold: {cv_results['xgb']['thresholds']['mean']} +/- {cv_results['xgb']['thresholds']['std']}")
+    p(
+        f"    RF threshold: {cv_results['rf']['thresholds']['mean']} +/- {cv_results['rf']['thresholds']['std']}"
+    )
+    p(
+        f"    XGB threshold: {cv_results['xgb']['thresholds']['mean']} +/- {cv_results['xgb']['thresholds']['std']}"
+    )
 
     # --- Threshold stability ---
     stability = {
         "rf_cv_threshold_std": cv_results["rf"]["thresholds"]["std"],
         "xgb_cv_threshold_std": cv_results["xgb"]["thresholds"]["std"],
-        "stable": cv_results["rf"]["thresholds"]["std"] < 0.1 and cv_results["xgb"]["thresholds"]["std"] < 0.1,
+        "stable": cv_results["rf"]["thresholds"]["std"] < 0.1
+        and cv_results["xgb"]["thresholds"]["std"] < 0.1,
     }
 
     # --- Probability calibration ---
     p("[8] probability calibration ...")
-    rf_val_clipped = [max(1e-10, min(1-1e-10, s)) for s in rf_val]
-    rf_jbb_clipped = [max(1e-10, min(1-1e-10, s)) for s in (rf_jbb_interim + rf_jbb_withheld)]
-    xgb_val_clipped = [max(1e-10, min(1-1e-10, s)) for s in xgb_val]
-    xgb_jbb_clipped = [max(1e-10, min(1-1e-10, s)) for s in (xgb_jbb_interim + xgb_jbb_withheld)]
+    rf_val_clipped = [max(1e-10, min(1 - 1e-10, s)) for s in rf_val]
+    rf_jbb_clipped = [max(1e-10, min(1 - 1e-10, s)) for s in (rf_jbb_interim + rf_jbb_withheld)]
+    xgb_val_clipped = [max(1e-10, min(1 - 1e-10, s)) for s in xgb_val]
+    xgb_jbb_clipped = [max(1e-10, min(1 - 1e-10, s)) for s in (xgb_jbb_interim + xgb_jbb_withheld)]
     prob_cal = {
-        "rf": {"val_brier": round(brier_score_loss(FEATURES["validation"]["y"], rf_val_clipped), 4),
-               "jbb_brier": round(brier_score_loss(jbb_interim_y + jbb_withheld_y, rf_jbb_clipped), 4),
-               "val_log_loss": round(log_loss(FEATURES["validation"]["y"], rf_val_clipped), 4),
-               "jbb_log_loss": round(log_loss(jbb_interim_y + jbb_withheld_y, rf_jbb_clipped), 4)},
-        "xgb": {"val_brier": round(brier_score_loss(FEATURES["validation"]["y"], xgb_val_clipped), 4),
-                "jbb_brier": round(brier_score_loss(jbb_interim_y + jbb_withheld_y, xgb_jbb_clipped), 4),
-                "val_log_loss": round(log_loss(FEATURES["validation"]["y"], xgb_val_clipped), 4),
-                "jbb_log_loss": round(log_loss(jbb_interim_y + jbb_withheld_y, xgb_jbb_clipped), 4)},
+        "rf": {
+            "val_brier": round(brier_score_loss(FEATURES["validation"]["y"], rf_val_clipped), 4),
+            "jbb_brier": round(brier_score_loss(jbb_interim_y + jbb_withheld_y, rf_jbb_clipped), 4),
+            "val_log_loss": round(log_loss(FEATURES["validation"]["y"], rf_val_clipped), 4),
+            "jbb_log_loss": round(log_loss(jbb_interim_y + jbb_withheld_y, rf_jbb_clipped), 4),
+        },
+        "xgb": {
+            "val_brier": round(brier_score_loss(FEATURES["validation"]["y"], xgb_val_clipped), 4),
+            "jbb_brier": round(
+                brier_score_loss(jbb_interim_y + jbb_withheld_y, xgb_jbb_clipped), 4
+            ),
+            "val_log_loss": round(log_loss(FEATURES["validation"]["y"], xgb_val_clipped), 4),
+            "jbb_log_loss": round(log_loss(jbb_interim_y + jbb_withheld_y, xgb_jbb_clipped), 4),
+        },
     }
 
     # --- Statistical comparison ---
@@ -398,7 +481,10 @@ def main() -> None:
     reg_check = {
         "rf_val_det_at_threshold": rf_op["validation"]["detection_rate"],
         "rf_test_det_at_threshold": rf_op["test"]["detection_rate"],
-        "no_regression": abs(rf_op["test"]["detection_rate"] - rf_op["validation"]["detection_rate"]) < 0.3,
+        "no_regression": abs(
+            rf_op["test"]["detection_rate"] - rf_op["validation"]["detection_rate"]
+        )
+        < 0.3,
     }
 
     # --- Integration readiness ---
@@ -416,8 +502,11 @@ def main() -> None:
             "criterion": "Internal test detection at FPR-constrained threshold within 0.3 of validation",
             "val_det": rf_op["validation"]["detection_rate"],
             "test_det": rf_op["test"]["detection_rate"],
-            "delta": round(rf_op["test"]["detection_rate"] - rf_op["validation"]["detection_rate"], 4),
-            "met": abs(rf_op["test"]["detection_rate"] - rf_op["validation"]["detection_rate"]) < 0.3,
+            "delta": round(
+                rf_op["test"]["detection_rate"] - rf_op["validation"]["detection_rate"], 4
+            ),
+            "met": abs(rf_op["test"]["detection_rate"] - rf_op["validation"]["detection_rate"])
+            < 0.3,
         },
         "S2_jbb_auc": {
             "criterion": "JBB interim AUC proxy (detection at threshold) >= 0.20",
@@ -448,7 +537,8 @@ def main() -> None:
             "criterion": "Fused model JBB detection >= RF-only JBB detection",
             "rf_jbb_det": rf_op["jbb_withheld"]["detection_rate"],
             "fused_jbb_det": fused_op["jbb_withheld"]["detection_rate"],
-            "met": fused_op["jbb_withheld"]["detection_rate"] >= rf_op["jbb_withheld"]["detection_rate"] * 0.8,
+            "met": fused_op["jbb_withheld"]["detection_rate"]
+            >= rf_op["jbb_withheld"]["detection_rate"] * 0.8,
         },
     }
     met_count = sum(1 for v in sc.values() if isinstance(v, dict) and v.get("met", False))
@@ -486,8 +576,12 @@ def main() -> None:
         "jbb_split": {"interim_size": len(interim_idx), "withheld_size": len(withheld_idx)},
         "rf_operating_point": rf_op,
         "xgb_operating_point": xgb_op,
-        "fusion_retuning": {"best_weight_rf": round(best_w, 2), "best_val_f1": round(best_f1, 4),
-                            "selected": fused_op, "configs": fusion_detail},
+        "fusion_retuning": {
+            "best_weight_rf": round(best_w, 2),
+            "best_val_f1": round(best_f1, 4),
+            "selected": fused_op,
+            "configs": fusion_detail,
+        },
         "repeated_cv": cv_results,
         "threshold_stability": stability,
         "probability_calibration": prob_cal,
@@ -508,14 +602,20 @@ def main() -> None:
         csv_lines.append(f"exp3_jbb_{m},rf,{exp3_jbb_full[m]}")
     for model in ("rf", "xgb"):
         op = rf_op if model == "rf" else xgb_op
-        csv_lines.append(f"prod_{model}_jbb_det_fpr_constrained,{model},{op['jbb_withheld']['detection_rate']}")
-        csv_lines.append(f"prod_{model}_jbb_fpr_fpr_constrained,{model},{op['jbb_withheld']['fpr']}")
+        csv_lines.append(
+            f"prod_{model}_jbb_det_fpr_constrained,{model},{op['jbb_withheld']['detection_rate']}"
+        )
+        csv_lines.append(
+            f"prod_{model}_jbb_fpr_fpr_constrained,{model},{op['jbb_withheld']['fpr']}"
+        )
     (OUT / "metrics.csv").write_text("\n".join(csv_lines) + "\n", encoding="utf-8")
 
     thr_lines = ["model,fpr_constrained_threshold,cv_threshold_mean,cv_threshold_std"]
     for model in ("rf", "xgb"):
         op = rf_op if model == "rf" else xgb_op
-        thr_lines.append(f"{model},{op['selected_threshold']},{cv_results[model]['thresholds']['mean']},{cv_results[model]['thresholds']['std']}")
+        thr_lines.append(
+            f"{model},{op['selected_threshold']},{cv_results[model]['thresholds']['mean']},{cv_results[model]['thresholds']['std']}"
+        )
     (OUT / "thresholds.csv").write_text("\n".join(thr_lines) + "\n", encoding="utf-8")
     (OUT / "repeated_cv.json").write_text(json.dumps(cv_results, indent=2), encoding="utf-8")
 
@@ -597,7 +697,9 @@ def write_report(results: dict, elapsed: float) -> None:
         "| --- | ---: | ---: | ---: | ---: | ---: |",
     ]
     for fname, fd in fus["configs"].items():
-        lines.append(f"| {fname} | {fd['threshold']} | {fd['val']['detection_rate']} | {fd['val']['fpr']} | {fd['jbb_withheld']['detection_rate']} | {fd['jbb_withheld']['fpr']} |")
+        lines.append(
+            f"| {fname} | {fd['threshold']} | {fd['val']['detection_rate']} | {fd['val']['fpr']} | {fd['jbb_withheld']['detection_rate']} | {fd['jbb_withheld']['fpr']} |"
+        )
     lines += [
         "",
         "---",
@@ -687,10 +789,14 @@ def write_report(results: dict, elapsed: float) -> None:
         "",
     ]
     if decision == "SHIP":
-        lines.append("All critical criteria met. Production integration with recalibrated threshold recommended.")
+        lines.append(
+            "All critical criteria met. Production integration with recalibrated threshold recommended."
+        )
     elif decision == "KEEP EXPERIMENTAL":
-        lines.append("4+ criteria met but not all. Threshold calibration shows promise. "
-                      "Recommend further calibration work or accept residual risk.")
+        lines.append(
+            "4+ criteria met but not all. Threshold calibration shows promise. "
+            "Recommend further calibration work or accept residual risk."
+        )
     else:
         lines.append("Too many criteria failed. Not ready for production.")
 
@@ -702,7 +808,7 @@ def write_report(results: dict, elapsed: float) -> None:
         "",
         "- Production integration: retrain RF provider with diverse pool + 427-d features",
         f"- Set production threshold to {rf['selected_threshold']} (FPR-constrained)",
-        f"- Update fusion weights: RF={fus['best_weight_rf']}, XGB={1-fus['best_weight_rf']}",
+        f"- Update fusion weights: RF={fus['best_weight_rf']}, XGB={1 - fus['best_weight_rf']}",
         "- Re-run full audit suite (2755 tests + packaging)",
         "- A/B testing with real traffic",
         "",

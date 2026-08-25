@@ -66,17 +66,17 @@ def main() -> None:
 
     report: dict = {"threshold": THRESHOLD, "schemes": {}}
     for name, weights in schemes:
-        fused = {
-            pool: _fuse(mat, weights) for pool, mat in scores.items()
-        }
+        fused = {pool: _fuse(mat, weights) for pool, mat in scores.items()}
         entry: dict = {"weights": list(weights), "pools": {}}
         for pool in ("validation", "test", "external_jbb"):
             m = detection_metrics(labels[pool], fused[pool].tolist(), threshold=THRESHOLD)
             entry["pools"][pool] = _metrics(m)
         report["schemes"][name] = entry
-        print(f"{name}: val {entry['pools']['validation']['f1']:.3f} / "
-              f"test {entry['pools']['test']['f1']:.3f} / "
-              f"jbb {entry['pools']['external_jbb']['f1']:.3f}")
+        print(
+            f"{name}: val {entry['pools']['validation']['f1']:.3f} / "
+            f"test {entry['pools']['test']['f1']:.3f} / "
+            f"jbb {entry['pools']['external_jbb']['f1']:.3f}"
+        )
 
     _calibration_notes(report, scores, labels)
     _minmax_schemes(report, scores, labels)
@@ -145,9 +145,11 @@ def _minmax_schemes(
         m = detection_metrics(labels[pool], fused[pool].tolist(), threshold=THRESHOLD)
         entry["pools"][pool] = _metrics(m)
     report["schemes"]["minmax_equal"] = entry
-    print(f"minmax_equal: val {entry['pools']['validation']['f1']:.3f} / "
-          f"test {entry['pools']['test']['f1']:.3f} / "
-          f"jbb {entry['pools']['external_jbb']['f1']:.3f}")
+    print(
+        f"minmax_equal: val {entry['pools']['validation']['f1']:.3f} / "
+        f"test {entry['pools']['test']['f1']:.3f} / "
+        f"jbb {entry['pools']['external_jbb']['f1']:.3f}"
+    )
 
 
 def render(report: dict) -> str:

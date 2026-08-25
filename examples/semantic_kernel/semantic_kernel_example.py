@@ -35,9 +35,11 @@ from q_guardian import (
 # Mock Semantic Kernel Types (no external deps required)
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class KernelFunction:
     """Simulated Semantic Kernel function."""
+
     name: str
     plugin_name: str
     description: str = ""
@@ -47,6 +49,7 @@ class KernelFunction:
 @dataclass
 class ChatMessage:
     """Simulated chat message."""
+
     role: str
     content: str
 
@@ -72,6 +75,7 @@ class MockKernel:
 # Q-Guardian Secured Semantic Kernel
 # ---------------------------------------------------------------------------
 
+
 class SecuredKernel:
     """Semantic Kernel with Q-Guardian security for all plugin functions."""
 
@@ -83,8 +87,7 @@ class SecuredKernel:
     def add_plugin(self, plugin_name: str, functions: list[KernelFunction]) -> None:
         """Register a plugin with the kernel."""
         self._kernel.add_plugin(plugin_name, functions)
-        print(f"[SK] Registered plugin: {plugin_name} "
-              f"({len(functions)} function(s))")
+        print(f"[SK] Registered plugin: {plugin_name} ({len(functions)} function(s))")
 
     async def invoke(
         self,
@@ -107,11 +110,13 @@ class SecuredKernel:
         self._log_detection(analysis, plugin_name, function_name)
 
         # 2. Risk assessment
-        risk_dict = await self._guardian.calculate_risk({
-            "prompt": user_input,
-            "plugin": plugin_name,
-            "function": function_name,
-        })
+        risk_dict = await self._guardian.calculate_risk(
+            {
+                "prompt": user_input,
+                "plugin": plugin_name,
+                "function": function_name,
+            }
+        )
         risk = RiskContext(**risk_dict.get("risk-engine", {})) if risk_dict else RiskContext()
 
         # 3. Policy enforcement
@@ -133,18 +138,18 @@ class SecuredKernel:
             tool_name=f"{plugin_name}.{function_name}",
             arguments={"input": user_input[:100], **kwargs},
         )
-        self._guardian.tool_tracker.finish_invocation(
-            inv.invocation_id, result=result
-        )
+        self._guardian.tool_tracker.finish_invocation(inv.invocation_id, result=result)
 
         # 4. Observability
-        await self._guardian.monitor({
-            "event": "function_invoked",
-            "plugin": plugin_name,
-            "function": function_name,
-            "risk_score": risk.score,
-            "decision": analysis.decision.value,
-        })
+        await self._guardian.monitor(
+            {
+                "event": "function_invoked",
+                "plugin": plugin_name,
+                "function": function_name,
+                "risk_score": risk.score,
+                "decision": analysis.decision.value,
+            }
+        )
 
         self._record(plugin_name, function_name, "allowed", risk.score)
         return result
@@ -172,16 +177,20 @@ class SecuredKernel:
 
     def _log_detection(self, analysis: PromptAnalysis, plugin: str, func: str) -> None:
         cats = [f.category.value for f in analysis.findings]
-        print(f"  [Detection] {plugin}.{func}: decision={analysis.decision.value} "
-              f"findings={analysis.finding_count} categories={cats or 'none'}")
+        print(
+            f"  [Detection] {plugin}.{func}: decision={analysis.decision.value} "
+            f"findings={analysis.finding_count} categories={cats or 'none'}"
+        )
 
     def _record(self, plugin: str, func: str, action: str, risk: float) -> None:
-        self._function_log.append({
-            "plugin": plugin,
-            "function": func,
-            "action": action,
-            "risk_score": risk,
-        })
+        self._function_log.append(
+            {
+                "plugin": plugin,
+                "function": func,
+                "action": action,
+                "risk_score": risk,
+            }
+        )
 
     def print_observability(self) -> None:
         """Print plugin-level observability dashboard."""
@@ -208,6 +217,7 @@ class SecuredKernel:
 # Main
 # ---------------------------------------------------------------------------
 
+
 async def main() -> None:
     """Run the Semantic Kernel + Q-Guardian example."""
     print("=" * 60)
@@ -222,13 +232,19 @@ async def main() -> None:
     kernel = SecuredKernel(guardian)
 
     # Register plugins
-    kernel.add_plugin("search", [
-        KernelFunction("web_search", "search", "Search the web", ["query"]),
-        KernelFunction("vector_search", "search", "Search vector store", ["embedding"]),
-    ])
-    kernel.add_plugin("completions", [
-        KernelFunction("chat_completion", "completions", "Chat completion", ["messages"]),
-    ])
+    kernel.add_plugin(
+        "search",
+        [
+            KernelFunction("web_search", "search", "Search the web", ["query"]),
+            KernelFunction("vector_search", "search", "Search vector store", ["embedding"]),
+        ],
+    )
+    kernel.add_plugin(
+        "completions",
+        [
+            KernelFunction("chat_completion", "completions", "Chat completion", ["messages"]),
+        ],
+    )
 
     # Run invocations
     prompts = [

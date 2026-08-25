@@ -18,7 +18,7 @@ def shingles(text: str, k: int = 5) -> set[str]:
     n = normalize(text)
     if len(n) < k:
         return {n} if n else set()
-    return {n[i:i + k] for i in range(len(n) - k + 1)}
+    return {n[i : i + k] for i in range(len(n) - k + 1)}
 
 
 class NearDupIndex:

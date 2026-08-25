@@ -35,9 +35,11 @@ from q_guardian import (
 # Mock CrewAI Types (no external deps required)
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class Task:
     """Simulated CrewAI task."""
+
     description: str
     agent_name: str
     expected_output: str = ""
@@ -46,6 +48,7 @@ class Task:
 @dataclass
 class CrewResult:
     """Result from crew execution."""
+
     task: str
     agent: str
     output: str
@@ -67,6 +70,7 @@ class MockCrewAgent:
 # ---------------------------------------------------------------------------
 # Q-Guardian Secured Crew
 # ---------------------------------------------------------------------------
+
 
 class SecuredCrew:
     """CrewAI crew with Q-Guardian security at each agent step."""
@@ -105,38 +109,46 @@ class SecuredCrew:
             self._log_detection(analysis, task.agent_name)
 
             # 2. Risk: Score the combined task + agent context
-            risk_dict = await self._guardian.calculate_risk({
-                "prompt": task.description,
-                "agent_name": task.agent_name,
-                "risk_factors": ["multi_agent", "tool_access"],
-            })
+            risk_dict = await self._guardian.calculate_risk(
+                {
+                    "prompt": task.description,
+                    "agent_name": task.agent_name,
+                    "risk_factors": ["multi_agent", "tool_access"],
+                }
+            )
             risk = RiskContext(**risk_dict.get("risk-engine", {})) if risk_dict else RiskContext()
             print(f"  [Risk] score={risk.score:.2f}")
 
             # 3. Policy: Evaluate before execution
-            policy_dict = await self._guardian.enforce_policy({
-                "decision": analysis.decision.value,
-                "risk_score": risk.score,
-                "agent_name": task.agent_name,
-                "task": task.description,
-            })
+            policy_dict = await self._guardian.enforce_policy(
+                {
+                    "decision": analysis.decision.value,
+                    "risk_score": risk.score,
+                    "agent_name": task.agent_name,
+                    "task": task.description,
+                }
+            )
             is_allowed = policy_dict.get("policy-engine", {}).get("allowed", True)
 
             # 4. Response: Act on security decision
             if analysis.decision == PromptDecision.BLOCK or not is_allowed:
                 print(f"  [Response] BLOCKED - {analysis.recommendation}")
-                self._security_log.append({
-                    "task": task.description[:40],
-                    "agent": task.agent_name,
-                    "action": "blocked",
-                    "reason": analysis.recommendation,
-                })
-                results.append(CrewResult(
-                    task=task.description[:40],
-                    agent=task.agent_name,
-                    output=f"Blocked: {analysis.recommendation}",
-                    success=False,
-                ))
+                self._security_log.append(
+                    {
+                        "task": task.description[:40],
+                        "agent": task.agent_name,
+                        "action": "blocked",
+                        "reason": analysis.recommendation,
+                    }
+                )
+                results.append(
+                    CrewResult(
+                        task=task.description[:40],
+                        agent=task.agent_name,
+                        output=f"Blocked: {analysis.recommendation}",
+                        success=False,
+                    )
+                )
                 continue
 
             if analysis.decision == PromptDecision.WARN:
@@ -149,43 +161,49 @@ class SecuredCrew:
             )
             if agent:
                 output = agent.execute_task(task.description)
-                results.append(CrewResult(
-                    task=task.description[:40],
-                    agent=task.agent_name,
-                    output=output,
-                ))
+                results.append(
+                    CrewResult(
+                        task=task.description[:40],
+                        agent=task.agent_name,
+                        output=output,
+                    )
+                )
 
                 # Track tool invocation
                 inv = self._guardian.tool_tracker.start_invocation(
                     tool_name=f"crew_task_{task.agent_name}",
                     arguments={"task": task.description[:100]},
                 )
-                self._guardian.tool_tracker.finish_invocation(
-                    inv.invocation_id, result=output
-                )
+                self._guardian.tool_tracker.finish_invocation(inv.invocation_id, result=output)
 
             # 5. Observability: Monitor this step
-            await self._guardian.monitor({
-                "event": "task_completed",
-                "agent": task.agent_name,
-                "decision": analysis.decision.value,
-                "risk_score": risk.score,
-            })
+            await self._guardian.monitor(
+                {
+                    "event": "task_completed",
+                    "agent": task.agent_name,
+                    "decision": analysis.decision.value,
+                    "risk_score": risk.score,
+                }
+            )
 
-            self._security_log.append({
-                "task": task.description[:40],
-                "agent": task.agent_name,
-                "action": "allowed",
-                "decision": analysis.decision.value,
-            })
+            self._security_log.append(
+                {
+                    "task": task.description[:40],
+                    "agent": task.agent_name,
+                    "action": "allowed",
+                    "decision": analysis.decision.value,
+                }
+            )
 
         self._print_observability()
         return results
 
     def _log_detection(self, analysis: PromptAnalysis, agent: str) -> None:
         categories = [f.category.value for f in analysis.findings]
-        print(f"  [Detection] agent={agent} decision={analysis.decision.value} "
-              f"findings={analysis.finding_count} categories={categories}")
+        print(
+            f"  [Detection] agent={agent} decision={analysis.decision.value} "
+            f"findings={analysis.finding_count} categories={categories}"
+        )
 
     def _print_observability(self) -> None:
         blocked = sum(1 for e in self._security_log if e["action"] == "blocked")
@@ -201,6 +219,7 @@ class SecuredCrew:
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
+
 
 async def main() -> None:
     """Run the CrewAI + Q-Guardian example."""

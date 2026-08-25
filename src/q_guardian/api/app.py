@@ -18,6 +18,7 @@ from fastapi.staticfiles import StaticFiles
 
 from q_guardian.api.metrics import render_metrics
 from q_guardian.api.services.analysis import get_analysis_service
+from q_guardian.api.v1.endpoints.auth import router as auth_router
 from q_guardian.api.v1.router import api_v1_router
 from q_guardian.config.settings import get_settings
 from q_guardian.core.constants import API_V1_PREFIX, APP_DESCRIPTION, APP_TITLE, APP_VERSION
@@ -168,6 +169,7 @@ def _register_routes(app: FastAPI) -> None:
         }
 
     app.include_router(api_v1_router, prefix=API_V1_PREFIX)
+    app.include_router(auth_router, prefix=f"{API_V1_PREFIX}/auth", tags=["auth"])
 
     @app.get("/metrics", include_in_schema=False, tags=["Ops"])
     async def metrics() -> PlainTextResponse:

@@ -184,8 +184,8 @@ No prefix (reads from root env).
 from q_guardian.framework.config import PluginConfig
 
 config = PluginConfig(
-    enabled=True,      # Enable/disable plugin system
-    priority=0,        # Default priority for all plugins
+    enabled=True,  # Enable/disable plugin system
+    priority=0,  # Default priority for all plugins
 )
 ```
 
@@ -195,9 +195,9 @@ config = PluginConfig(
 from q_guardian.framework.config import RuntimeConfig
 
 config = RuntimeConfig(
-    max_concurrent_agents=100,      # Max concurrent agent sessions
-    request_timeout_seconds=30,     # Request timeout
-    enable_caching=True,            # Enable response caching
+    max_concurrent_agents=100,  # Max concurrent agent sessions
+    request_timeout_seconds=30,  # Request timeout
+    enable_caching=True,  # Enable response caching
 )
 ```
 
@@ -208,7 +208,7 @@ from q_guardian.framework.config import PolicyConfig
 
 config = PolicyConfig(
     enforcement_mode="enforce",  # enforce | audit | disabled
-    default_policy="allow",      # Default action for unknown policies
+    default_policy="allow",  # Default action for unknown policies
 )
 ```
 
@@ -287,11 +287,11 @@ from q_guardian.ml.config import MLConfig
 
 config = MLConfig(
     enabled=True,
-    anomaly_threshold=0.5,          # Threshold for anomaly detector
-    classification_threshold=0.5,   # Threshold for classifier
-    model_storage_path="models/ml", # Path to save/load models
-    default_cv_folds=5,             # Cross-validation folds
-    random_state=42,                # Reproducibility seed
+    anomaly_threshold=0.5,  # Threshold for anomaly detector
+    classification_threshold=0.5,  # Threshold for classifier
+    model_storage_path="models/ml",  # Path to save/load models
+    default_cv_folds=5,  # Cross-validation folds
+    random_state=42,  # Reproducibility seed
 )
 ```
 
@@ -306,14 +306,14 @@ from q_guardian.ml import (
 
 # Isolation Forest
 detector = IsolationForestDetector(
-    contamination=0.1,   # Expected fraction of anomalies
-    n_estimators=100,    # Number of trees
+    contamination=0.1,  # Expected fraction of anomalies
+    n_estimators=100,  # Number of trees
 )
 
 # Random Forest
 classifier = RandomForestThreatClassifier(
-    n_estimators=100,    # Number of trees
-    max_depth=None,      # Maximum tree depth
+    n_estimators=100,  # Number of trees
+    max_depth=None,  # Maximum tree depth
 )
 
 # Ensemble
@@ -334,32 +334,26 @@ from q_guardian.quantum.config import QuantumConfig
 
 config = QuantumConfig(
     enabled=True,
-
     # Backend
-    backend="simulator",           # simulator | qiskit | pennylane | cudaq
+    backend="simulator",  # simulator | qiskit | pennylane | cudaq
     backend_device="statevector_simulator",
     num_qubits=5,
     shots=1024,
-
     # Feature Encoding
-    encoding_type="angle",         # angle | amplitude | zz | pauli
+    encoding_type="angle",  # angle | amplitude | zz | pauli
     feature_map_depth=2,
-
     # Models
     quantum_models=["qsvm", "vqc"],
     enable_quantum_ensemble=True,
-
     # Fusion
-    fusion_strategy="stacking",    # weighted | stacking | bayesian | adaptive
+    fusion_strategy="stacking",  # weighted | stacking | bayesian | adaptive
     quantum_weight=0.3,
     classical_weight=0.5,
     rule_weight=0.2,
-
     # Execution
     optimization_level=1,
     enable_error_mitigation=True,
     max_circuit_depth=100,
-
     # Hardware
     ibm_token=None,
     ibm_instance=None,
@@ -402,7 +396,7 @@ config = {
     },
     "tracing": {
         "enabled": True,
-        "sample_rate": 0.1,          # 10% of traces
+        "sample_rate": 0.1,  # 10% of traces
         "exporters": ["jaeger"],
     },
     "health": {
@@ -446,7 +440,9 @@ guardian = Guardian(config=config)
 ```python
 from q_guardian import Guardian, FrameworkConfig
 from q_guardian.framework.config import (
-    RuntimeConfig, PolicyConfig, PluginConfig,
+    RuntimeConfig,
+    PolicyConfig,
+    PluginConfig,
 )
 
 config = FrameworkConfig(
@@ -471,8 +467,10 @@ guardian = Guardian(config=config)
 ```python
 from q_guardian import Guardian, FrameworkConfig
 from q_guardian.ml import (
-    ThreatAnalysisPlugin, MLConfig,
-    IsolationForestDetector, RandomForestThreatClassifier,
+    ThreatAnalysisPlugin,
+    MLConfig,
+    IsolationForestDetector,
+    RandomForestThreatClassifier,
 )
 
 ml_config = MLConfig(enabled=True, anomaly_threshold=0.4)

@@ -255,9 +255,8 @@ from q_guardian.risk import RiskAssessmentEngine, RiskConfig
 from q_guardian.risk.data import NormalizedPrediction
 
 engine = RiskAssessmentEngine(RiskConfig())
-pred = NormalizedPrediction(predicted_label="malicious",
-                            confidence=0.85, risk_score=0.75)
-assessment = engine.assess(pred)   # RiskAssessment
+pred = NormalizedPrediction(predicted_label="malicious", confidence=0.85, risk_score=0.75)
+assessment = engine.assess(pred)  # RiskAssessment
 ```
 
 ### Advanced policy quick start
@@ -267,13 +266,20 @@ from q_guardian.policy.engine import AdvancedPolicyEngine
 from q_guardian.policy import AdvancedPolicyDefinition, AdvancedRule, Condition
 
 engine = AdvancedPolicyEngine()
-pol = AdvancedPolicyDefinition(name="no-admin-shell",
-    rules=[AdvancedRule(name="deny-admin",
-                        condition=Condition(field="role", operator="==", value="admin"),
-                        action="block", priority=10)])
+pol = AdvancedPolicyDefinition(
+    name="no-admin-shell",
+    rules=[
+        AdvancedRule(
+            name="deny-admin",
+            condition=Condition(field="role", operator="==", value="admin"),
+            action="block",
+            priority=10,
+        )
+    ],
+)
 engine.register_policy(pol)
 engine.activate_policy(pol.policy_id)
-result = engine.evaluate({"role": "admin"})   # PolicyEvaluationResult
+result = engine.evaluate({"role": "admin"})  # PolicyEvaluationResult
 ```
 
 ### Key enums — risk

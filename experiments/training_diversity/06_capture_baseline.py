@@ -38,7 +38,9 @@ def load_split(name: str) -> PromptBenchmarkDataset:
             if not line:
                 continue
             r = json.loads(line)
-            rows.append(BenchmarkSample(text=r["text"], label=r["label"], category=r.get("category", "")))
+            rows.append(
+                BenchmarkSample(text=r["text"], label=r["label"], category=r.get("category", ""))
+            )
     return PromptBenchmarkDataset(rows)
 
 
@@ -110,9 +112,11 @@ def main() -> None:
     for name, m in record["metrics"].items():
         f = m.get("fusion", {})
         rf = m.get("random-forest", {})
-        print(f"  {name:<18} fusion roc_auc={f.get('roc_auc', float('nan')):.4f} "
-              f"f1={f.get('f1', float('nan')):.4f} det={f.get('detection_rate', float('nan')):.4f} "
-              f"fpr={f.get('fpr', float('nan')):.4f} | rf roc_auc={rf.get('roc_auc', float('nan')):.4f}")
+        print(
+            f"  {name:<18} fusion roc_auc={f.get('roc_auc', float('nan')):.4f} "
+            f"f1={f.get('f1', float('nan')):.4f} det={f.get('detection_rate', float('nan')):.4f} "
+            f"fpr={f.get('fpr', float('nan')):.4f} | rf roc_auc={rf.get('roc_auc', float('nan')):.4f}"
+        )
 
 
 if __name__ == "__main__":

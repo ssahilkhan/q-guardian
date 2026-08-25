@@ -128,18 +128,19 @@ runner = BenchmarkRunner()
 # One public dataset end-to-end (downloads to ~/.qguardian/benchmark by default).
 report = runner.run("deepset-prompt-injections", k=3, ablate=False)
 
-report.as_dict()["dataset"]           # id / name / license / homepage
-report.as_dict()["validation"]        # total, valid_rows, labels, categories, issues
-report.metrics.fusion()               # fused aggregate metric block
+report.as_dict()["dataset"]  # id / name / license / homepage
+report.as_dict()["validation"]  # total, valid_rows, labels, categories, issues
+report.metrics.fusion()  # fused aggregate metric block
 report.metrics.provider("random_forest")
-report.ranking()                      # provider ROC-AUC ranking, best first
-report.metrics.compute([0, 1], [0.2, 0.9], threshold=0.5)   # arbitrary-score metrics
+report.ranking()  # provider ROC-AUC ranking, best first
+report.metrics.compute([0, 1], [0.2, 0.9], threshold=0.5)  # arbitrary-score metrics
 
 # Every public dataset:
 all_reports = runner.run_all(k=3)
 
 # Controlled reproduction / CI:
 import os
+
 os.environ["QGUARDIAN_BENCHMARK_CACHE"] = "C:\\path\\to\\cache"
 ```
 

@@ -118,7 +118,7 @@ Main facade (see `sdk/guardian.py`). Usage:
 ```python
 from q_guardian import Guardian
 
-guardian = Guardian()          # or Guardian(config=FrameworkConfig(...))
+guardian = Guardian()  # or Guardian(config=FrameworkConfig(...))
 await guardian.start()
 # ... use the framework ...
 await guardian.shutdown()

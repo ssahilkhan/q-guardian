@@ -139,8 +139,7 @@ class _RuleProvider(PredictionProvider):
         findings = self._pipeline.rule_engine.analyze(normalized, base)
 
         weights = {"low": 0.2, "medium": 0.4, "high": 0.7, "critical": 1.0}
-        threat_prob = min(
-            1.0, sum(weights.get(f.severity.value, 0.0) for f in findings))
+        threat_prob = min(1.0, sum(weights.get(f.severity.value, 0.0) for f in findings))
         label = "threat" if threat_prob >= 0.5 else "benign"
         return _prediction(
             provider_id=self.provider_id,
@@ -282,9 +281,9 @@ class Pipeline:
 
         # Training corpus is extensible: user-labeled samples get appended to
         # self._train_texts and train() is re-run so the models "learn".
-        self._train_texts: list[tuple[str, int]] = [
-            (t, 0) for t in _TRAIN_BENIGN
-        ] + [(t, 1) for t in _TRAIN_MALICIOUS]
+        self._train_texts: list[tuple[str, int]] = [(t, 0) for t in _TRAIN_BENIGN] + [
+            (t, 1) for t in _TRAIN_MALICIOUS
+        ]
         if not skip_train:
             self.train()
 
@@ -307,12 +306,18 @@ class Pipeline:
         # makes even safe prompts read as high risk. Reliability stays small
         # for provider trust; agreement/diversity are meaningless for a
         # single fused source.
-        self.risk_engine = RiskAssessmentEngine(RiskConfig(
-            scoring_weights=ScoringWeights(
-                probability=0.75, confidence=0.00, reliability=0.05,
-                agreement=0.00, diversity=0.00, severity=0.20,
+        self.risk_engine = RiskAssessmentEngine(
+            RiskConfig(
+                scoring_weights=ScoringWeights(
+                    probability=0.75,
+                    confidence=0.00,
+                    reliability=0.05,
+                    agreement=0.00,
+                    diversity=0.00,
+                    severity=0.20,
+                )
             )
-        ))
+        )
         self.policy_engine = PolicyEngine()
         self.policy_engine.load_defaults()
         self.response_engine = ResponseEngine()
@@ -346,15 +351,19 @@ class Pipeline:
         q_X = q_X_scaled[:, :QUANTUM_FEATURE_COUNT].tolist()
         q_y = [label for _, label in qtexts]
         self._q_backend = LocalSimulatorBackend(
-            num_qubits=QUANTUM_FEATURE_COUNT, shots=QUANTUM_SHOTS)
+            num_qubits=QUANTUM_FEATURE_COUNT, shots=QUANTUM_SHOTS
+        )
         self._q_feature_map = AngleEncodingMap(num_qubits=QUANTUM_FEATURE_COUNT)
         self._q_kernel = QuantumKernelEstimator(
-            feature_map=self._q_feature_map, backend=self._q_backend, shots=QUANTUM_SHOTS)
+            feature_map=self._q_feature_map, backend=self._q_backend, shots=QUANTUM_SHOTS
+        )
         self.qsvm = QSVMModel(kernel=self._q_kernel, feature_map=self._q_feature_map)
         self.qsvm.train(q_X, q_y)
-        print(f"    Models trained: ML on {len(train_X)} samples, "
-              f"QSVM on {len(qtexts)} samples, "
-              f"in {(time.monotonic() - t0) * 1000:.1f} ms")
+        print(
+            f"    Models trained: ML on {len(train_X)} samples, "
+            f"QSVM on {len(qtexts)} samples, "
+            f"in {(time.monotonic() - t0) * 1000:.1f} ms"
+        )
 
     def add_sample(self, text: str, label: int) -> None:
         """Append a user-labeled sample (label: 0=benign, 1=malicious)."""
@@ -365,6 +374,7 @@ class Pipeline:
         import json
         import os
         import pickle
+
         os.makedirs(state_dir, exist_ok=True)
         with open(os.path.join(state_dir, "scaler.pkl"), "wb") as f:
             pickle.dump(self.scaler, f)
@@ -383,11 +393,14 @@ class Pipeline:
         import json
         import os
         import pickle
+
         self._q_backend = LocalSimulatorBackend(
-            num_qubits=QUANTUM_FEATURE_COUNT, shots=QUANTUM_SHOTS)
+            num_qubits=QUANTUM_FEATURE_COUNT, shots=QUANTUM_SHOTS
+        )
         self._q_feature_map = AngleEncodingMap(num_qubits=QUANTUM_FEATURE_COUNT)
         self._q_kernel = QuantumKernelEstimator(
-            feature_map=self._q_feature_map, backend=self._q_backend, shots=QUANTUM_SHOTS)
+            feature_map=self._q_feature_map, backend=self._q_backend, shots=QUANTUM_SHOTS
+        )
         with open(os.path.join(state_dir, "scaler.pkl"), "rb") as f:
             self.scaler = pickle.load(f)
         with open(os.path.join(state_dir, "anomaly.pkl"), "rb") as f:
@@ -399,9 +412,7 @@ class Pipeline:
             self.qsvm.load(json.load(f))
         with open(os.path.join(state_dir, "corpus.json"), "r") as f:
             self._train_texts = json.load(f)
-        print(f"    State loaded from {state_dir} "
-              f"({len(self._train_texts)} corpus samples)")
-
+        print(f"    State loaded from {state_dir} ({len(self._train_texts)} corpus samples)")
 
     def _build_training_data(self) -> tuple[list[list[float]], list[int]]:
         X: list[list[float]] = []
@@ -441,26 +452,33 @@ class Pipeline:
         # 2. Rule analysis
         t = time.monotonic()
         findings = self.rule_engine.analyze(normalized, base)
-        _log("2. rule-based analysis", (time.monotonic() - t) * 1000,
-             f"({len(findings)} findings)")
+        _log("2. rule-based analysis", (time.monotonic() - t) * 1000, f"({len(findings)} findings)")
         for f in findings:
-            print(f"        rule={f.rule_id} category={f.category.value} severity={f.severity.value}")
+            print(
+                f"        rule={f.rule_id} category={f.category.value} severity={f.severity.value}"
+            )
 
         # 3. Scale + ML inference
         t = time.monotonic()
         scaled = self.scaler.transform(np.array([raw_vector], dtype=np.float64))[0]
         anomaly = await self.anomaly.predict(scaled.tolist())
         rf = await self.rf.predict(scaled.tolist())
-        _log("3. classical ML inference", (time.monotonic() - t) * 1000,
-             f"(anomaly={anomaly.get('is_anomaly')} anomaly_score={anomaly.get('anomaly_score'):.2f} "
-             f"rf={rf.get('predicted_class')} rf_conf={rf.get('confidence'):.2f})")
+        _log(
+            "3. classical ML inference",
+            (time.monotonic() - t) * 1000,
+            f"(anomaly={anomaly.get('is_anomaly')} anomaly_score={anomaly.get('anomaly_score'):.2f} "
+            f"rf={rf.get('predicted_class')} rf_conf={rf.get('confidence'):.2f})",
+        )
 
         # 4. Quantum inference
         q_vec = scaled[:QUANTUM_FEATURE_COUNT].tolist()
         t = time.monotonic()
         qr = await self.qsvm.predict(q_vec)
-        _log("4. quantum QSVM inference", (time.monotonic() - t) * 1000,
-             f"(class={qr.get('predicted_class')} conf={qr.get('confidence')})")
+        _log(
+            "4. quantum QSVM inference",
+            (time.monotonic() - t) * 1000,
+            f"(class={qr.get('predicted_class')} conf={qr.get('confidence')})",
+        )
 
         # 5. Hybrid fusion (percentages)
         t = time.monotonic()
@@ -469,14 +487,15 @@ class Pipeline:
             features={"feature_vector": scaled.tolist()},
             calibrate=True,
         )
-        _log("5. hybrid fusion", (time.monotonic() - t) * 1000,
-             f"(strategy={fused.strategy_name})")
+        _log("5. hybrid fusion", (time.monotonic() - t) * 1000, f"(strategy={fused.strategy_name})")
 
         probs = {k: round(float(v) * 100, 1) for k, v in fused.probabilities.items()}
         print(f"        fused label={fused.predicted_label} confidence={fused.confidence:.3f}")
         print(f"        fused class probabilities: {probs}")
-        print(f"        provider risk_scores: "
-              f"{{{(', '.join(f'{p.provider_id}={p.risk_score:.2f}' for p in fused.source_predictions))}}}")
+        print(
+            f"        provider risk_scores: "
+            f"{{{(', '.join(f'{p.provider_id}={p.risk_score:.2f}' for p in fused.source_predictions))}}}"
+        )
 
         # 6. Risk assessment
         t = time.monotonic()
@@ -491,9 +510,12 @@ class Pipeline:
             risk_score=fused.risk_score,
         )
         assessment = self.risk_engine.assess(npred)
-        _log("6. risk assessment", (time.monotonic() - t) * 1000,
-             f"(score={assessment.risk_score:.4f} level={assessment.risk_level.value} "
-             f"severity={assessment.severity.severity.value})")
+        _log(
+            "6. risk assessment",
+            (time.monotonic() - t) * 1000,
+            f"(score={assessment.risk_score:.4f} level={assessment.risk_level.value} "
+            f"severity={assessment.severity.severity.value})",
+        )
 
         # 7. Policy decision
         t = time.monotonic()
@@ -502,28 +524,32 @@ class Pipeline:
         # HIGH/SEVERE (-> REVIEW/ESCALATE). The response engine maps
         # "review" to WARN (not ALLOW).
         decision = self.policy_engine.evaluate(assessment)
-        _log("7. policy evaluation", (time.monotonic() - t) * 1000,
-             f"(outcome={decision.outcome.value} action={decision.action.value})")
+        _log(
+            "7. policy evaluation",
+            (time.monotonic() - t) * 1000,
+            f"(outcome={decision.outcome.value} action={decision.action.value})",
+        )
 
         # 8. Response action
         t = time.monotonic()
-        resp = self.response_engine.process(ResponseRequest(
-            policy_decision=ResponsePolicyDecision(
-                outcome=decision.outcome.value,
-                action=decision.action.value,
-                severity=assessment.severity.severity.value,
-                risk_score=assessment.risk_score,
-            ),
-            risk_assessment=ResponseRiskAssessment(
-                risk_score=assessment.risk_score,
-                risk_level=assessment.risk_level.value,
-                threat_level=assessment.threat_score.threat_level.value,
-                confidence=assessment.confidence.normalized_confidence,
-                severity=assessment.severity.severity.value,
-            ),
-        ))
-        _log("8. response action", (time.monotonic() - t) * 1000,
-             f"(action={resp.action.value})")
+        resp = self.response_engine.process(
+            ResponseRequest(
+                policy_decision=ResponsePolicyDecision(
+                    outcome=decision.outcome.value,
+                    action=decision.action.value,
+                    severity=assessment.severity.severity.value,
+                    risk_score=assessment.risk_score,
+                ),
+                risk_assessment=ResponseRiskAssessment(
+                    risk_score=assessment.risk_score,
+                    risk_level=assessment.risk_level.value,
+                    threat_level=assessment.threat_score.threat_level.value,
+                    confidence=assessment.confidence.normalized_confidence,
+                    severity=assessment.severity.severity.value,
+                ),
+            )
+        )
+        _log("8. response action", (time.monotonic() - t) * 1000, f"(action={resp.action.value})")
 
         print("\n  SUMMARY")
         total = sum(_LOG.values())
@@ -538,16 +564,12 @@ class Pipeline:
             "fused": probs,
             "fused_label": fused.predicted_label,
             "confidence": float(fused.confidence),
-            "providers": {
-                p.provider_id: float(p.risk_score) for p in fused.source_predictions
-            },
+            "providers": {p.provider_id: float(p.risk_score) for p in fused.source_predictions},
             "path_breakdown": {
                 p.provider_id: {
                     "risk_score": float(p.risk_score),
                     "label": p.predicted_label,
-                    "probabilities": {
-                        k: float(v) for k, v in p.probabilities.items()
-                    },
+                    "probabilities": {k: float(v) for k, v in p.probabilities.items()},
                 }
                 for p in fused.source_predictions
             },

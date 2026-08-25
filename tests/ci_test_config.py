@@ -31,7 +31,6 @@ else:
     # Add src to path for imports
     sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-
     # Set test environment variables
     os.environ.setdefault("CI", "true")
     os.environ.setdefault("GITHUB_ACTIONS", "true")
@@ -95,15 +94,9 @@ else:
     _patches = []
 
     # Patch sklearn models
-    _patches.append(
-        patch("q_guardian.ml.models.anomaly.IsolationForest", MockMLModel)
-    )
-    _patches.append(
-        patch("q_guardian.ml.models.classifier.RandomForestClassifier", MockMLModel)
-    )
-    _patches.append(
-        patch("q_guardian.ml.models.classifier.XGBClassifier", MockMLModel)
-    )
+    _patches.append(patch("q_guardian.ml.models.anomaly.IsolationForest", MockMLModel))
+    _patches.append(patch("q_guardian.ml.models.classifier.RandomForestClassifier", MockMLModel))
+    _patches.append(patch("q_guardian.ml.models.classifier.XGBClassifier", MockMLModel))
     _patches.append(patch("sklearn.ensemble.IsolationForest", MockMLModel))
     _patches.append(patch("sklearn.ensemble.RandomForestClassifier", MockMLModel))
 

@@ -145,10 +145,10 @@ mgr.fallback_events(); mgr.fallback_count(); mgr.clear_cache(); mgr.unload_all()
 
 ```python
 manager = build_manager(
-    default_provider=...,      # e.g. SentenceTransformersProvider(model_factory=...)
-    fallback_provider=...,     # e.g. HashEmbeddingProvider()
-    providers=[...],           # extra providers
-    cache_dir=...,             # optional disk cache
+    default_provider=...,  # e.g. SentenceTransformersProvider(model_factory=...)
+    fallback_provider=...,  # e.g. HashEmbeddingProvider()
+    providers=[...],  # extra providers
+    cache_dir=...,  # optional disk cache
 )
 ```
 
@@ -219,8 +219,12 @@ injection, then runs `ModeDetectionBenchmark` per mode on identical folds:
 
 ```python
 report = ModeComparisonRunner().run(
-    "dataset_id", modes=["handcrafted_only", "embedding_only", "hybrid"],
-    k=5, seed=42, threshold=0.5, ablate=False,
+    "dataset_id",
+    modes=["handcrafted_only", "embedding_only", "hybrid"],
+    k=5,
+    seed=42,
+    threshold=0.5,
+    ablate=False,
 )
 ```
 
@@ -247,7 +251,7 @@ manager = build_manager(default_provider=HashEmbeddingProvider())
 vector, meta = manager.embed_with_meta("prompt under inspection")
 assert meta.cached is False
 vector2, meta2 = manager.embed_with_meta("prompt under inspection")
-assert meta2.cached is True        # LRU hit
+assert meta2.cached is True  # LRU hit
 assert manager.cache_stats()["hits"] == 1
 ```
 

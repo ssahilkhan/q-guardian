@@ -225,6 +225,7 @@ for each plugin's internals.
 from q_guardian.plugins.base import Plugin, PluginStatus
 from q_guardian.framework.context import FrameworkContext
 
+
 class MyPlugin(Plugin):
     name = "my-plugin"
     version = "1.0.0"

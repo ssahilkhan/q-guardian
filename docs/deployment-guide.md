@@ -361,9 +361,7 @@ deploy:
 Enable framework-level caching to reduce redundant processing:
 
 ```python
-config = FrameworkConfig(
-    runtime={"enable_caching": True}
-)
+config = FrameworkConfig(runtime={"enable_caching": True})
 ```
 
 ---
@@ -432,12 +430,14 @@ curl http://localhost:8000/api/v1/status
 import asyncio
 import httpx
 
+
 async def check_health():
     async with httpx.AsyncClient() as client:
         response = await client.get("http://localhost:8000/api/v1/health")
         data = response.json()
         print(f"Status: {data['status']}")
         return data["status"] == "healthy"
+
 
 asyncio.run(check_health())
 ```

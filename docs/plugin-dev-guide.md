@@ -71,6 +71,7 @@ Plugins should handle their own errors gracefully and only raise for critical fa
 ```python
 from q_guardian.plugins.base import Plugin
 
+
 class MyPlugin(Plugin):
     @property
     def name(self) -> str:
@@ -86,72 +87,78 @@ class MyPlugin(Plugin):
 ### Required Methods
 
 ```python
-    async def initialize(self, context: FrameworkContext) -> None:
-        """Called once after registration.
+async def initialize(self, context: FrameworkContext) -> None:
+    """Called once after registration.
 
-        The FrameworkContext provides access to:
-        - context.event_bus: Publish and subscribe to events
-        - context.hook_manager: Register lifecycle hooks
-        - context.plugin_registry: Access other plugins
-        - context.config: Framework configuration
-        - context.logger: Structured logger
-        """
-        self._context = context
+    The FrameworkContext provides access to:
+    - context.event_bus: Publish and subscribe to events
+    - context.hook_manager: Register lifecycle hooks
+    - context.plugin_registry: Access other plugins
+    - context.config: Framework configuration
+    - context.logger: Structured logger
+    """
+    self._context = context
 
-    async def start(self) -> None:
-        """Called after all plugins are initialized.
 
-        Begin accepting work, start background tasks, etc.
-        """
-        pass
+async def start(self) -> None:
+    """Called after all plugins are initialized.
 
-    async def stop(self) -> None:
-        """Called during framework shutdown.
+    Begin accepting work, start background tasks, etc.
+    """
+    pass
 
-        Release resources, close connections, cancel tasks.
-        """
-        pass
+
+async def stop(self) -> None:
+    """Called during framework shutdown.
+
+    Release resources, close connections, cancel tasks.
+    """
+    pass
 ```
 
 ### Optional Properties
 
 ```python
-    @property
-    def author(self) -> str:
-        """Plugin author name."""
-        return "Your Name"
+@property
+def author(self) -> str:
+    """Plugin author name."""
+    return "Your Name"
 
-    @property
-    def description(self) -> str:
-        """Brief description of plugin functionality."""
-        return "Does something useful"
 
-    @property
-    def dependencies(self) -> list[str]:
-        """List of plugin names this plugin depends on."""
-        return ["prompt-scanner"]
+@property
+def description(self) -> str:
+    """Brief description of plugin functionality."""
+    return "Does something useful"
 
-    @property
-    def interfaces(self) -> list[str]:
-        """Interface identifiers this plugin implements.
 
-        Used by Guardian to route method calls.
-        Common interfaces: prompt_scanner, threat_detector,
-        runtime_monitor, risk_engine, policy_engine
-        """
-        return ["my_interface"]
+@property
+def dependencies(self) -> list[str]:
+    """List of plugin names this plugin depends on."""
+    return ["prompt-scanner"]
+
+
+@property
+def interfaces(self) -> list[str]:
+    """Interface identifiers this plugin implements.
+
+    Used by Guardian to route method calls.
+    Common interfaces: prompt_scanner, threat_detector,
+    runtime_monitor, risk_engine, policy_engine
+    """
+    return ["my_interface"]
 ```
 
 ### Optional Methods
 
 ```python
-    def health(self) -> dict[str, Any]:
-        """Return health status information."""
-        return {"status": "healthy", "plugin": self.name}
+def health(self) -> dict[str, Any]:
+    """Return health status information."""
+    return {"status": "healthy", "plugin": self.name}
 
-    def configuration(self) -> dict[str, Any]:
-        """Describe configuration options."""
-        return {"sensitivity": {"type": "str", "default": "medium"}}
+
+def configuration(self) -> dict[str, Any]:
+    """Describe configuration options."""
+    return {"sensitivity": {"type": "str", "default": "medium"}}
 ```
 
 ---
@@ -162,6 +169,7 @@ class MyPlugin(Plugin):
 
 ```python
 from q_guardian.events.base import Event
+
 
 class ScanComplete(Event):
     def __init__(self, result: dict, source: str = "my-plugin"):
@@ -253,10 +261,12 @@ async def stop(self) -> None:
 ```python
 from q_guardian.framework.config import FrameworkConfig, PluginConfig
 
+
 class MyPluginConfig(PluginConfig):
     sensitivity: str = "medium"
     max_items: int = 100
     enable_caching: bool = True
+
 
 class MyPlugin(Plugin):
     def __init__(self, config: MyPluginConfig | None = None):
@@ -292,6 +302,7 @@ await guardian.start()
 ```python
 import os
 
+
 class MyPlugin(Plugin):
     async def initialize(self, context: FrameworkContext) -> None:
         self._api_key = os.environ.get("MY_PLUGIN_API_KEY", "")
@@ -312,9 +323,11 @@ from q_guardian.events.bus import EventBus
 from q_guardian.hooks.manager import HookManager
 from my_package import MyPlugin
 
+
 @pytest.fixture
 def plugin():
     return MyPlugin()
+
 
 @pytest.fixture
 def context():
@@ -325,10 +338,12 @@ def context():
     ctx.logger = MagicMock()
     return ctx
 
+
 @pytest.mark.asyncio
 async def test_plugin_initialization(plugin, context):
     await plugin.initialize(context)
     assert plugin._context is not None
+
 
 @pytest.mark.asyncio
 async def test_plugin_start(plugin, context):
@@ -336,17 +351,20 @@ async def test_plugin_start(plugin, context):
     await plugin.start()
     assert plugin.health()["status"] == "healthy"
 
+
 @pytest.mark.asyncio
 async def test_plugin_stop(plugin, context):
     await plugin.initialize(context)
     await plugin.start()
     await plugin.stop()
 
+
 @pytest.mark.asyncio
 async def test_plugin_event_publishing(plugin, context):
     await plugin.initialize(context)
 
     received = []
+
     async def handler(event):
         received.append(event)
 
@@ -362,6 +380,7 @@ async def test_plugin_event_publishing(plugin, context):
 import pytest
 from q_guardian import Guardian, FrameworkConfig
 from my_package import MyPlugin
+
 
 @pytest.mark.asyncio
 async def test_plugin_with_guardian():
@@ -439,9 +458,11 @@ Create a custom content filter plugin that blocks prompts containing profanity o
 from pydantic import BaseModel
 from enum import Enum
 
+
 class FilterDecision(str, Enum):
     ALLOW = "allow"
     BLOCK = "block"
+
 
 class FilterResult(BaseModel):
     decision: FilterDecision
@@ -458,11 +479,12 @@ from typing import Any
 from q_guardian.plugins.base import Plugin
 from q_guardian.framework.context import FrameworkContext
 
+
 class ContentFilterPlugin(Plugin):
     def __init__(self, patterns: list[str] | None = None):
         self._patterns = patterns or [
-            r"\b\d{3}-\d{2}-\d{4}\b",   # SSN pattern
-            r"\b\d{16}\b",                # Credit card
+            r"\b\d{3}-\d{2}-\d{4}\b",  # SSN pattern
+            r"\b\d{16}\b",  # Credit card
             r"(?i)social\s+security",
         ]
         self._compiled = [re.compile(p) for p in self._patterns]
@@ -490,9 +512,7 @@ class ContentFilterPlugin(Plugin):
 
     async def initialize(self, context: FrameworkContext) -> None:
         self._context = context
-        await context.event_bus.subscribe(
-            "threat.detected", self._on_threat
-        )
+        await context.event_bus.subscribe("threat.detected", self._on_threat)
 
     async def start(self) -> None:
         pass
@@ -535,9 +555,11 @@ class ContentFilterPlugin(Plugin):
 import pytest
 from content_filter.plugin import ContentFilterPlugin
 
+
 @pytest.fixture
 def plugin():
     return ContentFilterPlugin()
+
 
 @pytest.mark.asyncio
 async def test_allow_safe_prompt(plugin):
@@ -545,11 +567,13 @@ async def test_allow_safe_prompt(plugin):
     assert result["decision"] == "allow"
     assert result["confidence"] == 0.0
 
+
 @pytest.mark.asyncio
 async def test_block_ssn_pattern(plugin):
     result = await plugin.scan_prompt("My SSN is 123-45-6789")
     assert result["decision"] == "block"
     assert len(result["matched_patterns"]) == 1
+
 
 @pytest.mark.asyncio
 async def test_block_credit_card(plugin):

@@ -35,9 +35,11 @@ from q_guardian import (
 # Mock OpenAI Agents SDK Types (no external deps required)
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class AgentConfig:
     """Simulated OpenAI Agent configuration."""
+
     name: str
     instructions: str
     model: str = "gpt-4"
@@ -47,6 +49,7 @@ class AgentConfig:
 @dataclass
 class RunResult:
     """Result from an agent run."""
+
     agent_name: str
     output: str
     tool_calls: list[str] = field(default_factory=list)
@@ -76,6 +79,7 @@ class MockOpenAIAgent:
 # ---------------------------------------------------------------------------
 # Q-Guardian Secured OpenAI Agent Runner
 # ---------------------------------------------------------------------------
+
 
 class SecuredAgentRunner:
     """Runs OpenAI Agents with Q-Guardian real-time monitoring."""
@@ -116,12 +120,14 @@ class SecuredAgentRunner:
                 print(f"    - [{f.severity.value.upper()}] {f.rule_name}: {f.matched_text}")
 
         # 2. Risk assessment
-        risk_dict = await self._guardian.calculate_risk({
-            "prompt": user_input,
-            "agent_name": agent_name,
-            "model": agent.config.model,
-            "tools": agent.config.tools,
-        })
+        risk_dict = await self._guardian.calculate_risk(
+            {
+                "prompt": user_input,
+                "agent_name": agent_name,
+                "model": agent.config.model,
+                "tools": agent.config.tools,
+            }
+        )
         risk = RiskContext(**risk_dict.get("risk-engine", {})) if risk_dict else RiskContext()
 
         # 3. Threat detection
@@ -129,8 +135,10 @@ class SecuredAgentRunner:
         for threat in threats:
             self._guardian.runtime and self._guardian.runtime.add_threat(threat)
             self._threat_log.append(threat)
-            print(f"  [Threat] type={threat.threat_type.value} "
-                  f"severity={threat.severity.value} confidence={threat.confidence:.2f}")
+            print(
+                f"  [Threat] type={threat.threat_type.value} "
+                f"severity={threat.severity.value} confidence={threat.confidence:.2f}"
+            )
 
         # 4. Policy enforcement + response
         if analysis.decision == PromptDecision.BLOCK:
@@ -160,13 +168,15 @@ class SecuredAgentRunner:
             )
 
         # 5. Observability
-        await self._guardian.monitor({
-            "event": "agent_run_completed",
-            "agent": agent_name,
-            "tool_calls": len(result.tool_calls),
-            "risk_score": risk.score,
-            "threats": len(threats),
-        })
+        await self._guardian.monitor(
+            {
+                "event": "agent_run_completed",
+                "agent": agent_name,
+                "tool_calls": len(result.tool_calls),
+                "risk_score": risk.score,
+                "threats": len(threats),
+            }
+        )
 
         return result
 
@@ -181,14 +191,16 @@ class SecuredAgentRunner:
                 elif "system_prompt" in finding.category.value:
                     threat_type = ThreatType.DATA_EXFILTRATION
 
-                threats.append(ThreatContext(
-                    threat_type=threat_type,
-                    severity=ThreatSeverity(finding.severity.value),
-                    confidence=finding.confidence,
-                    indicators=[finding.matched_text],
-                    evidence={"rule_id": finding.rule_id, "agent": agent_name},
-                    source=f"prompt_scanner:{agent_name}",
-                ))
+                threats.append(
+                    ThreatContext(
+                        threat_type=threat_type,
+                        severity=ThreatSeverity(finding.severity.value),
+                        confidence=finding.confidence,
+                        indicators=[finding.matched_text],
+                        evidence={"rule_id": finding.rule_id, "agent": agent_name},
+                        source=f"prompt_scanner:{agent_name}",
+                    )
+                )
         return threats
 
     def print_dashboard(self) -> None:
@@ -205,14 +217,17 @@ class SecuredAgentRunner:
         if self._threat_log:
             print("\n  Threat Summary:")
             for t in self._threat_log:
-                print(f"    - [{t.severity.value.upper()}] {t.threat_type.value} "
-                      f"(confidence={t.confidence:.2f})")
+                print(
+                    f"    - [{t.severity.value.upper()}] {t.threat_type.value} "
+                    f"(confidence={t.confidence:.2f})"
+                )
         print("=" * 60)
 
 
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
+
 
 async def main() -> None:
     """Run the OpenAI Agents + Q-Guardian example."""
@@ -227,12 +242,14 @@ async def main() -> None:
 
     runner = SecuredAgentRunner(guardian)
 
-    runner.create_agent(AgentConfig(
-        name="assistant",
-        instructions="You are a helpful assistant.",
-        model="gpt-4",
-        tools=["search", "code"],
-    ))
+    runner.create_agent(
+        AgentConfig(
+            name="assistant",
+            instructions="You are a helpful assistant.",
+            model="gpt-4",
+            tools=["search", "code"],
+        )
+    )
 
     prompts = [
         "What are the benefits of exercise?",

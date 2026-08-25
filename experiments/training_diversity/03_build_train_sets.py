@@ -121,9 +121,13 @@ def main() -> None:
 
     trustair = load_jsonl(RAW / "trustair_jailbreaks.jsonl")
     jailbreakv = load_jsonl(RAW / "jailbreakv.jsonl")
-    harmful = load_jsonl(RAW / "harmful_behaviors_train.jsonl") + load_jsonl(RAW / "harmful_behaviors_test.jsonl")
+    harmful = load_jsonl(RAW / "harmful_behaviors_train.jsonl") + load_jsonl(
+        RAW / "harmful_behaviors_test.jsonl"
+    )
 
-    trustair_clean, trustair_drop = clean(trustair, "prompt", "trustair-jailbreaks", category_key="source")
+    trustair_clean, trustair_drop = clean(
+        trustair, "prompt", "trustair-jailbreaks", category_key="source"
+    )
     harmful_clean, harmful_drop = clean(harmful, "text", "harmful-behaviors", category_key=None)
 
     jv_clean, jv_drop = clean(jailbreakv, "jailbreak_query", "jailbreakv", category_key="policy")
@@ -178,7 +182,9 @@ def main() -> None:
         }
         save_jsonl(rows, TRAIN_SETS / f"{name}.jsonl")
 
-    (OUT / "train_sets_summary.json").write_text(json.dumps(summary, indent=2, ensure_ascii=False), encoding="utf-8")
+    (OUT / "train_sets_summary.json").write_text(
+        json.dumps(summary, indent=2, ensure_ascii=False), encoding="utf-8"
+    )
     print(json.dumps(summary, indent=2, ensure_ascii=False))
 
 

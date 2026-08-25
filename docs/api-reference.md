@@ -209,16 +209,17 @@ def get_runtime_context() -> RuntimeContext | None
 ```python
 from q_guardian.plugins.base import Plugin
 
+
 class MyPlugin(Plugin):
     @property
-    def name(self) -> str: ...           # Required
+    def name(self) -> str: ...  # Required
 
     @property
-    def version(self) -> str: ...        # Required
+    def version(self) -> str: ...  # Required
 
     async def initialize(self, context: FrameworkContext) -> None: ...  # Required
-    async def start(self) -> None: ...   # Required
-    async def stop(self) -> None: ...    # Required
+    async def start(self) -> None: ...  # Required
+    async def stop(self) -> None: ...  # Required
 
     # Optional
     @property
@@ -314,6 +315,7 @@ await bus.clear()
 
 ```python
 from q_guardian.events.base import Event
+
 
 class MyEvent(Event):
     def __init__(self, data: dict, source: str = "custom"):
@@ -421,17 +423,17 @@ from q_guardian.config.settings import AppSettings, get_settings
 settings = get_settings()
 
 # AppSettings
-settings.app.name           # "Q-Guardian"
-settings.app.version        # "1.1.0"
-settings.app.environment    # Environment.DEVELOPMENT
-settings.app.debug          # True
-settings.app.host           # "0.0.0.0"
-settings.app.port           # 8000
+settings.app.name  # "Q-Guardian"
+settings.app.version  # "1.1.0"
+settings.app.environment  # Environment.DEVELOPMENT
+settings.app.debug  # True
+settings.app.host  # "0.0.0.0"
+settings.app.port  # 8000
 settings.app.is_development  # True/False
-settings.app.is_production   # True/False
+settings.app.is_production  # True/False
 
 # DatabaseSettings
-settings.database.url       # "mongodb://localhost:27017"
+settings.database.url  # "mongodb://localhost:27017"
 settings.database.database  # "q_guardian"
 
 # SecuritySettings
@@ -439,11 +441,11 @@ settings.security.secret_key
 settings.security.jwt_algorithm
 
 # CORSSettings
-settings.cors.origins       # ["http://localhost:3000"]
+settings.cors.origins  # ["http://localhost:3000"]
 
 # LoggingSettings
-settings.logging.level      # "INFO"
-settings.logging.format     # "json"
+settings.logging.level  # "INFO"
+settings.logging.format  # "json"
 ```
 
 ### PromptSecurityConfig
@@ -526,13 +528,13 @@ from q_guardian import MemoryTracker, RequestManager, SessionManager, ToolExecut
 
 ```python
 from q_guardian import (
-    AgentStatus,       # INACTIVE, ACTIVE
-    SessionStatus,     # OPEN, CLOSED, EXPIRED
-    MemoryType,        # SHORT_TERM, LONG_TERM, EPISODIC
-    MemoryOperation,   # READ, WRITE, DELETE, SEARCH
-    ThreatSeverity,    # LOW, MEDIUM, HIGH, CRITICAL
-    ThreatType,        # PROMPT_INJECTION, JAILBREAK, DATA_EXFILTRATION, ...
-    ToolType,          # FUNCTION, API, DATABASE, FILE_SYSTEM, ...
+    AgentStatus,  # INACTIVE, ACTIVE
+    SessionStatus,  # OPEN, CLOSED, EXPIRED
+    MemoryType,  # SHORT_TERM, LONG_TERM, EPISODIC
+    MemoryOperation,  # READ, WRITE, DELETE, SEARCH
+    ThreatSeverity,  # LOW, MEDIUM, HIGH, CRITICAL
+    ThreatType,  # PROMPT_INJECTION, JAILBREAK, DATA_EXFILTRATION, ...
+    ToolType,  # FUNCTION, API, DATABASE, FILE_SYSTEM, ...
 )
 ```
 
@@ -557,9 +559,9 @@ from q_guardian import (
 
 ```python
 from q_guardian import (
-    PromptCategory,    # PROMPT_INJECTION, JAILBREAK, MANIPULATION, ...
-    PromptDecision,    # ALLOW, REVIEW, BLOCK
-    PromptSeverity,    # LOW, MEDIUM, HIGH, CRITICAL
+    PromptCategory,  # PROMPT_INJECTION, JAILBREAK, MANIPULATION, ...
+    PromptDecision,  # ALLOW, REVIEW, BLOCK
+    PromptSeverity,  # LOW, MEDIUM, HIGH, CRITICAL
 )
 ```
 
@@ -601,10 +603,10 @@ from q_guardian import (
 
 ```python
 from q_guardian import (
-    ModelType,         # ANOMALY_DETECTOR, CLASSIFIER, ENSEMBLE
-    ModelBackend,      # SKLEARN, XGBOOST, CUSTOM
-    TrainingStatus,    # NOT_TRAINED, TRAINING, TRAINED, FAILED
-    ModelStatus,       # LOADED, UNLOADED, ERROR
+    ModelType,  # ANOMALY_DETECTOR, CLASSIFIER, ENSEMBLE
+    ModelBackend,  # SKLEARN, XGBOOST, CUSTOM
+    TrainingStatus,  # NOT_TRAINED, TRAINING, TRAINED, FAILED
+    ModelStatus,  # LOADED, UNLOADED, ERROR
 )
 ```
 
@@ -645,8 +647,8 @@ from q_guardian import (
 ```python
 from q_guardian import (
     QuantumBackendType,  # SIMULATOR, QISKIT, PENNYLANE, CUDAQ
-    EncodingType,        # ANGLE, AMPLITUDE, ZZ, PAULI
-    QuantumModelType,    # QSVM, VQC, KERNEL, ENSEMBLE
+    EncodingType,  # ANGLE, AMPLITUDE, ZZ, PAULI
+    QuantumModelType,  # QSVM, VQC, KERNEL, ENSEMBLE
 )
 ```
 

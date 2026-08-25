@@ -20,6 +20,7 @@ bus = EventBus()
 async def handler(event):
     print(f"Received: {event}")
 
+
 # Subscribe to specific event type
 await bus.subscribe("threat.detected", handler)
 
@@ -35,11 +36,7 @@ await bus.subscribe("threat.*", handler)  # all threat events
 ```python
 from q_guardian.events.standard import ThreatDetected
 
-event = ThreatDetected(
-    threat_type="prompt_injection",
-    severity="high",
-    source="scanner-plugin"
-)
+event = ThreatDetected(threat_type="prompt_injection", severity="high", source="scanner-plugin")
 
 await bus.publish(event)
 ```
@@ -72,7 +69,7 @@ from q_guardian.events.standard import (
     FrameworkStopped,
     FrameworkError,
     PluginLoaded,
-    PluginUnloaded
+    PluginUnloaded,
 )
 
 # Framework lifecycle
@@ -89,7 +86,7 @@ from q_guardian.events.standard import (
     PromptReceived,
     PromptScanned,
     PolicyViolation,
-    AnomalyDetected
+    AnomalyDetected,
 )
 
 # Threat detection
@@ -97,16 +94,12 @@ event = ThreatDetected(
     threat_type="prompt_injection",
     severity="high",
     source="scanner",
-    details={"pattern": "ignore previous"}
+    details={"pattern": "ignore previous"},
 )
 
 # Prompt scanning
 event = PromptReceived(prompt="Hello world", source="api")
-event = PromptScanned(
-    prompt="Hello world",
-    result={"safe": True},
-    source="scanner"
-)
+event = PromptScanned(prompt="Hello world", result={"safe": True}, source="scanner")
 ```
 
 ### Quantum Events
@@ -115,43 +108,29 @@ event = PromptScanned(
 from q_guardian.events.standard import (
     QuantumCircuitCreated,
     QuantumMeasurementMade,
-    QuantumStateCollapsed
+    QuantumStateCollapsed,
 )
 
 # Quantum operations
-event = QuantumCircuitCreated(
-    circuit_id="abc-123",
-    qubits=4,
-    source="quantum-scanner"
-)
+event = QuantumCircuitCreated(circuit_id="abc-123", qubits=4, source="quantum-scanner")
 
-event = QuantumMeasurementMade(
-    circuit_id="abc-123",
-    result="0110",
-    source="quantum-scanner"
-)
+event = QuantumMeasurementMade(circuit_id="abc-123", result="0110", source="quantum-scanner")
 ```
 
 ### Dashboard Events
 
 ```python
-from q_guardian.events.standard import (
-    MetricsUpdated,
-    AlertTriggered
-)
+from q_guardian.events.standard import MetricsUpdated, AlertTriggered
 
 # Metrics
-event = MetricsUpdated(
-    metrics={"scans": 100, "threats": 5},
-    source="metrics-collector"
-)
+event = MetricsUpdated(metrics={"scans": 100, "threats": 5}, source="metrics-collector")
 
 # Alerts
 event = AlertTriggered(
     alert_type="high_threat-rate",
     severity="critical",
     message="Threat rate exceeded threshold",
-    source="monitor"
+    source="monitor",
 )
 ```
 
@@ -163,6 +142,7 @@ event = AlertTriggered(
 async def handler(event):
     event.stop_propagation()  # Prevents other handlers from receiving event
     print("Handled exclusively")
+
 
 await bus.subscribe("threat.detected", handler)
 ```
@@ -179,8 +159,10 @@ Handler errors are isolated - one handler failing doesn't affect others:
 async def bad_handler(event):
     raise ValueError("Something went wrong")
 
+
 async def good_handler(event):
     print("This still runs!")
+
 
 await bus.subscribe("threat.detected", bad_handler)
 await bus.subscribe("threat.detected", good_handler)
@@ -196,6 +178,7 @@ Create custom events by extending the Event base class:
 from q_guardian.events import Event
 from datetime import datetime
 from uuid import uuid4
+
 
 class CustomEvent(Event):
     def __init__(self, data: str, source: str = "custom"):

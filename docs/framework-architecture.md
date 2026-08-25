@@ -50,6 +50,7 @@ Plugins are the primary extension mechanism:
 ```python
 from q_guardian import Plugin, PluginMetadata
 
+
 class MyPlugin(Plugin):
     @property
     def name(self) -> str:
@@ -81,12 +82,14 @@ from q_guardian import HookManager
 
 hooks = HookManager()
 
+
 # Register async hook
 async def validate_prompt(context):
     prompt = context.get("prompt", "")
     if "ignore previous" in prompt.lower():
         context["blocked"] = True
     return context
+
 
 hooks.register("before_scan", validate_prompt)
 
@@ -137,14 +140,8 @@ The `FrameworkConfig` provides structured configuration:
 from q_guardian import FrameworkConfig
 
 config = FrameworkConfig(
-    runtime=RuntimeConfig(
-        max_concurrent_scans=100,
-        scan_timeout_seconds=30
-    ),
-    policy=PolicyConfig(
-        block_on_threat=True,
-        min_severity="medium"
-    )
+    runtime=RuntimeConfig(max_concurrent_scans=100, scan_timeout_seconds=30),
+    policy=PolicyConfig(block_on_threat=True, min_severity="medium"),
 )
 ```
 

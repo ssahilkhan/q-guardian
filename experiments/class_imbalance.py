@@ -85,9 +85,11 @@ def main() -> None:
             "rf_class_weight": class_weight,
             "pools": pool_metrics,
         }
-        print(f"{name}: {pool_metrics['validation']['f1']:.3f} / "
-              f"{pool_metrics['test']['f1']:.3f} / "
-              f"{pool_metrics['external_jbb']['f1']:.3f}")
+        print(
+            f"{name}: {pool_metrics['validation']['f1']:.3f} / "
+            f"{pool_metrics['test']['f1']:.3f} / "
+            f"{pool_metrics['external_jbb']['f1']:.3f}"
+        )
 
     (OUTPUT / "metrics.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
     (OUTPUT / "class_imbalance_report.md").write_text(render(report), encoding="utf-8")

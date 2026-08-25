@@ -78,17 +78,13 @@ def main() -> None:
         "selected_threshold": selected,
         "validation_sweep": sweep,
         "frozen_evaluation": frozen,
-        "sanity_check_validation_at_selected": next(
-            r for r in sweep if r["threshold"] == selected
-        ),
+        "sanity_check_validation_at_selected": next(r for r in sweep if r["threshold"] == selected),
         "baseline_threshold_0_5_frozen": {
             name: detection_metrics(pools[name].labels(), scores[name], 0.5)["f1_score"]
             for name in ("validation", "test", "external_jbb")
         },
         "jbb_score_distribution": jbb_distribution(scored["external_jbb"]),
-        "jbb_detection_at_each_threshold": jbb_detection_at_each_threshold(
-            scored["external_jbb"]
-        ),
+        "jbb_detection_at_each_threshold": jbb_detection_at_each_threshold(scored["external_jbb"]),
     }
 
     (OUTPUT / "metrics.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
@@ -101,6 +97,7 @@ def main() -> None:
 
 def jbb_distribution(rows: list[dict]) -> dict[str, float]:
     """Score distribution of JBB malicious/benign pools."""
+
     def _percentiles(scores: list[float]) -> list[float]:
         s = sorted(scores)
         out = []
@@ -112,8 +109,18 @@ def jbb_distribution(rows: list[dict]) -> dict[str, float]:
     mal = [r["score"] for r in rows if r["label"] == 1]
     ben = [r["score"] for r in rows if r["label"] == 0]
     return {
-        "malicious": {"n": len(mal), "min": round(min(mal), 4), "percentiles": _percentiles(mal), "max": round(max(mal), 4)},
-        "benign": {"n": len(ben), "min": round(min(ben), 4), "percentiles": _percentiles(ben), "max": round(max(ben), 4)},
+        "malicious": {
+            "n": len(mal),
+            "min": round(min(mal), 4),
+            "percentiles": _percentiles(mal),
+            "max": round(max(mal), 4),
+        },
+        "benign": {
+            "n": len(ben),
+            "min": round(min(ben), 4),
+            "percentiles": _percentiles(ben),
+            "max": round(max(ben), 4),
+        },
     }
 
 
@@ -153,8 +160,7 @@ def render(report: dict) -> str:
     lines.append("## Frozen evaluation at selected threshold")
     lines.append("")
     lines.append(
-        "| Pool | Precision | Recall | F1 | FPR | FNR | MCC | ROC-AUC | "
-        "TP | FP | FN | TN |"
+        "| Pool | Precision | Recall | F1 | FPR | FNR | MCC | ROC-AUC | TP | FP | FN | TN |"
     )
     lines.append("| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |")
     for name, row in report["frozen_evaluation"].items():

@@ -253,12 +253,15 @@ Currently emitted for audit/integration use (not instantiated by engine code).
 from q_guardian.response import ResponseEngine, PlaybookExecutor, BUILTIN_PLAYBOOKS
 from q_guardian.response.data import ResponseRequest, PolicyDecision
 
-engine = ResponseEngine()                      # configurable via ResponseEngineConfig
+engine = ResponseEngine()  # configurable via ResponseEngineConfig
 
 # Direct decision → result
-req = ResponseRequest(policy_decision=PolicyDecision(
-    outcome="blocked", action="block", severity="high", risk_score=0.85))
-result = engine.process(req)                   # action == ResponseAction.BLOCK
+req = ResponseRequest(
+    policy_decision=PolicyDecision(
+        outcome="blocked", action="block", severity="high", risk_score=0.85
+    )
+)
+result = engine.process(req)  # action == ResponseAction.BLOCK
 
 # Execute a built-in playbook
 executor = PlaybookExecutor()

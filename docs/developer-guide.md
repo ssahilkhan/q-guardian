@@ -232,6 +232,7 @@ Use Pydantic v2 for all data models:
 ```python
 from pydantic import BaseModel, Field
 
+
 class PromptSecurityConfig(BaseModel):
     enabled: bool = Field(default=True, description="Enable prompt scanning")
     sensitivity: str = Field(default="medium", description="Sensitivity level")
@@ -332,6 +333,7 @@ __all__ = ["NewModel", "NewModuleConfig"]
 from q_guardian.plugins.base import Plugin
 from q_guardian.framework.context import FrameworkContext
 
+
 class NewModulePlugin(Plugin):
     @property
     def name(self) -> str:
@@ -380,6 +382,7 @@ tests/integration/test_new_module_integration.py
 import pytest
 from q_guardian.security import PromptNormalizer
 
+
 class TestPromptNormalizer:
     def setup_method(self):
         self.normalizer = PromptNormalizer()
@@ -398,6 +401,7 @@ class TestPromptNormalizer:
 ```python
 import pytest
 from q_guardian import Guardian, Agent
+
 
 @pytest.mark.asyncio
 async def test_guardian_workflow():
@@ -420,6 +424,7 @@ async def test_guardian_workflow():
 import pytest
 from q_guardian import Guardian, FrameworkConfig
 
+
 @pytest.fixture
 async def guardian():
     config = FrameworkConfig()
@@ -427,6 +432,7 @@ async def guardian():
     await g.start()
     yield g
     await g.shutdown()
+
 
 @pytest.mark.asyncio
 async def test_with_guardian(guardian):
@@ -439,6 +445,7 @@ async def test_with_guardian(guardian):
 ```python
 from unittest.mock import AsyncMock, MagicMock
 from q_guardian.plugins.base import Plugin
+
 
 def create_mock_plugin(name="mock-plugin"):
     plugin = MagicMock(spec=Plugin)

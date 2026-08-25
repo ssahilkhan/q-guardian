@@ -61,15 +61,14 @@
 ```python
 # Before (0.5.x)
 from q_guardian import Guardian
+
 guardian = Guardian()
 
 # After (0.6.x) -- no changes needed, quantum is opt-in
 from q_guardian import Guardian
 from q_guardian.quantum import QuantumConfig
 
-config = FrameworkConfig(
-    quantum=QuantumConfig(enabled=True)
-)
+config = FrameworkConfig(quantum=QuantumConfig(enabled=True))
 guardian = Guardian(config=config)
 ```
 
@@ -96,9 +95,7 @@ guardian = Guardian(config=config)
 config = FrameworkConfig()
 
 # After (0.8.x)
-config = FrameworkConfig(
-    policy=PolicyConfig(enforcement_mode="enforce")
-)
+config = FrameworkConfig(policy=PolicyConfig(enforcement_mode="enforce"))
 ```
 
 ### 0.8.x to 0.9.x
@@ -118,6 +115,7 @@ config = FrameworkConfig(
 class MyPlugin(Plugin):
     def health(self) -> bool:
         return True
+
 
 # After (0.9.x)
 class MyPlugin(Plugin):
@@ -310,6 +308,7 @@ Enable deprecation warnings:
 
 ```python
 import warnings
+
 warnings.filterwarnings("default", category=DeprecationWarning)
 ```
 

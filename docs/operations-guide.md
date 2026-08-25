@@ -21,13 +21,15 @@ Enable full observability by registering the `ObservabilityPlugin`:
 ```python
 from q_guardian.observability import ObservabilityPlugin
 
-plugin = ObservabilityPlugin(config={
-    "metrics": {"enabled": True, "interval_seconds": 15},
-    "tracing": {"enabled": True, "sample_rate": 0.1},
-    "health": {"enabled": True, "check_interval_seconds": 30},
-    "analytics": {"enabled": True},
-    "alerts": {"enabled": True},
-})
+plugin = ObservabilityPlugin(
+    config={
+        "metrics": {"enabled": True, "interval_seconds": 15},
+        "tracing": {"enabled": True, "sample_rate": 0.1},
+        "health": {"enabled": True, "check_interval_seconds": 30},
+        "analytics": {"enabled": True},
+        "alerts": {"enabled": True},
+    }
+)
 
 guardian = Guardian()
 guardian.register_plugin(plugin)
@@ -259,13 +261,13 @@ Typical scan latency targets:
 ```python
 config = FrameworkConfig(
     runtime={
-        "max_concurrent_agents": 200,      # Increase for high concurrency
-        "request_timeout_seconds": 10,      # Reduce for faster failure
-        "enable_caching": True,             # Enable result caching
+        "max_concurrent_agents": 200,  # Increase for high concurrency
+        "request_timeout_seconds": 10,  # Reduce for faster failure
+        "enable_caching": True,  # Enable result caching
     },
     prompt_scanner={
         "enabled": True,
-        "sensitivity": "medium",            # "low" is faster, "high" is thorough
+        "sensitivity": "medium",  # "low" is faster, "high" is thorough
     },
 )
 ```

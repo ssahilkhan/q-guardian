@@ -83,9 +83,11 @@ def main() -> None:
             "n_features": len(feature_indices) if feature_indices else 43,
             "pools": pool_metrics,
         }
-        print(f"{name}: val {pool_metrics['validation']['f1']:.3f} / "
-              f"test {pool_metrics['test']['f1']:.3f} / "
-              f"jbb {pool_metrics['external_jbb']['f1']:.3f}")
+        print(
+            f"{name}: val {pool_metrics['validation']['f1']:.3f} / "
+            f"test {pool_metrics['test']['f1']:.3f} / "
+            f"jbb {pool_metrics['external_jbb']['f1']:.3f}"
+        )
 
     (OUTPUT / "metrics.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
     (OUTPUT / "feature_ablation_report.md").write_text(render(report), encoding="utf-8")
