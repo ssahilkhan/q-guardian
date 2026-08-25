@@ -10,15 +10,11 @@ from __future__ import annotations
 import json
 import os
 import sys
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from collections.abc import Generator
-
-import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 if sys.platform == "win32":
+    import asyncio
+
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 # Only run in CI environment
@@ -27,16 +23,14 @@ if not os.getenv("CI") and not os.getenv("GITHUB_ACTIONS"):
     pass
 else:
     # In CI - apply mocking and test configuration
-    import asyncio
     import json
     import os
     import sys
-    from unittest.mock import patch, MagicMock
+    from unittest.mock import patch
 
     # Add src to path for imports
     sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-    from q_guardian.security.auth import hash_password
 
     # Set test environment variables
     os.environ.setdefault("CI", "true")
@@ -77,12 +71,14 @@ else:
 
         def predict(self, x):
             import numpy as np
-            n = x.shape[0] if hasattr(x, 'shape') else len(x)
+
+            n = x.shape[0] if hasattr(x, "shape") else len(x)
             return np.zeros(n, dtype=int)
 
         def predict_proba(self, x):
             import numpy as np
-            n = x.shape[0] if hasattr(x, 'shape') else len(x)
+
+            n = x.shape[0] if hasattr(x, "shape") else len(x)
             return np.column_stack([np.ones(n) * 0.9, np.ones(n) * 0.1])
 
         def fit(self, x, y):
@@ -90,16 +86,24 @@ else:
 
         def decision_function(self, x):
             import numpy as np
-            n = x.shape[0] if hasattr(x, 'shape') else len(x)
+
+            n = x.shape[0] if hasattr(x, "shape") else len(x)
             return np.zeros(n)
 
     # Apply patches
+
     _patches = []
 
     # Patch sklearn models
-    _patches.append(patch("q_guardian.ml.models.anomaly.IsolationForest", MockMLModel))
-    _patches.append(patch("q_guardian.ml.models.classifier.RandomForestClassifier", MockMLModel))
-    _patches.append(patch("q_guardian.ml.models.classifier.XGBClassifier", MockMLModel))
+    _patches.append(
+        patch("q_guardian.ml.models.anomaly.IsolationForest", MockMLModel)
+    )
+    _patches.append(
+        patch("q_guardian.ml.models.classifier.RandomForestClassifier", MockMLModel)
+    )
+    _patches.append(
+        patch("q_guardian.ml.models.classifier.XGBClassifier", MockMLModel)
+    )
     _patches.append(patch("sklearn.ensemble.IsolationForest", MockMLModel))
     _patches.append(patch("sklearn.ensemble.RandomForestClassifier", MockMLModel))
 
@@ -116,6 +120,7 @@ else:
 
             def encode(self, texts, *args, **kwargs):
                 import numpy as np
+
                 if isinstance(texts, str):
                     texts = [texts]
                 return np.random.rand(len(texts), 384).astype(np.float32)
