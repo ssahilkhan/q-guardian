@@ -11,12 +11,18 @@ permissions:
 
 env:
   # Test configuration
-  AUTH_USERS: '{"tester": {"password_hash": "$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj/RK.PZvO.S", "roles": ["analyst"]}, "admin": {"password_hash": "$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj/RK.PZvO.S", "roles": ["admin"]}}'
+  AUTH_USERS: '{"tester": {"password_hash": "test_hash", "roles": ["analyst"]}, "admin": {"password_hash": "test_hash", "roles": ["admin"]}, "service": {"password_hash": "test_hash", "roles": ["service"]}}'
   MONGODB_URI: "mongodb://localhost:27017"
   MONGODB_DATABASE: "q_guardian_test"
   RATE_LIMIT_ENABLED: "false"
   APP_ENVIRONMENT: "testing"
   LOG_LEVEL: "INFO"
+  SECRET_KEY: "test-secret-key-for-ci-only"
+  JWT_ALGORITHM: "HS256"
+  JWT_EXPIRATION_MINUTES: "30"
+  JWT_REFRESH_EXPIRATION_DAYS: "7"
+  ENVIRONMENT: "testing"
+  DEBUG: "true"
 
 jobs:
   lint:
@@ -76,7 +82,7 @@ jobs:
           MONGODB_DATABASE: ${{ env.MONGODB_DATABASE }}
       - name: Run full test suite with coverage gate
         run: >
-          pytest tests/ --tb=short -q
+          pytest tests/ -c pytest-ci.ini --tb=short -q
           --cov=q_guardian --cov-report=xml --cov-report=term
           --cov-fail-under=80
         env:
@@ -86,6 +92,12 @@ jobs:
           RATE_LIMIT_ENABLED: ${{ env.RATE_LIMIT_ENABLED }}
           APP_ENVIRONMENT: ${{ env.APP_ENVIRONMENT }}
           LOG_LEVEL: ${{ env.LOG_LEVEL }}
+          SECRET_KEY: ${{ env.SECRET_KEY }}
+          JWT_ALGORITHM: ${{ env.JWT_ALGORITHM }}
+          JWT_EXPIRATION_MINUTES: ${{ env.JWT_EXPIRATION_MINUTES }}
+          JWT_REFRESH_EXPIRATION_DAYS: ${{ env.JWT_REFRESH_EXPIRATION_DAYS }}
+          ENVIRONMENT: ${{ env.ENVIRONMENT }}
+          DEBUG: ${{ env.DEBUG }}
       - uses: actions/upload-artifact@v4
         if: matrix.python-version == '3.12'
         with:
@@ -120,7 +132,7 @@ jobs:
           MONGODB_URI: ${{ env.MONGODB_URI }}
           MONGODB_DATABASE: ${{ env.MONGODB_DATABASE }}
       - name: Injection / jailbreak / obfuscation / false-positive regression
-        run: pytest tests/security/ -v --tb=short
+        run: pytest tests/security/ -c pytest-ci.ini -v --tb=short
         env:
           AUTH_USERS: ${{ env.AUTH_USERS }}
           MONGODB_URI: ${{ env.MONGODB_URI }}
@@ -128,6 +140,12 @@ jobs:
           RATE_LIMIT_ENABLED: ${{ env.RATE_LIMIT_ENABLED }}
           APP_ENVIRONMENT: ${{ env.APP_ENVIRONMENT }}
           LOG_LEVEL: ${{ env.LOG_LEVEL }}
+          SECRET_KEY: ${{ env.SECRET_KEY }}
+          JWT_ALGORITHM: ${{ env.JWT_ALGORITHM }}
+          JWT_EXPIRATION_MINUTES: ${{ env.JWT_EXPIRATION_MINUTES }}
+          JWT_REFRESH_EXPIRATION_DAYS: ${{ env.JWT_REFRESH_EXPIRATION_DAYS }}
+          ENVIRONMENT: ${{ env.ENVIRONMENT }}
+          DEBUG: ${{ env.DEBUG }}
       - name: Generate security metrics report
         run: python -m scripts.qa.security_report
         env:
@@ -135,7 +153,7 @@ jobs:
           MONGODB_URI: ${{ env.MONGODB_URI }}
           MONGODB_DATABASE: ${{ env.MONGODB_DATABASE }}
       - name: Fail on regression below documented gates
-        run: pytest tests/security/test_security_metrics.py -q
+        run: pytest tests/security/test_security_metrics.py -c pytest-ci.ini -q
         env:
           AUTH_USERS: ${{ env.AUTH_USERS }}
           MONGODB_URI: ${{ env.MONGODB_URI }}
