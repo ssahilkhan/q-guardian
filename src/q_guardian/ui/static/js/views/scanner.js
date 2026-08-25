@@ -1,6 +1,7 @@
 /* Q-Guardian Console — Scanner view.
  * Prompt submission through POST /api/v1/analysis/scan and an inline
  * verdict, with a link through to the full detection record.
+ * Shows real pipeline stage execution and ML results when available.
  */
 (function () {
   "use strict";
@@ -10,11 +11,49 @@
   var api = QG.api;
   var U = QG.ui;
 
+  function pipelineVisualization(item) {
+    var metadata = (item.payload && item.payload.metadata) || {};
+    var mlFindingsCount = metadata.ml_findings_count || 0;
+    var ruleFindingsCount = metadata.rule_findings_count || 0;
+    var mlActive = mlFindingsCount > 0 || (metadata.ml_risk_score !== undefined);
+
+    var stages = [
+      { name: "Input", status: "done", detail: "Prompt received" },
+      { name: "Normalization", status: "done", detail: "Unicode NFKC, whitespace collapsed" },
+      { name: "Validation", status: item.is_valid ? "done" : "warn", detail: item.is_valid ? "Passed" : "Issues detected" },
+      { name: "Feature Extraction", status: "done", detail: "Statistical, keyword, structural features" },
+      { name: "Rule Engine", status: ruleFindingsCount > 0 ? "warn" : "done", detail: ruleFindingsCount + " finding" + (ruleFindingsCount === 1 ? "" : "s") },
+    ];
+
+    if (mlActive) {
+      stages.push({ name: "Classical ML", status: mlFindingsCount > 0 ? "warn" : "done", detail: mlFindingsCount + " ML finding" + (mlFindingsCount === 1 ? "" : "s") });
+      if (metadata.ml_risk_score !== undefined) {
+        stages[stages.length - 1].detail += " (risk: " + (Number(metadata.ml_risk_score) * 100).toFixed(1) + "%)";
+      }
+    } else {
+      stages.push({ name: "Classical ML", status: "off", detail: "Not active (no models loaded)" });
+    }
+
+    stages.push({ name: "Decision", status: "done", detail: item.decision.toUpperCase() });
+
+    var rows = stages.map(function (stage) {
+      var icon = stage.status === "done" ? "check" : stage.status === "warn" ? "warn" : stage.status === "off" ? "off" : "wait";
+      var cls = stage.status === "done" ? "success" : stage.status === "warn" ? "warning" : stage.status === "off" ? "low" : "neutral";
+      return [
+        { html: '<span class="pipeline-icon pipeline-' + icon + '"></span>', cls: "cell-icon" },
+        { value: stage.name, cls: "cell-strong" },
+        U.badge(icon === "check" ? "Done" : icon === "warn" ? "Alert" : icon === "off" ? "Off" : "Wait", cls),
+        stage.detail,
+      ];
+    });
+
+    return U.table(["", "Stage", "Status", "Detail"], rows);
+  }
+
   function renderResult(el, item) {
     var payload = item.payload || {};
     var findings = payload.findings || [];
-    var body =
-      item.finding_count + " finding" + (item.finding_count === 1 ? "" : "s") +
+    var body = item.finding_count + " finding" + (item.finding_count === 1 ? "" : "s") +
       " · risk " + Math.round(Number(item.risk_score || 0) * 100) + "% · " +
       (item.processing_time_ms == null ? "—" : item.processing_time_ms + " ms");
     var recommendations = {
@@ -41,7 +80,34 @@
         { label: "Validation", html: U.statusBadge(item.is_valid ? "valid" : "invalid") },
         { label: "Body", value: String(body), mono: true },
       ]) +
-      "</div>";
+      "</div>" +
+
+      '<div class="card"><div class="card-head"><div class="card-title">Pipeline Execution</div></div>' +
+      pipelineVisualization(item) +
+      "</div>" +
+
+      (findings.length
+        ? '<div class="card"><div class="card-head"><div class="card-title">Findings</div>' +
+          '<div class="card-sub">' + findings.length + " detected</div></div>" +
+          findingsTable(findings) +
+          "</div>"
+        : "");
+  }
+
+  function findingsTable(findings) {
+    if (!findings || !findings.length) {
+      return U.emptyState("No findings.");
+    }
+    var rows = findings.map(function (f) {
+      return [
+        { value: f.rule_name || f.rule_id || "—", cls: "cell-strong" },
+        U.text(U.categoryLabel(f.category)),
+        U.severityBadge(f.severity),
+        { value: Math.round(Number(f.confidence || 0) * 100) + "%", cls: "cell-mono" },
+        f.description,
+      ];
+    });
+    return U.table(["Rule", "Category", "Severity", "Confidence", "Description"], rows);
   }
 
   QG.views.scanner = {

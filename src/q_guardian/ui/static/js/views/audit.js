@@ -2,6 +2,7 @@
  * Aggregated security posture: pipeline health, configuration hardening,
  * and the recent scan activity trail. All data comes from the live API;
  * the console keeps no audit store of its own.
+ * Consumes /health for real system status.
  */
 (function () {
   "use strict";
@@ -17,14 +18,23 @@
     render: async function (el) {
       el.innerHTML = U.loadingState("Compiling audit view…");
       try {
-        var [summaryPayload, configPayload, historyPayload] = await Promise.all([
+        var results = await Promise.all([
           api.get(api.endpoints.summary),
           api.get(api.endpoints.configuration),
           api.get(api.endpoints.analysis + "?limit=50"),
+          api.get(api.endpoints.health).catch(function () { return null; }),
         ]);
+        var summaryPayload = results[0];
+        var configPayload = results[1];
+        var historyPayload = results[2];
+        var healthPayload = results[3];
+
         var summary = api.data(summaryPayload);
         var config = api.data(configPayload);
         var history = api.envelope(historyPayload);
+        var healthStatus = healthPayload
+          ? (healthPayload.status || (healthPayload.data && healthPayload.data.status) || "unknown")
+          : "unknown";
 
         var security = config.security || {};
         var app = config.application || {};
@@ -32,6 +42,14 @@
         var ml = config.ml || {};
 
         var posture = [
+          {
+            label: "System Health",
+            html: healthStatus === "healthy"
+              ? U.badge("Healthy", "success")
+              : healthStatus === "degraded"
+                ? U.badge("Degraded", "warn")
+                : U.badge(healthStatus, "neutral"),
+          },
           {
             label: "Secret Key Configured",
             html: U.statusBadge(security.secret_key_configured ? "enabled" : "disabled"),

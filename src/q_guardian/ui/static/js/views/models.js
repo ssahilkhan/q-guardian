@@ -1,6 +1,7 @@
 /* Q-Guardian Console — Models view.
  * Classical ML model registry status from /console/models. Quantum
  * backends and fusion strategies live on the dedicated Quantum page.
+ * Shows accurate active/inactive state based on real backend.
  */
 (function () {
   "use strict";
@@ -41,11 +42,15 @@
           "</div>" +
 
           '<div class="grid grid-4">' +
-          U.statCard("ML Active", ml.active ? "Yes" : "No", "", ml.active ? "success" : "warning") +
-          U.statCard("Detectors", ml.detector_count, "registered", "success") +
-          U.statCard("Classifiers", ml.classifier_count, "registered", "success") +
+          U.statCard("ML Active", ml.active ? "Yes" : "No", ml.active ? "models loaded and active" : "no models loaded", ml.active ? "success" : "warning") +
+          U.statCard("Detectors", ml.detector_count, "registered", ml.detector_count > 0 ? "success" : "low") +
+          U.statCard("Classifiers", ml.classifier_count, "registered", ml.classifier_count > 0 ? "success" : "low") +
           U.statCard("Loaded Models", ml.loaded_models + " / " + ml.total_models, "loaded / total", ml.loaded_models > 0 ? "success" : "warning") +
           "</div>" +
+
+          (ml.active
+            ? ""
+            : U.note("ML is currently inactive. Models are not loaded into memory. Scan requests use the rule-based pipeline only. To activate ML, register detectors/classifiers and set ml.enabled=true in configuration.")) +
 
           '<div class="card"><div class="card-head"><div class="card-title">Model Registry</div></div>' +
           (rows.length

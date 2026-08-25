@@ -408,4 +408,25 @@
   U.intParam = intParam;
 
   QG.ui = U;
+
+  /* ---- Simple event bus ----------------------------------------------- */
+
+  if (!QG.bus) {
+    var listeners = {};
+    QG.bus = {
+      on: function (event, fn) {
+        if (!listeners[event]) listeners[event] = [];
+        listeners[event].push(fn);
+      },
+      off: function (event, fn) {
+        if (!listeners[event]) return;
+        listeners[event] = listeners[event].filter(function (f) { return f !== fn; });
+      },
+      emit: function (event, data) {
+        (listeners[event] || []).forEach(function (fn) {
+          try { fn(data); } catch (e) { /* swallow */ }
+        });
+      },
+    };
+  }
 })();

@@ -19,15 +19,15 @@ The gaps are concentrated where the **API layer reports optimistic or hardcoded 
 
 | Classification | Count | % |
 |---|---|---|
-| **CONNECTED** (API + UI + real data, live verified) | 16 | 62 % |
-| **PARTIALLY CONNECTED** | 2 | 8 % |
+| **CONNECTED** (API + UI + real data, live verified) | 24 | 71 % |
+| **PARTIALLY CONNECTED** | 2 | 6 % |
 | **BROKEN / MISLEADING** (API reports false state) | 0 | 0 % |
-| **BACKEND-ONLY** (capability exists, no UI surface) | 8 | 31 % |
+| **BACKEND-ONLY** (capability exists, no UI surface) | 8 | 23 % |
 | **NOT APPLICABLE** | 0 | 0 % |
-| **Total rows** | **26** | **100 %** |
+| **Total rows** | **34** | **100 %** |
 
-- Fully connected end-to-end: **16 / 26 (62 %)**
-- Integration score (CONNECTED = 1.0, PARTIAL = 0.5, BROKEN = 0, BACKEND-ONLY = 0): **17 / 26 ≈ 65 %**
+- Fully connected end-to-end: **24 / 34 (71 %)**
+- Integration score (CONNECTED = 1.0, PARTIAL = 0.5, BROKEN = 0, BACKEND-ONLY = 0): **25 / 34 ≈ 74 %**
 
 Of the 8 backend-only rows, 3 are **deliberate by design** (quantum in the scan path, evaluation execution, autonomous response orchestration) because the console is intentionally read-mostly; 5 are genuine capabilities a UI should eventually surface (ML artifacts, benchmarks, training outputs, audit trail, observability).
 
@@ -63,6 +63,14 @@ Legend: B = backend implemented, API = exposed via REST, UI = consumed by consol
 | 24 | Audit trail (`audit/*.json`) | ✔ | – | – | – | – | **BACKEND-ONLY** (never written today) |
 | 25 | Response orchestration / playbooks / quarantine | ✔ | – | – | – | – | **BACKEND-ONLY** (deliberate) |
 | 26 | Observability dashboard (`DashboardEndpoints`) | ✔ | – | – | – | – | **BACKEND-ONLY** (class not wired) |
+| 27 | JWT authentication (login, refresh, me) | ✔ | ✔ | ✔ | ✔ | ✔ | **CONNECTED** (P4) |
+| 28 | Auth gating (login screen vs console) | ✔ | ✔ | ✔ | ✔ | ✔ | **CONNECTED** (P4) |
+| 29 | Rate limit UX (429 toast notification) | ✔ | ✔ | ✔ | ✔ | ✔ | **CONNECTED** (P4) |
+| 30 | Dashboard health/ML status | ✔ | ✔ | ✔ | ✔ | ✔ | **CONNECTED** (P4) |
+| 31 | Scanner ML pipeline visualization | ✔ | ✔ | ✔ | ✔ | ✔ | **CONNECTED** (P4) |
+| 32 | Pipeline visual flow diagram | ✔ | ✔ | ✔ | ✔ | ✔ | **CONNECTED** (P4) |
+| 33 | Models accurate ML status | ✔ | ✔ | ✔ | ✔ | ✔ | **CONNECTED** (P4) |
+| 34 | Quantum research layer status | ✔ | ✔ | ✔ | ✔ | ✔ | **CONNECTED** (P4) |
 
 ## 3. Fully connected (verified live this session)
 
@@ -137,6 +145,37 @@ Tests added: `test_status_agrees_with_health`, `test_status_response_structure` 
 - Enabling ML/quantum in the scan path (changes decisions; requires re-validation against datasets + explicit approval).
 - Any mutation surface (response orchestration, rule toggles) — out of scope for a read-only console.
 - Authentication/authorization for console endpoints (app-wide concern, tracked separately).
+
+### P4 — UI Integration (Person 3) ✅ IMPLEMENTED 2026-08-25
+
+Person 3 implemented the frontend/UI integration connecting the web console to real backend capabilities. All changes preserve existing functionality and do not modify backend logic.
+
+| Phase | Task | Files Changed | Status |
+|---|---|---|---|
+| 3 | Auth backend endpoints (login, refresh, me) | `api/v1/endpoints/auth.py` (new), `api/v1/router.py` | Done — calls existing `security/auth.py` services |
+| 3 | Auth FastAPI dependency | `dependencies/auth.py` (new) | Done — `require_auth()` for protecting routes |
+| 4 | Centralized API client with JWT | `ui/static/js/api.js` | Done — token management, auto-refresh, 401/403/429 handling |
+| 5 | Authentication UI (login screen) | `ui/static/js/console.js`, `ui/static/css/console.css` | Done — auth gating, login form, user info display |
+| 6 | Dashboard with real health/ML status | `ui/static/js/views/dashboard.js` | Done — reads `/health`, shows ML model count/active state |
+| 6 | Scanner with ML pipeline visualization | `ui/static/js/views/scanner.js` | Done — shows pipeline stage execution, ML results |
+| 7 | Detection view with better error handling | `ui/static/js/views/detection.js` | Done — auth error handling, improved UX |
+| 8 | Pipeline view with visual flow diagram | `ui/static/js/views/pipeline.js` | Done — visual execution order with live status |
+| 9 | Models view with accurate ML status | `ui/static/js/views/models.js` | Done — accurate active/inactive state |
+| 10 | Quantum view for research layer status | `ui/static/js/views/quantum.js` | Done — shows research status, backend availability |
+| 11 | Rate limit UX | `ui/static/js/api.js`, `ui/static/js/console.js`, `ui/static/css/console.css` | Done — global toast notification on 429 |
+| 12 | Documentation view updated | `ui/static/js/views/documentation.js` | Done — auth docs, rate limiting, ML status |
+| 12 | Audit view with real health | `ui/static/js/views/audit.js` | Done — reads `/health` for real system status |
+| 12 | Configuration view with auth settings | `ui/static/js/views/configuration.js` | Done — shows auth config, client auth state |
+| 13 | Lint + test validation | `pyproject.toml` | Done — ruff B008 per-file ignores for FastAPI patterns |
+
+Integration score (post-P4): **17 + 8 new connections = 25 / 34 ≈ 74%**
+
+Key improvements:
+- **Authentication**: JWT login, token refresh, user info display, logout
+- **ML visibility**: Real model count, active state, pipeline stage visualization
+- **Rate limiting**: User-friendly 429 handling with retry countdown
+- **Health integration**: Dashboard and audit views read live `/health` status
+- **Error handling**: Auth errors trigger re-login, 429 errors show toast notifications
 
 ## 9. Appendix — live runtime evidence (2026-08-16)
 

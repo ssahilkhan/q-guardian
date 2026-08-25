@@ -1,6 +1,7 @@
 /* Q-Guardian Console — Detection view (history list + full report).
  * Reads the bounded scan history through GET /api/v1/analysis and
  * individual records through GET /api/v1/analysis/{id}.
+ * Handles auth errors and shows real persistent backend data.
  */
 (function () {
   "use strict";
@@ -39,12 +40,8 @@
   function listView(el, filter) {
     var pageSize = 20;
 
-    function renderLoading() {
-      el.innerHTML = U.loadingState("Loading scan history…");
-    }
-
     async function load() {
-      renderLoading();
+      el.innerHTML = U.loadingState("Loading scan history…");
       try {
         var payload = await api.get(
           api.endpoints.analysis + "?limit=" + pageSize
@@ -232,6 +229,10 @@
           "</div>";
       })
       .catch(function (err) {
+        if (err && err.authError) {
+          el.innerHTML = U.errorState("Session expired. Please log in again.");
+          return;
+        }
         el.innerHTML =
           U.errorState(err.message || "Could not load the detection report.");
       });

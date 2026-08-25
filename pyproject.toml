@@ -119,6 +119,9 @@ ignore = ["T201"]
 "tests/security/corpus.py" = ["RUF001", "RUF002", "RUF003"]
 # Benchmark scripts embed long URLs/payload lines verbatim; cosmetic rules only.
 "scripts/benchmarks/*" = ["E501", "TC003", "F841", "RUF012", "RUF059"]
+# FastAPI Depends in function signatures is the standard pattern.
+"src/q_guardian/api/v1/endpoints/auth.py" = ["B008"]
+"src/q_guardian/dependencies/auth.py" = ["B008"]
 
 [tool.ruff.lint.flake8-type-checking]
 runtime-evaluated-base-classes = ["q_guardian.schemas.base.BaseSchema"]

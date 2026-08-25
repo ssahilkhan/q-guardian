@@ -1,6 +1,8 @@
 /* Q-Guardian Console — shell, navigation and router.
  * Renders the sidebar navigation, topbar breadcrumbs and system status,
  * then routes hash URLs (#/view, #/detection/:id) to the view modules.
+ * Includes authentication gating: unauthenticated users see a login form;
+ * authenticated users see the full console.
  */
 (function () {
   "use strict";
@@ -35,6 +37,10 @@
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>',
     documentation:
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>',
+    logout:
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>',
+    user:
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
   };
 
   var NAV = [
@@ -76,6 +82,122 @@
   var VIEWS = (QG.views = QG.views || {});
   var appView = null;
   var currentRoute = null;
+
+  /* ---- Authentication gate -------------------------------------------- */
+
+  function renderLoginScreen() {
+    var main = document.querySelector(".workspace");
+    if (!main) return;
+    main.innerHTML =
+      '<div class="login-container">' +
+      '<div class="login-card">' +
+      '<div class="login-brand">' +
+      '<img class="brand-mark" src="/ui/favicon.svg" alt="" aria-hidden="true" />' +
+      "<h1>Q-Guardian</h1>" +
+      '<p>Runtime Security Console</p>' +
+      "</div>" +
+      '<form id="loginForm" class="login-form" autocomplete="on">' +
+      '<div class="field">' +
+      '<label for="loginUser">Username</label>' +
+      '<input type="text" id="loginUser" name="username" autocomplete="username" placeholder="Enter username" required />' +
+      "</div>" +
+      '<div class="field">' +
+      '<label for="loginPass">Password</label>' +
+      '<input type="password" id="loginPass" name="password" autocomplete="current-password" placeholder="Enter password" required />' +
+      "</div>" +
+      '<div id="loginError"></div>' +
+      '<div class="row end"><button type="submit" class="btn primary" id="loginBtn">Sign In</button></div>' +
+      "</form>" +
+      '<div class="login-footer">' +
+      "<p>No account? Configure users via the <code>AUTH_USERS</code> environment variable.</p>" +
+      "</div>" +
+      "</div>" +
+      "</div>";
+
+    var form = document.getElementById("loginForm");
+    var errorBox = document.getElementById("loginError");
+    var btn = document.getElementById("loginBtn");
+
+    form.addEventListener("submit", function (e) {
+      e.preventDefault();
+      var username = document.getElementById("loginUser").value.trim();
+      var password = document.getElementById("loginPass").value;
+      errorBox.innerHTML = "";
+      btn.disabled = true;
+      btn.textContent = "Signing in…";
+
+      QG.api
+        .login(username, password)
+        .then(function () {
+          renderConsole();
+        })
+        .catch(function (err) {
+          errorBox.innerHTML = U.errorState(err.message || "Login failed.");
+          btn.disabled = false;
+          btn.textContent = "Sign In";
+        });
+    });
+
+    /* Focus the username field */
+    setTimeout(function () {
+      var el = document.getElementById("loginUser");
+      if (el) el.focus();
+    }, 50);
+  }
+
+  function renderConsole() {
+    /* Restore the full console shell */
+    var main = document.querySelector(".workspace");
+    if (!main) return;
+    main.innerHTML =
+      '<header class="topbar">' +
+      '<nav id="breadcrumbs" class="breadcrumbs" aria-label="Breadcrumb"></nav>' +
+      '<div class="topbar-right">' +
+      '<div class="user-info" id="userInfo"></div>' +
+      '<div class="sys-status">' +
+      '<span class="pulse" id="statusDot" aria-hidden="true"></span>' +
+      '<span id="statusText">checking…</span>' +
+      "</div>" +
+      "</div>" +
+      "</header>" +
+      '<main id="appView" class="content">' +
+      '<div id="bootState" class="empty-state">' +
+      '<div class="spinner" aria-hidden="true"></div>' +
+      "<p>Loading console…</p>" +
+      "</div>" +
+      "</main>";
+
+    updateUserInfo();
+    render();
+    loadVersion();
+    refreshStatus();
+    setInterval(refreshStatus, 20000);
+  }
+
+  function updateUserInfo() {
+    var el = document.getElementById("userInfo");
+    if (!el) return;
+    var user = QG.api.getCurrentUser();
+    if (user) {
+      el.innerHTML =
+        '<span class="user-badge">' +
+        ICONS.user +
+        "<span>" + U.text(user.username) + "</span>" +
+        "</span>" +
+        '<button type="button" class="btn ghost btn-sm" id="logoutBtn" title="Sign out">' +
+        ICONS.logout +
+        "</button>";
+      var logoutBtn = document.getElementById("logoutBtn");
+      if (logoutBtn) {
+        logoutBtn.addEventListener("click", function () {
+          QG.api.logout();
+          renderLoginScreen();
+        });
+      }
+    }
+  }
+
+  /* ---- Navigation / routing ------------------------------------------- */
 
   function findNavItem(id) {
     for (var i = 0; i < NAV.length; i += 1) {
@@ -127,6 +249,7 @@
 
   function renderNav(activeId) {
     var nav = document.getElementById("sideNav");
+    if (!nav) return;
     var html = NAV.map(function (group) {
       var items = group.items
         .map(function (item) {
@@ -150,6 +273,7 @@
 
   function renderCrumbs(view, params) {
     var crumbs = document.getElementById("breadcrumbs");
+    if (!crumbs) return;
     var html =
       '<a class="crumb" href="#/dashboard">Console</a>' +
       '<span class="crumb-sep">/</span>';
@@ -195,9 +319,15 @@
         return resolved.view.render(appView, resolved.params);
       })
       .catch(function (err) {
+        if (err && err.authError) {
+          renderLoginScreen();
+          return;
+        }
         showError(err && err.message ? err.message : "Unknown error.");
       });
   }
+
+  /* ---- Status --------------------------------------------------------- */
 
   function setStatus(state, text) {
     var dot = document.getElementById("statusDot");
@@ -224,7 +354,7 @@
   }
 
   async function loadVersion() {
-    var el = document.getElementById("versionInfo");
+    var el = document.getElementById("sidebarVersion");
     if (!el) return;
     try {
       var payload = await QG.api.get(QG.api.endpoints.version);
@@ -235,12 +365,71 @@
     }
   }
 
+  /* ---- Rate limit notification ------------------------------------------ */
+
+  function showRateLimitToast(message) {
+    /* Remove existing toast if present */
+    var existing = document.getElementById("rateLimitToast");
+    if (existing) existing.remove();
+
+    var toast = document.createElement("div");
+    toast.id = "rateLimitToast";
+    toast.className = "rate-limit-toast";
+    toast.innerHTML =
+      '<span class="toast-icon">⏳</span>' +
+      '<span class="toast-message">' + U.text(message) + "</span>" +
+      '<button type="button" class="toast-close" title="Dismiss">&times;</button>';
+    document.body.appendChild(toast);
+
+    /* Auto-dismiss after 5 seconds */
+    var dismissTimer = setTimeout(function () {
+      toast.remove();
+    }, 5000);
+
+    /* Close button */
+    toast.querySelector(".toast-close").addEventListener("click", function () {
+      clearTimeout(dismissTimer);
+      toast.remove();
+    });
+  }
+
+  /* ---- Auth event handlers -------------------------------------------- */
+
+  function onAuthExpired() {
+    renderLoginScreen();
+  }
+
+  function onAuthLogout() {
+    renderLoginScreen();
+  }
+
+  /* ---- Boot ----------------------------------------------------------- */
+
   function boot() {
-    window.addEventListener("hashchange", render);
-    render();
-    loadVersion();
-    refreshStatus();
-    setInterval(refreshStatus, 20000);
+    QG.bus.on("auth:expired", onAuthExpired);
+    QG.bus.on("auth:logout", onAuthLogout);
+    QG.bus.on("rate:limited", function (data) {
+      showRateLimitToast(data.message);
+    });
+
+    if (QG.api.isLoggedIn()) {
+      /* Verify token is still valid by calling /me */
+      QG.api
+        .get(QG.api.endpoints.auth + "/me")
+        .then(function () {
+          renderConsole();
+        })
+        .catch(function () {
+          QG.api.logout();
+          renderLoginScreen();
+        });
+    } else {
+      renderLoginScreen();
+    }
+
+    window.addEventListener("hashchange", function () {
+      if (QG.api.isLoggedIn()) render();
+    });
   }
 
   if (document.readyState === "loading") {

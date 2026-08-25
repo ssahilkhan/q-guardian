@@ -1,6 +1,7 @@
 /* Q-Guardian Console — Dashboard view.
  * Overview aggregates from /console/summary plus a quick-scan control and
  * the most recent analyses. All numbers come from the live API.
+ * Shows real health status, ML state, and component inventory.
  */
 (function () {
   "use strict";
@@ -70,89 +71,107 @@
     );
   }
 
+  function healthBadge(status) {
+    if (status === "healthy") return U.badge("Healthy", "success");
+    if (status === "degraded") return U.badge("Degraded", "warn");
+    return U.badge("Unknown", "neutral");
+  }
+
   QG.views.dashboard = {
     title: "Dashboard",
     group: "overview",
     render: async function (el) {
       el.innerHTML = U.loadingState("Loading dashboard…");
-      var summaryPayload = await api.get(api.endpoints.summary);
-      var historyPayload = await api.get(api.endpoints.analysis + "?limit=6");
-      var summary = api.data(summaryPayload);
-      var history = api.envelope(historyPayload);
+      try {
+        var results = await Promise.all([
+          api.get(api.endpoints.summary),
+          api.get(api.endpoints.analysis + "?limit=6"),
+          api.get(api.endpoints.health).catch(function () { return null; }),
+        ]);
+        var summaryPayload = results[0];
+        var historyPayload = results[1];
+        var healthPayload = results[2];
 
-      var components = (summary.components || []).length;
-      var rules = summary.rules || {};
-      var ml = summary.ml || {};
-      var quantum = summary.quantum || {};
-      var backends = quantum.backends || [];
-      var installed = backends.filter(function (b) {
-        return b.installed;
-      }).length;
-      var historyCounts = summary.history || {};
+        var summary = api.data(summaryPayload);
+        var history = api.envelope(historyPayload);
+        var health = healthPayload ? (healthPayload.status || healthPayload.data && healthPayload.data.status || "unknown") : "unknown";
 
-      el.innerHTML =
-        '<div class="page-head">' +
-        "<div>" +
-        '<h2 class="page-title">Security Overview</h2>' +
-        '<p class="page-sub">Real-time posture of the Q-Guardian runtime security pipeline: detection rules, model availability, quantum research backends and recent scan activity.</p>' +
-        "</div>" +
-        "</div>" +
+        var components = (summary.components || []).length;
+        var rules = summary.rules || {};
+        var ml = summary.ml || {};
+        var quantum = summary.quantum || {};
+        var backends = quantum.backends || [];
+        var installed = backends.filter(function (b) {
+          return b.installed;
+        }).length;
+        var historyCounts = summary.history || {};
 
-        '<div class="card">' +
-        '<div class="card-head"><div><div class="card-title">Quick Scan</div>' +
-        '<div class="card-sub">Submit a prompt through the full analysis pipeline (normalize, validate, features, rules, optional ML).</div></div></div>' +
-        '<form id="dashboardScanForm">' +
-        '<div class="field">' +
-        '<textarea id="dashboardScanInput" rows="3" maxlength="100000" placeholder="Paste a prompt to analyze…"></textarea>' +
-        "</div>" +
-        '<div class="row end"><button type="submit" class="btn primary" id="dashboardScanBtn">Analyze Prompt</button></div>' +
-        "</form>" +
-        "</div>" +
+        el.innerHTML =
+          '<div class="page-head">' +
+          "<div>" +
+          '<h2 class="page-title">Security Overview</h2>' +
+          '<p class="page-sub">Real-time posture of the Q-Guardian runtime security pipeline: detection rules, model availability, quantum research backends and recent scan activity.</p>' +
+          "</div>" +
+          "</div>" +
 
-        '<div class="grid grid-4">' +
-        U.statCard("Pipeline Components", components, "stages reported", "success") +
-        U.statCard("Detection Rules", rules.enabled != null ? rules.enabled + " / " + rules.total : rules.total, "enabled / total", "success") +
-        U.statCard("ML Models", ml.loaded_models + " / " + ml.total_models, (ml.active ? "active" : "no models loaded"), ml.active ? "success" : "warning") +
-        U.statCard("Quantum Backends", installed + " / " + backends.length, "installed / available", "info") +
-        "</div>" +
+          '<div class="card">' +
+          '<div class="card-head"><div><div class="card-title">Quick Scan</div>' +
+          '<div class="card-sub">Submit a prompt through the full analysis pipeline (normalize, validate, features, rules, optional ML).</div></div></div>' +
+          '<form id="dashboardScanForm">' +
+          '<div class="field">' +
+          '<textarea id="dashboardScanInput" rows="3" maxlength="100000" placeholder="Paste a prompt to analyze…"></textarea>' +
+          "</div>" +
+          '<div class="row end"><button type="submit" class="btn primary" id="dashboardScanBtn">Analyze Prompt</button></div>' +
+          "</form>" +
+          "</div>" +
 
-        '<div class="grid grid-2">' +
-        '<div class="card"><div class="card-head"><div class="card-title">Decision Distribution</div>' +
-        '<div class="card-sub">' + U.fmtNum(historyCounts.total || 0) + " scans in this session" + "</div></div>" +
-        renderDistribution(historyCounts) +
-        "</div>" +
-        '<div class="card"><div class="card-head"><div class="card-title">Pipeline Stages</div></div>' +
-        renderComponents(summary.components || []) +
-        "</div>" +
-        "</div>" +
+          '<div class="grid grid-4">' +
+          U.statCard("System Health", health === "healthy" ? "Healthy" : health === "degraded" ? "Degraded" : "Unknown", "from /health", health === "healthy" ? "success" : "warning") +
+          U.statCard("Detection Rules", rules.enabled != null ? rules.enabled + " / " + rules.total : rules.total, "enabled / total", "success") +
+          U.statCard("ML Models", ml.loaded_models + " / " + ml.total_models, (ml.active ? "active" : "no models loaded"), ml.active ? "success" : "warning") +
+          U.statCard("Quantum Backends", installed + " / " + backends.length, "installed / available", "info") +
+          "</div>" +
 
-        '<div class="section-title">Recent Scans</div>' +
-        '<div class="card" style="padding:0;box-shadow:none;border:none;background:transparent;">' +
-        renderRecent(history) +
-        "</div>";
+          '<div class="grid grid-2">' +
+          '<div class="card"><div class="card-head"><div class="card-title">Decision Distribution</div>' +
+          '<div class="card-sub">' + U.fmtNum(historyCounts.total || 0) + " scans in this session" + "</div></div>" +
+          renderDistribution(historyCounts) +
+          "</div>" +
+          '<div class="card"><div class="card-head"><div class="card-title">Pipeline Stages</div></div>' +
+          renderComponents(summary.components || []) +
+          "</div>" +
+          "</div>" +
 
-      var form = el.querySelector("#dashboardScanForm");
-      var input = el.querySelector("#dashboardScanInput");
-      var btn = el.querySelector("#dashboardScanBtn");
-      form.addEventListener("submit", async function (event) {
-        event.preventDefault();
-        var prompt = input.value.trim();
-        if (!prompt) {
-          U.toast("Enter a prompt to analyze.", "error");
-          return;
-        }
-        btn.disabled = true;
-        try {
-          var result = await api.post(api.endpoints.scan, { prompt: prompt });
-          var item = api.data(result);
-          U.toast("Analysis completed — " + item.decision);
-          window.location.hash = "#/detection/" + encodeURIComponent(item.analysis_id);
-        } catch (err) {
-          U.toast(err.message || "Scan failed.", "error");
-        } finally {
-          btn.disabled = false;
-        }
-      });
+          '<div class="section-title">Recent Scans</div>' +
+          '<div class="card" style="padding:0;box-shadow:none;border:none;background:transparent;">' +
+          renderRecent(history) +
+          "</div>";
+
+        var form = el.querySelector("#dashboardScanForm");
+        var input = el.querySelector("#dashboardScanInput");
+        var btn = el.querySelector("#dashboardScanBtn");
+        form.addEventListener("submit", async function (event) {
+          event.preventDefault();
+          var prompt = input.value.trim();
+          if (!prompt) {
+            U.toast("Enter a prompt to analyze.", "error");
+            return;
+          }
+          btn.disabled = true;
+          try {
+            var result = await api.post(api.endpoints.scan, { prompt: prompt });
+            var item = api.data(result);
+            U.toast("Analysis completed — " + item.decision);
+            window.location.hash = "#/detection/" + encodeURIComponent(item.analysis_id);
+          } catch (err) {
+            U.toast(err.message || "Scan failed.", "error");
+          } finally {
+            btn.disabled = false;
+          }
+        });
+      } catch (err) {
+        el.innerHTML = U.errorState(err.message || "Could not load dashboard.");
+      }
     },
   };
 })();

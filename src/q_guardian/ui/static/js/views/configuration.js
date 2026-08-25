@@ -1,6 +1,7 @@
 /* Q-Guardian Console — Configuration view.
  * Sanitized application configuration from /console/configuration.
  * Secrets and internal filesystem paths are redacted server-side.
+ * Shows authentication and security settings.
  */
 (function () {
   "use strict";
@@ -13,7 +14,7 @@
   var SECTION_TITLES = {
     application: "Application",
     database: "Database",
-    security: "Security",
+    security: "Authentication & Security",
     prompt_security: "Prompt Security",
     ml: "Machine Learning",
   };
@@ -60,6 +61,21 @@
           })
           .join("");
 
+        /* Show auth info from the client side */
+        var authInfo = "";
+        var storedAuth = api.getStoredAuth();
+        if (storedAuth) {
+          authInfo =
+            '<div class="card"><div class="card-head"><div class="card-title">Client Authentication</div></div>' +
+            U.keyValue([
+              { label: "Authenticated", html: U.statusBadge("enabled") },
+              { label: "Username", value: storedAuth.username || "—" },
+              { label: "Roles", value: (storedAuth.roles || []).join(", ") || "—" },
+              { label: "Token", value: storedAuth.access ? storedAuth.access.substring(0, 20) + "…" : "—" },
+            ]) +
+            "</div>";
+        }
+
         el.innerHTML =
           '<div class="page-head">' +
           "<div>" +
@@ -69,6 +85,7 @@
           '<button type="button" class="btn ghost" id="refreshConfig">Refresh</button>' +
           "</div>" +
           U.note("Redacted: secret keys, tokens, passwords, credentialed URLs and *_path / *_dir values.") +
+          authInfo +
           sections;
 
         el.querySelector("#refreshConfig").addEventListener("click", function () {

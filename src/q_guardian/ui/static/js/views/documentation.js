@@ -10,10 +10,19 @@
   var api = QG.api;
   var U = QG.ui;
 
-  var ENDPOINTS = [
+  var PUBLIC_ENDPOINTS = [
     ["GET", "/api/v1/health", "Liveness and database health"],
     ["GET", "/api/v1/system/version", "Version and environment"],
-    ["GET", "/api/v1/system/status", "Operational status"],
+    ["GET", "/api/v1/system/status", "Operational status (derived from DB health)"],
+  ];
+
+  var AUTH_ENDPOINTS = [
+    ["POST", "/api/v1/auth/login", "Authenticate and obtain JWT tokens"],
+    ["POST", "/api/v1/auth/refresh", "Refresh an expired access token"],
+    ["GET", "/api/v1/auth/me", "Current user from Bearer token"],
+  ];
+
+  var CONSOLE_ENDPOINTS = [
     ["GET", "/api/v1/console/summary", "Overview aggregates"],
     ["GET", "/api/v1/console/rules", "Detection rule catalog"],
     ["GET", "/api/v1/console/models", "ML model and quantum status"],
@@ -24,6 +33,17 @@
     ["GET", "/api/v1/analysis/{id}", "Single scan record"],
     ["POST", "/api/v1/analysis/scan", "Run the detection pipeline on a prompt"],
   ];
+
+  function endpointTable(endpoints, badgeClass) {
+    var rows = endpoints.map(function (ep) {
+      return [
+        U.badge(ep[0], ep[0] === "GET" ? "info" : "accent"),
+        { value: ep[1], cls: "cell-mono" },
+        ep[2],
+      ];
+    });
+    return U.table(["Method", "Path", "Purpose"], rows);
+  }
 
   QG.views.documentation = {
     title: "Documentation",
@@ -36,14 +56,6 @@
       } catch (err) {
         /* keep version null; the footer already reports connectivity */
       }
-
-      var rows = ENDPOINTS.map(function (endpoint) {
-        return [
-          U.badge(endpoint[0], endpoint[0] === "GET" ? "info" : "accent"),
-          { value: endpoint[1], cls: "cell-mono" },
-          endpoint[2],
-        ];
-      });
 
       el.innerHTML =
         '<div class="page-head">' +
@@ -75,8 +87,26 @@
         "</div>" +
         "</div>" +
 
-        '<div class="card"><div class="card-head"><div class="card-title">Console API</div></div>' +
-        U.table(["Method", "Path", "Purpose"], rows) +
+        '<div class="card"><div class="card-head"><div class="card-title">Authentication</div></div>' +
+        '<div class="prose">' +
+        "<p>The console supports <strong>JWT authentication</strong> via the <code>AUTH_USERS</code> environment variable. Users are provisioned as bcrypt password hashes:</p>" +
+        '<pre class="code-block">export AUTH_USERS=\'{"admin": {"password_hash": "&lt;bcrypt-hash&gt;", "roles": ["admin"]}}\'</pre>' +
+        "<p>Once authenticated, a Bearer token is attached to all API requests. Tokens expire after the configured <code>JWT_EXPIRATION_MINUTES</code> (default: 30 min). Refresh tokens extend the session without re-login.</p>" +
+        "<p>Unauthenticated console access works when no <code>AUTH_USERS</code> are configured — the login screen is skipped.</p>" +
+        "</div>" +
+        "</div>" +
+
+        '<div class="card"><div class="card-head"><div class="card-title">Public API Endpoints</div></div>' +
+        endpointTable(PUBLIC_ENDPOINTS) +
+        "</div>" +
+
+        '<div class="card"><div class="card-head"><div class="card-title">Authentication Endpoints</div></div>' +
+        endpointTable(AUTH_ENDPOINTS) +
+        "</div>" +
+
+        '<div class="card"><div class="card-head"><div class="card-title">Console API Endpoints</div></div>' +
+        '<div class="prose"><p>These endpoints require a valid Bearer token when <code>AUTH_USERS</code> is configured.</p></div>' +
+        endpointTable(CONSOLE_ENDPOINTS) +
         "</div>" +
 
         '<div class="card"><div class="card-head"><div class="card-title">Research Data</div></div>' +
