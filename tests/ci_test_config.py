@@ -1,148 +1,155 @@
-"""Test configuration and mocking for CI environment."""
+#!/usr/bin/env python
+"""CI test configuration loader.
+
+This module is automatically imported when running tests in CI environment.
+It sets up the test environment with mocked ML models and test authentication.
+"""
 
 from __future__ import annotations
 
+import json
 import os
 import sys
 from typing import TYPE_CHECKING
-from unittest.mock import MagicMock, patch
 
 if TYPE_CHECKING:
     from collections.abc import Generator
 
 import pytest
+from unittest.mock import patch, MagicMock
 
+if sys.platform == "win32":
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
-# Set test environment before any imports
-os.environ.setdefault("ENVIRONMENT", "testing")
-os.environ.setdefault("DEBUG", "true")
-os.environ.setdefault("MONGODB_URL", "mongodb://localhost:27017")
-os.environ.setdefault("MONGODB_DATABASE", "q_guardian_test")
-os.environ.setdefault("RATE_LIMIT_ENABLED", "false")
-os.environ.setdefault("LOG_LEVEL", "INFO")
-os.environ.setdefault("SECRET_KEY", "test-secret-key-for-ci-only")
-os.environ.setdefault("JWT_ALGORITHM", "HS256")
-os.environ.setdefault("JWT_EXPIRATION_MINUTES", "30")
-os.environ.setdefault("JWT_REFRESH_EXPIRATION_DAYS", "7")
-
-# Set AUTH_USERS for test authentication
-import json
-from q_guardian.security.auth import hash_password
-
-test_users = {
-    "tester": {"password_hash": hash_password("correct-password"), "roles": ["analyst"]},
-    "admin": {"password_hash": hash_password("correct-password"), "roles": ["admin"]},
-    "service": {"password_hash": hash_password("service-password"), "roles": ["service"]},
-}
-os.environ["AUTH_USERS"] = json.dumps(test_users)
-
-
-# Mock ML models to avoid loading heavy models in CI
-class MockMLModel:
-    """Mock ML model for CI testing."""
-
-    def __init__(self, *args, **kwargs):
-        self._model = None
-
-    def predict(self, X):
-        """Return mock predictions."""
-        import numpy as np
-        n = X.shape[0] if hasattr(X, 'shape') else len(X)
-        return np.zeros(n, dtype=int)
-
-    def predict_proba(self, X):
-        """Return mock probabilities."""
-        import numpy as np
-        n = X.shape[0] if hasattr(X, 'shape') else len(X)
-        return np.column_stack([np.ones(n) * 0.9, np.ones(n) * 0.1])
-
-    def fit(self, X, y):
-        return self
-
-    def decision_function(self, X):
-        import numpy as np
-        n = X.shape[0] if hasattr(X, 'shape') else len(X)
-        return np.zeros(n)
-
-
-# Apply ML model patches
-_patches = []
-
-# Patch IsolationForest
-_patches.append(patch("q_guardian.ml.models.anomaly.IsolationForest", MockMLModel))
-
-# Patch RandomForestClassifier
-_patches.append(patch("q_guardian.ml.models.classifier.RandomForestClassifier", MockMLModel))
-
-# Patch XGBClassifier
-_patches.append(patch("q_guardian.ml.models.classifier.XGBClassifier", MockMLModel))
-
-# Patch sklearn models
-_patches.append(patch("sklearn.ensemble.IsolationForest", MockMLModel))
-_patches.append(patch("sklearn.ensemble.RandomForestClassifier", MockMLModel))
-_patches.append(patch("sklearn.ensemble.RandomForestClassifier", MockMLModel))
-
-# Start all patches
-for p in _patches:
-    p.start()
-
-# Mock sentence-transformers if imported
-try:
-    from sentence_transformers import SentenceTransformer
-    original_sentence_transformer = SentenceTransformer
-
-    class MockSentenceTransformer:
-        def __init__(self, *args, **kwargs):
-            pass
-
-        def encode(self, texts, *args, **kwargs):
-            import numpy as np
-            if isinstance(texts, str):
-                texts = [texts]
-            return np.random.rand(len(texts), 384).astype(np.float32)
-
-    import sentence_transformers
-    sentence_transformers.SentenceTransformer = MockSentenceTransformer
-except ImportError:
+# Only run in CI environment
+if not os.getenv("CI") and not os.getenv("GITHUB_ACTIONS"):
+    # Not in CI, don't apply mocking
     pass
+else:
+    # In CI - apply mocking and test configuration
+    import asyncio
+    import json
+    import os
+    import sys
+    from unittest.mock import patch, MagicMock
 
+    # Add src to path for imports
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-# Ensure AUTH_USERS is set for tests
-import os
-import json
-from q_guardian.security.auth import hash_password
+    from q_guardian.security.auth import hash_password
 
-test_users = {
-    "tester": {"password_hash": "test_hash", "roles": ["analyst"]},
-    "admin": {"password_hash": "test_hash", "roles": ["admin"]},
-    "service": {"password_hash": "test_hash", "roles": ["service"]},
-}
-os.environ["AUTH_USERS"] = json.dumps(test_users)
-os.environ["ENVIRONMENT"] = "testing"
-os.environ["DEBUG"] = "true"
-os.environ["MONGODB_URL"] = "mongodb://localhost:27017"
-os.environ["MONGODB_DATABASE"] = "q_guardian_test"
-os.environ["RATE_LIMIT_ENABLED"] = "false"
-os.environ["LOG_LEVEL"] = "INFO"
-os.environ["SECRET_KEY"] = "test-secret-key-for-ci-only"
-os.environ["JWT_ALGORITHM"] = "HS256"
-os.environ.setdefault("SECRET_KEY", "test-secret-key-for-ci-only")
+    # Set test environment variables
+    os.environ.setdefault("CI", "true")
+    os.environ.setdefault("GITHUB_ACTIONS", "true")
+    os.environ.setdefault("ENVIRONMENT", "testing")
+    os.environ.setdefault("DEBUG", "true")
+    os.environ.setdefault("MONGODB_URL", "mongodb://localhost:27017")
+    os.environ.setdefault("MONGODB_DATABASE", "q_guardian_test")
+    os.environ.setdefault("RATE_LIMIT_ENABLED", "false")
+    os.environ.setdefault("LOG_LEVEL", "INFO")
+    os.environ.setdefault("SECRET_KEY", "test-secret-key-for-ci-only")
+    os.environ.setdefault("JWT_ALGORITHM", "HS256")
+    os.environ.setdefault("JWT_EXPIRATION_MINUTES", "30")
+    os.environ.setdefault("JWT_REFRESH_EXPIRATION_DAYS", "7")
 
+    # Set test AUTH_USERS
+    test_users = {
+        "tester": {"password_hash": "test_hash", "roles": ["analyst"]},
+        "admin": {"password_hash": "test_hash", "roles": ["admin"]},
+        "service": {"password_hash": "test_hash", "roles": ["service"]},
+    }
+    os.environ["AUTH_USERS"] = json.dumps(test_users)
+    os.environ["RATE_LIMIT_ENABLED"] = "false"
+    os.environ["LOG_LEVEL"] = "INFO"
+    os.environ["SECRET_KEY"] = "test-secret-key-for-ci-only"
+    os.environ["JWT_ALGORITHM"] = "HS256"
+    os.environ["JWT_EXPIRATION_MINUTES"] = "30"
+    os.environ["JWT_REFRESH_EXPIRATION_DAYS"] = "7"
+    os.environ["ENVIRONMENT"] = "testing"
+    os.environ["DEBUG"] = "true"
 
-# Monkey-patch hash_password for tests
-import q_guardian.security.auth as auth_module
-original_hash_password = auth_module.hash_password
+    # Mock ML models
+    class MockMLModel:
+        """Mock ML model for CI testing."""
 
+        def __init__(self, *args, **kwargs):
+            self._model = None
 
-def mock_hash_password(password: str) -> str:
-    return "test_hash"
+        def predict(self, x):
+            import numpy as np
+            n = x.shape[0] if hasattr(x, 'shape') else len(x)
+            return np.zeros(n, dtype=int)
 
+        def predict_proba(self, x):
+            import numpy as np
+            n = x.shape[0] if hasattr(x, 'shape') else len(x)
+            return np.column_stack([np.ones(n) * 0.9, np.ones(n) * 0.1])
 
-auth_module.hash_password = mock_hash_password
+        def fit(self, x, y):
+            return self
 
-# Reset auth singletons to pick up new AUTH_USERS
-import q_guardian.security.auth as auth_module
-if hasattr(auth_module, "reset_auth_singletons"):
-    auth_module.reset_auth_singletons()
+        def decision_function(self, x):
+            import numpy as np
+            n = x.shape[0] if hasattr(x, 'shape') else len(x)
+            return np.zeros(n)
 
-print("✓ CI test environment configured with mocked ML models and test auth")
+    # Apply patches
+    _patches = []
+
+    # Patch sklearn models
+    _patches.append(patch("q_guardian.ml.models.anomaly.IsolationForest", MockMLModel))
+    _patches.append(patch("q_guardian.ml.models.classifier.RandomForestClassifier", MockMLModel))
+    _patches.append(patch("q_guardian.ml.models.classifier.XGBClassifier", MockMLModel))
+    _patches.append(patch("sklearn.ensemble.IsolationForest", MockMLModel))
+    _patches.append(patch("sklearn.ensemble.RandomForestClassifier", MockMLModel))
+
+    for p in _patches:
+        p.start()
+
+    # Mock sentence-transformers
+    try:
+        import sentence_transformers
+
+        class MockSentenceTransformer:
+            def __init__(self, *args, **kwargs):
+                pass
+
+            def encode(self, texts, *args, **kwargs):
+                import numpy as np
+                if isinstance(texts, str):
+                    texts = [texts]
+                return np.random.rand(len(texts), 384).astype(np.float32)
+
+        sentence_transformers.SentenceTransformer = MockSentenceTransformer
+    except ImportError:
+        pass
+
+    # Set test AUTH_USERS
+    test_users = {
+        "tester": {"password_hash": "test_hash", "roles": ["analyst"]},
+        "admin": {"password_hash": "test_hash", "roles": ["admin"]},
+        "service": {"password_hash": "test_hash", "roles": ["service"]},
+    }
+    os.environ["AUTH_USERS"] = json.dumps(test_users)
+    os.environ["RATE_LIMIT_ENABLED"] = "false"
+    os.environ["LOG_LEVEL"] = "INFO"
+    os.environ["SECRET_KEY"] = "test-secret-key-for-ci-only"
+    os.environ["JWT_ALGORITHM"] = "HS256"
+    os.environ["JWT_EXPIRATION_MINUTES"] = "30"
+    os.environ["JWT_REFRESH_EXPIRATION_DAYS"] = "7"
+    os.environ["ENVIRONMENT"] = "testing"
+    os.environ["DEBUG"] = "true"
+
+    # Mock hash_password for tests
+    import q_guardian.security.auth as auth_module
+
+    def mock_hash_password(password: str) -> str:
+        return "test_hash"
+
+    auth_module.hash_password = mock_hash_password
+
+    # Reset auth singletons to pick up new AUTH_USERS
+    if hasattr(auth_module, "reset_auth_singletons"):
+        auth_module.reset_auth_singletons()
+
+    print("✓ CI test environment configured with mocked ML models and test auth")

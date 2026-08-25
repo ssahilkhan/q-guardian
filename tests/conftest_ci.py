@@ -12,13 +12,31 @@ import os
 import sys
 from typing import TYPE_CHECKING
 
+if TYPE_CHECKING:
+    from collections.abc import Generator
+
+import pytest
+from unittest.mock import patch, MagicMock
+
+if sys.platform == "win32":
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
+
 # Only run in CI environment
 if not os.getenv("CI") and not os.getenv("GITHUB_ACTIONS"):
     # Not in CI, don't apply mocking
     pass
 else:
     # In CI - apply mocking and test configuration
+    import asyncio
     import json
+    import os
+    import sys
+    from unittest.mock import patch, MagicMock
+
+    # Add src to path for imports
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
+
     from q_guardian.security.auth import hash_password
 
     # Set test environment variables
@@ -34,11 +52,8 @@ else:
     os.environ.setdefault("JWT_ALGORITHM", "HS256")
     os.environ.setdefault("JWT_EXPIRATION_MINUTES", "30")
     os.environ.setdefault("JWT_REFRESH_EXPIRATION_DAYS", "7")
-    os.environ.setdefault("ENVIRONMENT", "testing")
-    os.environ.setdefault("DEBUG", "true")
 
     # Set test AUTH_USERS
-    from q_guardian.security.auth import hash_password
     test_users = {
         "tester": {"password_hash": "test_hash", "roles": ["analyst"]},
         "admin": {"password_hash": "test_hash", "roles": ["admin"]},
@@ -50,9 +65,7 @@ else:
     os.environ["SECRET_KEY"] = "test-secret-key-for-ci-only"
     os.environ["JWT_ALGORITHM"] = "HS256"
     os.environ["JWT_EXPIRATION_MINUTES"] = "30"
-    os.environ["JWT_REFRESH_EXPIRATION_DAYS": "7"
-    os.environ["ENVIRONMENT"] = "testing"
-    os.environ["DEBUG"] = "true"
+    os.environ["JWT_REFRESH_EXPIRATION_DAYS"] = "7"
 
     # Mock ML models
     class MockMLModel:
@@ -61,36 +74,33 @@ else:
         def __init__(self, *args, **kwargs):
             self._model = None
 
-        def predict(self, X):
+        def predict(self, x):
             import numpy as np
-            n = X.shape[0] if hasattr(X, 'shape') else len(X)
+            n = x.shape[0] if hasattr(x, 'shape') else len(x)
             return np.zeros(n, dtype=int)
 
-        def predict_proba(self, X):
+        def predict_proba(self, x):
             import numpy as np
-            n = X.shape[0] if hasattr(X, 'shape') else len(X)
+            n = x.shape[0] if hasattr(x, 'shape') else len(x)
             return np.column_stack([np.ones(n) * 0.9, np.ones(n) * 0.1])
 
-        def fit(self, X, y):
+        def fit(self, x, y):
             return self
 
-        def decision_function(self, X):
+        def decision_function(self, x):
             import numpy as np
-            n = X.shape[0] if hasattr(X, 'shape') else len(X)
+            n = x.shape[0] if hasattr(x, 'shape') else len(x)
             return np.zeros(n)
 
     # Apply patches
-    import unittest.mock as mock
-
     _patches = []
 
     # Patch sklearn models
-    _patches.append(mock.patch("q_guardian.ml.models.anomaly.IsolationForest", MockMLModel))
-    _patches.append(mock.patch("q_guardian.ml.models.classifier.RandomForestClassifier", MockMLModel))
-    _patches.append(mock.patch("q_guardian.ml.models.classifier.XGBClassifier", MockMLModel))
-    _patches.append(mock.patch("sklearn.ensemble.IsolationForest", MockMLModel))
-    _patches.append(mock.patch("sklearn.ensemble.RandomForestClassifier", MockMLModel))
-    _patches.append(mock.patch("sklearn.ensemble.RandomForestClassifier", MockMLModel))
+    _patches.append(patch("q_guardian.ml.models.anomaly.IsolationForest", MockMLModel))
+    _patches.append(patch("q_guardian.ml.models.classifier.RandomForestClassifier", MockMLModel))
+    _patches.append(patch("q_guardian.ml.models.classifier.XGBClassifier", MockMLModel))
+    _patches.append(patch("sklearn.ensemble.IsolationForest", MockMLModel))
+    _patches.append(patch("sklearn.ensemble.RandomForestClassifier", MockMLModel))
 
     for p in _patches:
         p.start()
@@ -98,6 +108,7 @@ else:
     # Mock sentence-transformers
     try:
         import sentence_transformers
+
         class MockSentenceTransformer:
             def __init__(self, *args, **kwargs):
                 pass
@@ -113,8 +124,23 @@ else:
         pass
 
     # Set test AUTH_USERS
+    test_users = {
+        "tester": {"password_hash": "test_hash", "roles": ["analyst"]},
+        "admin": {"password_hash": "test_hash", "roles": ["admin"]},
+        "service": {"password_hash": "test_hash", "roles": ["service"]},
+    }
+    os.environ["AUTH_USERS"] = json.dumps(test_users)
+    os.environ["RATE_LIMIT_ENABLED"] = "false"
+    os.environ["LOG_LEVEL"] = "INFO"
+    os.environ["SECRET_KEY"] = "test-secret-key-for-ci-only"
+    os.environ["JWT_ALGORITHM"] = "HS256"
+    os.environ["JWT_EXPIRATION_MINUTES"] = "30"
+    os.environ["JWT_REFRESH_EXPIRATION_DAYS"] = "7"
+    os.environ["ENVIRONMENT"] = "testing"
+    os.environ["DEBUG"] = "true"
+
+    # Mock hash_password for tests
     import q_guardian.security.auth as auth_module
-    original_hash_password = auth_module.hash_password
 
     def mock_hash_password(password: str) -> str:
         return "test_hash"
