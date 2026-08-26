@@ -437,8 +437,12 @@ class LangGraphAdapter(Adapter):
         text_content = "\n".join(text_parts)
         return await self._scan_text(text_content, source)
 
-    async def _scan_text(self, text: str, source: str) -> dict[str, Any]:
-        """Scan text content using the existing security pipeline."""
+    async def _scan_text(self, text: str, source: str, **kwargs: Any) -> dict[str, Any]:
+        """Scan text content using the existing security pipeline.
+
+        Supports optional ``session_id`` and ``conversation_turns``
+        kwargs for multi-turn threat detection (P3-4).
+        """
         from q_guardian.security.decision import SecurityDecisionEngine
         from q_guardian.security.homoglyph import analyze_homoglyphs
         from q_guardian.security.models import PromptAnalysis
@@ -488,6 +492,17 @@ class LangGraphAdapter(Adapter):
         # Rule analysis
         engine = RuleEngine()
         findings = engine.analyze(normalized, features)
+
+        # Multi-turn analysis (P3-4)
+        conversation_turns = kwargs.get("conversation_turns")
+        if conversation_turns:
+            from q_guardian.security.config import MultiTurnConfig
+            from q_guardian.security.multiturn import MultiTurnDetector
+
+            mt_config = MultiTurnConfig(enabled=True)
+            mt_detector = MultiTurnDetector(config=mt_config)
+            mt_findings = mt_detector.analyze_session(list(conversation_turns))
+            findings.extend(mt_findings)
 
         # Build analysis
         analysis = PromptAnalysis(

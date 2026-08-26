@@ -14,6 +14,46 @@ from q_guardian.utils.datetime_utils import get_utc_now
 MAX_PROMPT_LENGTH = 100_000
 
 
+class ConversationTurnSchema(BaseSchema):
+    """A single turn in a conversation for multi-turn analysis (P3-4).
+
+    Provides the metadata needed for cross-turn threat detection
+    without requiring full conversation state management.
+    """
+
+    turn_id: str = Field(
+        ...,
+        min_length=1,
+        max_length=128,
+        description="Unique identifier for this turn",
+    )
+    session_id: str = Field(
+        ...,
+        min_length=1,
+        max_length=128,
+        description="Session identifier grouping related turns",
+    )
+    content: str = Field(
+        ...,
+        min_length=1,
+        max_length=MAX_PROMPT_LENGTH,
+        description="Turn content text",
+    )
+    role: str = Field(
+        default="user",
+        description="Turn role (user, assistant, system)",
+    )
+    timestamp: datetime | None = Field(
+        default=None,
+        description="Optional turn timestamp",
+    )
+    position: int = Field(
+        default=0,
+        ge=0,
+        description="Position index within the conversation",
+    )
+
+
 class ContextSegmentSchema(BaseSchema):
     """A piece of untrusted content accompanying a prompt scan.
 
@@ -57,6 +97,24 @@ class ScanRequestSchema(BaseSchema):
         description=(
             "Optional untrusted content segments (tool outputs, RAG context, "
             "documents) analyzed for indirect prompt injection"
+        ),
+    )
+    session_id: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=128,
+        description=(
+            "Optional session identifier for multi-turn threat detection "
+            "(P3-4). When supplied with conversation_turns, enables "
+            "cross-turn analysis."
+        ),
+    )
+    conversation_turns: list[ConversationTurnSchema] | None = Field(
+        default=None,
+        description=(
+            "Optional ordered conversation history for multi-turn threat "
+            "detection (P3-4). Each entry represents one turn in the "
+            "conversation. When supplied, enables cross-turn analysis."
         ),
     )
 

@@ -14,6 +14,7 @@ from q_guardian.output.monitor import build_output_context, resolve_output_confi
 from q_guardian.plugins.base import Plugin
 from q_guardian.security.config import (
     IndirectInjectionConfig,
+    MultiTurnConfig,
     OutputMonitoringConfig,
     PromptSecurityConfig,
 )
@@ -21,6 +22,7 @@ from q_guardian.security.decision import SecurityDecisionEngine
 from q_guardian.security.enums import PromptDecision
 from q_guardian.security.indirect import ContentSegment, build_untrusted_context
 from q_guardian.security.models import PromptAnalysis
+from q_guardian.security.multiturn import ConversationTurn, MultiTurnDetector
 from q_guardian.security.pipeline import (
     PromptFeatureExtractor,
     PromptNormalizer,
@@ -68,9 +70,13 @@ class ThreatAnalysisPlugin(Plugin):
         if isinstance(rule_config, PromptSecurityConfig):
             self._indirect_config: IndirectInjectionConfig = rule_config.indirect
             self._output_config: OutputMonitoringConfig = resolve_output_config(rule_config.output)
+            self._multiturn_config: MultiTurnConfig = rule_config.multiturn
         else:
             self._indirect_config = IndirectInjectionConfig()
             self._output_config = OutputMonitoringConfig()
+            self._multiturn_config = MultiTurnConfig()
+
+        self._multiturn_detector = MultiTurnDetector(self._multiturn_config)
 
         # ML components
         self._model_manager = ModelManager()
@@ -85,6 +91,7 @@ class ThreatAnalysisPlugin(Plugin):
         self._ml_findings_count: int = 0
         self._output_scan_count: int = 0
         self._output_block_count: int = 0
+        self._multiturn_scan_count: int = 0
 
     @property
     def name(self) -> str:
@@ -168,6 +175,9 @@ class ThreatAnalysisPlugin(Plugin):
         self,
         prompt: str,
         context_segments: list[ContentSegment] | None = None,
+        *,
+        session_id: str | None = None,
+        conversation_turns: list[ConversationTurn] | None = None,
         **kwargs: Any,
     ) -> dict[str, Any]:
         """Scan a prompt through the full unified pipeline.
@@ -177,8 +187,9 @@ class ThreatAnalysisPlugin(Plugin):
         2. Attach optional untrusted context segments (indirect injection)
         3. Rule analysis
         4. ML inference (if enabled and detectors registered)
-        5. Merge findings
-        6. Decision
+        5. Multi-turn analysis (if conversation turns supplied)
+        6. Merge findings
+        7. Decision
 
         Args:
             prompt: The prompt text to scan.
@@ -186,6 +197,10 @@ class ThreatAnalysisPlugin(Plugin):
                 outputs, RAG context, documents, ...) analyzed for indirect
                 injection. When omitted, behavior is identical to direct
                 prompt analysis.
+            session_id: Optional session identifier for multi-turn tracking.
+            conversation_turns: Optional ordered conversation history for
+                multi-turn threat detection (P3-4). When omitted, behaviour
+                is identical to single-turn analysis.
             **kwargs: Reserved for future extensions.
 
         Returns:
@@ -236,7 +251,22 @@ class ThreatAnalysisPlugin(Plugin):
             except Exception:
                 logger.error("ml_inference_error", exc_info=True)
 
-        # Step 6: Decision
+        # Step 6: Multi-turn analysis (P3-4)
+        multiturn_findings_count = 0
+        if conversation_turns and self._multiturn_config.enabled:
+            self._multiturn_scan_count += 1
+            mt_findings = self._multiturn_detector.analyze_session(list(conversation_turns))
+            analysis.findings.extend(mt_findings)
+            multiturn_findings_count = len(mt_findings)
+            if mt_findings:
+                analysis.metadata["multiturn_findings_count"] = multiturn_findings_count
+                analysis.metadata["multiturn_rules_triggered"] = sorted(
+                    {f.rule_id for f in mt_findings}
+                )
+                if session_id:
+                    analysis.metadata["session_id"] = session_id
+
+        # Step 7: Decision
         self._decision_engine.decide(analysis)
 
         # Record timing
@@ -244,6 +274,7 @@ class ThreatAnalysisPlugin(Plugin):
         analysis.processing_time_ms = round(elapsed_ms, 2)
         analysis.metadata["ml_findings_count"] = ml_findings_count
         analysis.metadata["rule_findings_count"] = len(rule_findings)
+        analysis.metadata["multiturn_findings_count"] = multiturn_findings_count
         if indirect_summary:
             analysis.metadata["indirect_summary"] = indirect_summary
             analysis.metadata["indirect_findings_count"] = sum(
@@ -553,6 +584,8 @@ class ThreatAnalysisPlugin(Plugin):
             "ml_enabled": self._ml_config.enabled,
             "output_scan_count": self._output_scan_count,
             "output_block_count": self._output_block_count,
+            "multiturn_scan_count": self._multiturn_scan_count,
+            "multiturn_enabled": self._multiturn_config.enabled,
         }
 
     def configuration(self) -> dict[str, Any]:

@@ -821,6 +821,8 @@ class CrewAIAdapter(Adapter):
         context_segments: list[ContentSegment] | None = None,
         *,
         output_monitoring: bool | None = None,
+        session_id: str | None = None,
+        conversation_turns: list[Any] | None = None,
     ) -> dict[str, Any]:
         """Scan text content using the existing security pipeline.
 
@@ -831,6 +833,8 @@ class CrewAIAdapter(Adapter):
         them in addition to the direct rules. With output monitoring
         enabled (P3-3), the direction-gated ``om-*`` rules run instead of
         the ``ii-*`` rules and the output is analyzed for leakage.
+        When conversation turns are supplied (P3-4), multi-turn threat
+        detection runs on the conversation history.
 
         Args:
             text: The text content to scan.
@@ -842,6 +846,9 @@ class CrewAIAdapter(Adapter):
                 scan; defaults to the adapter-level flag, which itself
                 applies only to output-source labels (inputs keep
                 prompt-direction behavior).
+            session_id: Optional session identifier for multi-turn tracking.
+            conversation_turns: Optional ordered conversation history for
+                multi-turn threat detection (P3-4).
 
         Returns:
             Dictionary with decision, risk_score, findings, source, and
@@ -897,6 +904,17 @@ class CrewAIAdapter(Adapter):
 
         engine = RuleEngine()
         findings = engine.analyze(normalized, features)
+
+        # Multi-turn analysis (P3-4)
+        multiturn_findings: list[Any] = []
+        if conversation_turns:
+            from q_guardian.security.config import MultiTurnConfig
+            from q_guardian.security.multiturn import MultiTurnDetector
+
+            mt_config = MultiTurnConfig(enabled=True)
+            mt_detector = MultiTurnDetector(config=mt_config)
+            multiturn_findings = mt_detector.analyze_session(list(conversation_turns))
+            findings.extend(multiturn_findings)
 
         analysis = PromptAnalysis(
             original_prompt=text,

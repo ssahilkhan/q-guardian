@@ -411,9 +411,16 @@ class Guardian:
         implementing 'prompt_scanner', executes 'after_prompt' hook,
         and publishes events.
 
+        Supports optional ``session_id`` and ``conversation_turns``
+        kwargs for multi-turn threat detection (P3-4).  When supplied,
+        conversation history is forwarded to the scanning plugin for
+        cross-turn analysis.
+
         Args:
             prompt: The prompt text to scan.
-            **kwargs: Additional context for scanning.
+            **kwargs: Additional context for scanning.  Recognised
+                keys: ``session_id`` (str), ``conversation_turns``
+                (list[ConversationTurn]).
 
         Returns:
             Aggregated scan results from all scanners.

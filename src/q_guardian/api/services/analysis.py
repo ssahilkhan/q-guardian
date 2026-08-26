@@ -31,6 +31,7 @@ from q_guardian.security.enums import PromptDecision
 from q_guardian.security.indirect import ContentSegment
 
 if TYPE_CHECKING:
+    from q_guardian.security.multiturn import ConversationTurn
     from q_guardian.security.pipeline import RuleEngine
 
 # Quantum backends shipped with the framework. Names match the `name`
@@ -135,6 +136,44 @@ def _coerce_content_segments(raw_segments: list[Any] | None) -> list[ContentSegm
     ]
 
 
+def _coerce_conversation_turns(
+    raw_turns: list[Any] | None,
+) -> list[ConversationTurn] | None:
+    """Coerce API-supplied turns into ``ConversationTurn`` dataclasses."""
+    if not raw_turns:
+        return None
+    from q_guardian.security.multiturn import ConversationTurn as MultiturnTurn
+
+    result: list[MultiturnTurn] = []
+    for turn in raw_turns:
+        if isinstance(turn, MultiturnTurn):
+            result.append(turn)
+        elif hasattr(turn, "model_dump"):
+            data = turn.model_dump()
+            result.append(
+                MultiturnTurn(
+                    turn_id=str(data.get("turn_id", "")),
+                    session_id=str(data.get("session_id", "")),
+                    content=str(data.get("content", "")),
+                    role=str(data.get("role", "user")),
+                    timestamp=data.get("timestamp"),
+                    position=int(data.get("position", 0)),
+                )
+            )
+        elif isinstance(turn, dict):
+            result.append(
+                MultiturnTurn(
+                    turn_id=str(turn.get("turn_id", "")),
+                    session_id=str(turn.get("session_id", "")),
+                    content=str(turn.get("content", "")),
+                    role=str(turn.get("role", "user")),
+                    timestamp=turn.get("timestamp"),
+                    position=int(turn.get("position", 0)),
+                )
+            )
+    return result if result else None
+
+
 class AnalysisService:
     """Facade exposing the existing pipeline to the API layer."""
 
@@ -172,6 +211,8 @@ class AnalysisService:
         self,
         prompt: str,
         context_segments: list[Any] | None = None,
+        session_id: str | None = None,
+        conversation_turns: list[Any] | None = None,
     ) -> dict[str, Any]:
         """Run the existing scan pipeline on a prompt and persist the result.
 
@@ -180,12 +221,21 @@ class AnalysisService:
             context_segments: Optional untrusted content segments. Accepts
                 ``ContentSegment`` models or JSON-safe dictionaries /
                 schema objects; anything else is coerced via pydantic.
+            session_id: Optional session identifier for multi-turn detection.
+            conversation_turns: Optional ordered conversation history for
+                multi-turn threat detection (P3-4).
 
         Returns:
             The serialized analysis payload (also persisted to history).
         """
         segments = _coerce_content_segments(context_segments)
-        result = await self._plugin.scan_prompt(prompt, context_segments=segments)
+        turns = _coerce_conversation_turns(conversation_turns)
+        result = await self._plugin.scan_prompt(
+            prompt,
+            context_segments=segments,
+            session_id=session_id,
+            conversation_turns=turns,
+        )
         await self._history.add(result)
         return result
 

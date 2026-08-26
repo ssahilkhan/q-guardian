@@ -31,6 +31,7 @@ class PromptCategory(StrEnum):
     ENCODING = "encoding"
     INDIRECT_INJECTION = "indirect_injection"
     OUTPUT_MONITORING = "output_monitoring"
+    MULTI_TURN = "multi_turn"
     UNKNOWN = "unknown"
 
 

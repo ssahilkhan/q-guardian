@@ -127,6 +127,42 @@ class OutputMonitoringConfig(BaseModel):
     )
 
 
+class MultiTurnConfig(BaseModel):
+    """Configuration for multi-turn / session-level threat detection (P3-4).
+
+    Controls analysis of conversation history across multiple turns to
+    detect split injection, progressive escalation, and other
+    cross-turn attack patterns.  The ``mt-*`` rules are session-gated:
+    they never fire on ordinary single-turn prompt scans.
+    """
+
+    enabled: bool = Field(
+        default=False,
+        description="Enable multi-turn threat detection (opt-in per session)",
+    )
+    window_size: int = Field(
+        default=20,
+        ge=2,
+        le=200,
+        description="Maximum number of most-recent turns analysed per scan",
+    )
+    max_total_length: int = Field(
+        default=200_000,
+        ge=1_000,
+        description="Maximum total character count across the turn window",
+    )
+    confidence_threshold: float = Field(
+        default=0.5,
+        ge=0.0,
+        le=1.0,
+        description="Minimum confidence for a finding to be emitted",
+    )
+    disabled_rules: list[str] = Field(
+        default_factory=list,
+        description="mt-* rule IDs excluded from multi-turn detection",
+    )
+
+
 class PromptSecurityConfig(BaseModel):
     """Configuration for the Prompt Security Engine.
 
@@ -199,6 +235,12 @@ class PromptSecurityConfig(BaseModel):
     output: OutputMonitoringConfig = Field(
         default_factory=OutputMonitoringConfig,
         description="Agent output monitoring configuration",
+    )
+
+    # Multi-turn detection (P3-4)
+    multiturn: MultiTurnConfig = Field(
+        default_factory=MultiTurnConfig,
+        description="Multi-turn / session-level threat detection configuration",
     )
 
     # Future ML configuration placeholders
