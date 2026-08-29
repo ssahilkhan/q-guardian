@@ -12,10 +12,14 @@ from __future__ import annotations
 
 import asyncio
 import importlib.util
+import uuid
 from collections import deque
 from functools import lru_cache
 from typing import TYPE_CHECKING, Any
 
+import structlog
+
+from q_guardian.api.services.live import get_live_hub
 from q_guardian.api.services.research import research_snapshot
 from q_guardian.config.settings import SecuritySettings, get_settings
 from q_guardian.ml.config import MLConfig
@@ -26,9 +30,12 @@ from q_guardian.quantum.fusion.strategies import (
 )
 from q_guardian.security.config import PromptSecurityConfig
 from q_guardian.security.enums import PromptDecision
+from q_guardian.utils.datetime_utils import get_current_timestamp
 
 if TYPE_CHECKING:
     from q_guardian.security.pipeline import RuleEngine
+
+logger = structlog.get_logger("api.analysis")
 
 MAX_HISTORY = 200
 
@@ -124,6 +131,61 @@ def _redact_url(url: str) -> str:
     return f"{scheme}://{rest}"
 
 
+# Pipeline stages that are always executed on a valid scan, in order.
+_ACTIVE_STAGES: tuple[str, ...] = (
+    "normalize",
+    "validate",
+    "features",
+    "rules",
+    "decision",
+)
+
+
+def _started_event(scan_id: str) -> dict[str, Any]:
+    """Return the real ``scan.started`` lifecycle event."""
+    return {
+        "type": "scan.started",
+        "scan_id": scan_id,
+        "timestamp": get_current_timestamp(),
+    }
+
+
+def _failed_event(scan_id: str, exc: Exception) -> dict[str, Any]:
+    """Return a sanitized ``scan.failed`` event (no stack / secrets)."""
+    return {
+        "type": "scan.failed",
+        "scan_id": scan_id,
+        "timestamp": get_current_timestamp(),
+        "error": f"{type(exc).__name__}",
+        "message": "The scan pipeline raised an unhandled error.",
+    }
+
+
+def _completed_event(result: dict[str, Any], *, ml_active: bool) -> dict[str, Any]:
+    """Return the real ``scan.completed`` event derived from the result.
+
+    Stage statuses reflect what the backend genuinely executed: the
+    rule-based stages are marked completed because they always run for a
+    valid scan, while ML is reported as inactive unless detectors or
+    classifiers are actually registered (matching ``/console/models``).
+    """
+    findings = result.get("findings") or []
+    ml_stages = [{"id": stage, "status": "completed"} for stage in _ACTIVE_STAGES]
+    ml_stages.append({"id": "ml", "status": "active" if ml_active else "inactive"})
+    return {
+        "type": "scan.completed",
+        "scan_id": result.get("analysis_id", ""),
+        "timestamp": get_current_timestamp(),
+        "decision": str(result.get("decision", "unknown")),
+        "risk_score": float(result.get("risk_score", 0.0)),
+        "is_valid": bool(result.get("is_valid", False)),
+        "processing_time_ms": float(result.get("processing_time_ms", 0.0)),
+        "findings_count": len(findings),
+        "stages": ml_stages,
+        "result": result,
+    }
+
+
 class AnalysisService:
     """Facade exposing the existing pipeline to the API layer."""
 
@@ -143,10 +205,28 @@ class AnalysisService:
         return self._plugin.rule_engine
 
     async def scan(self, prompt: str) -> dict[str, Any]:
-        """Run the existing scan pipeline on a prompt and record the result."""
-        result = await self._plugin.scan_prompt(prompt)
+        """Run the existing scan pipeline on a prompt and record the result.
+
+        The scan is synchronous, so a small, genuine event stream is
+        published to the live WebSocket hub around the real execution:
+        ``scan.started`` immediately, then ``scan.completed`` with the
+        real result payload, or ``scan.failed`` if the pipeline raises.
+        """
+        scan_id = str(uuid.uuid4())
+        hub = get_live_hub()
+        await hub.publish(scan_id, _started_event(scan_id))
+
+        try:
+            result = await self._plugin.scan_prompt(prompt)
+        except Exception as exc:
+            logger.error("scan_failed", scan_id=scan_id, exc_info=True)
+            await hub.publish(scan_id, _failed_event(scan_id, exc))
+            raise
+
+        result["analysis_id"] = scan_id
         async with self._lock:
             self._history.appendleft(result)
+        await hub.publish(scan_id, _completed_event(result, ml_active=self._ml_active))
         return result
 
     def history(self) -> list[dict[str, Any]]:

@@ -6,8 +6,8 @@
   <title>Q-Guardian Console</title>
   <meta name="description" content="Q-Guardian web console — runtime security control plane for the hybrid quantum-classical prompt analysis pipeline." />
   <meta name="color-scheme" content="light" />
-  <link rel="icon" type="image/svg+xml" href="favicon.svg?v=2" />
-  <link rel="stylesheet" href="css/console.css?v=2" />
+  <link rel="icon" type="image/svg+xml" href="favicon.svg?v=3" />
+  <link rel="stylesheet" href="css/console.css?v=3" />
 </head>
 <body>
   <div class="app-shell">
@@ -27,7 +27,12 @@
 
     <div class="workspace">
       <header class="topbar">
-        <nav id="breadcrumbs" class="breadcrumbs" aria-label="Breadcrumb"></nav>
+        <div class="topbar-left">
+          <button id="navToggle" class="nav-toggle" type="button" aria-label="Toggle navigation menu" aria-expanded="false" aria-controls="sideNav">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+          </button>
+          <nav id="breadcrumbs" class="breadcrumbs" aria-label="Breadcrumb"></nav>
+        </div>
         <div class="sys-status">
           <span class="pulse" id="statusDot" aria-hidden="true"></span>
           <span id="statusText">checking…</span>
@@ -43,23 +48,27 @@
     </div>
   </div>
 
-  <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+  <div id="navBackdrop" class="nav-backdrop" hidden></div>
 
-  <script src="js/api.js?v=2"></script>
-  <script src="js/ui.js?v=2"></script>
-  <script src="js/views/dashboard.js?v=2"></script>
-  <script src="js/views/scanner.js?v=2"></script>
-  <script src="js/views/detection.js?v=2"></script>
-  <script src="js/views/pipeline.js?v=2"></script>
-  <script src="js/views/rules.js?v=2"></script>
-  <script src="js/views/models.js?v=2"></script>
-  <script src="js/views/quantum.js?v=2"></script>
-  <script src="js/views/training.js?v=2"></script>
-  <script src="js/views/evaluation.js?v=2"></script>
-  <script src="js/views/benchmarks.js?v=2"></script>
-  <script src="js/views/audit.js?v=2"></script>
-  <script src="js/views/configuration.js?v=2"></script>
-  <script src="js/views/documentation.js?v=2"></script>
-  <script src="js/console.js?v=2"></script>
+  <div id="toastRegion" class="toast-region" aria-live="polite" aria-atomic="false"></div>
+
+  <script src="js/api.js?v=3"></script>
+  <script src="js/live.js?v=3"></script>
+  <script src="js/ui.js?v=3"></script>
+  <script src="js/livePanel.js?v=3"></script>
+  <script src="js/views/dashboard.js?v=3"></script>
+  <script src="js/views/scanner.js?v=3"></script>
+  <script src="js/views/detection.js?v=3"></script>
+  <script src="js/views/pipeline.js?v=3"></script>
+  <script src="js/views/rules.js?v=3"></script>
+  <script src="js/views/models.js?v=3"></script>
+  <script src="js/views/quantum.js?v=3"></script>
+  <script src="js/views/training.js?v=3"></script>
+  <script src="js/views/evaluation.js?v=3"></script>
+  <script src="js/views/benchmarks.js?v=3"></script>
+  <script src="js/views/audit.js?v=3"></script>
+  <script src="js/views/configuration.js?v=3"></script>
+  <script src="js/views/documentation.js?v=3"></script>
+  <script src="js/console.js?v=3"></script>
 </body>
 </html>

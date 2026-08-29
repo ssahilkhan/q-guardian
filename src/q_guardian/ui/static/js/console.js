@@ -77,6 +77,32 @@
   var appView = null;
   var currentRoute = null;
 
+  function closeMobileNav() {
+    var shell = document.querySelector(".app-shell");
+    var toggle = document.getElementById("navToggle");
+    if (shell) shell.classList.remove("nav-open");
+    if (toggle) toggle.setAttribute("aria-expanded", "false");
+  }
+
+  function setupMobileNav() {
+    var toggle = document.getElementById("navToggle");
+    if (!toggle) return;
+    toggle.addEventListener("click", function () {
+      var shell = document.querySelector(".app-shell");
+      var open = shell ? shell.classList.toggle("nav-open") : false;
+      toggle.setAttribute("aria-expanded", open ? "true" : "false");
+    });
+    var backdrop = document.getElementById("navBackdrop");
+    if (backdrop) backdrop.addEventListener("click", closeMobileNav);
+    var nav = document.getElementById("sideNav");
+    if (nav) nav.addEventListener("click", function (event) {
+      if (event.target && event.target.closest && event.target.closest("a")) {
+        closeMobileNav();
+      }
+    });
+    window.addEventListener("hashchange", closeMobileNav);
+  }
+
   function findNavItem(id) {
     for (var i = 0; i < NAV.length; i += 1) {
       for (var j = 0; j < NAV[i].items.length; j += 1) {
@@ -175,6 +201,7 @@
   }
 
   function render() {
+    if (QG.live) QG.live.close();
     var route = parseHash(window.location.hash);
     var resolved = resolveRoute(route);
 
@@ -237,6 +264,7 @@
 
   function boot() {
     window.addEventListener("hashchange", render);
+    setupMobileNav();
     render();
     loadVersion();
     refreshStatus();

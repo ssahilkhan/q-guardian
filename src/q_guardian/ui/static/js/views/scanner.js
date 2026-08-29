@@ -9,6 +9,7 @@
   QG.views = QG.views || {};
   var api = QG.api;
   var U = QG.ui;
+  var livePanel = QG.livePanel;
 
   function renderResult(el, item) {
     var payload = item.payload || {};
@@ -74,24 +75,45 @@
       var input = el.querySelector("#scanInput");
       var result = el.querySelector("#scanResult");
       var errorBox = el.querySelector("#scanError");
+      var dispose = null;
 
       form.addEventListener("submit", async function (event) {
         event.preventDefault();
         var prompt = input.value.trim();
         errorBox.innerHTML = "";
+        if (dispose) {
+          dispose();
+          dispose = null;
+        }
         result.innerHTML = "";
         if (!prompt) {
           errorBox.innerHTML = U.errorState("Enter a prompt to analyze.");
           return;
         }
+        U.toast("Scan started — running the detection pipeline…", "info");
         result.innerHTML = U.loadingState("Running the detection pipeline…");
         try {
           var payload = await api.post(api.endpoints.scan, { prompt: prompt });
           var item = api.data(payload);
-          renderResult(result, item);
+          dispose = livePanel.attach(result, item.analysis_id, {
+            onResult: function (host) {
+              renderResult(host, item);
+              U.toast(
+                "Scan completed — " + item.decision + " · risk " +
+                  Math.round(Number(item.risk_score || 0) * 100) + "%",
+                "success"
+              );
+            },
+            onDone: function (ok) {
+              if (!ok) {
+                U.toast("Scan failed during analysis.", "error");
+              }
+            },
+          });
         } catch (err) {
           result.innerHTML = "";
           errorBox.innerHTML = U.errorState(err.message || "Scan failed.");
+          U.toast(err.message || "Scan failed.", "error");
         }
       });
     },

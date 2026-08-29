@@ -189,3 +189,63 @@ following are updated: this page, `docs/04_Configuration_File_Documentation.md`,
   existing network-level controls until this lands.
 - The console reports the framework's built-in model/quantum inventory but
   does not train models or retrain anything.
+
+## 10. Live Scan WebSocket Dashboard (implementation record)
+
+The console got a real-time scan-progress surface driven by a WebSocket.
+
+### Backend
+
+- **`LiveScanHub`** (`src/q_guardian/api/services/live.py`) is a small
+  fan-out hub (a shared `get_live_hub()` singleton) that forwards genuine
+  lifecycle events to subscribers and retains a bounded set (≤ 500) of
+  completed snapshots keyed by scan id. Payloads are made JSON-safe
+  (datetimes / `StrEnum` → strings) so they serialize to the browser.
+- **`AnalysisService.scan()`** now generates a `scan_id` (uuid4), overwrites
+  `result["analysis_id"]` with it, and publishes real events around the
+  *actual* execution: `scan.started` before, then `scan.completed` (with the
+  real result payload and per-stage statuses grounded in what ran; ML is
+  `active`/`inactive` based on whether detectors/classifiers are registered)
+  or `scan.failed` (sanitized, no stack/secrets).
+- **WebSocket endpoint** `GET /api/v1/ws/scans/{scan_id}`
+  (`src/q_guardian/api/v1/endpoints/live.py`) accepts a subscription and
+  answers two control messages: `__ping__` → `{"type":"pong"}` (keep-alive)
+  and `__replay__` → the retained completed snapshot. It is unauthenticated,
+  matching the console surface (see §5 and §9).
+
+Because scans are synchronous, the browser typically connects *after*
+submission and uses `__replay__` to fetch the retained result; live
+`scan.started` / `scan.completed` / `scan.failed` events still fan out to
+subscribers while the socket is open.
+
+### Frontend
+
+- **`js/live.js`** — `QG.live`, a small WebSocket client on the same origin
+  exposing connection state (`CONNECTING / CONNECTED / RECONNECTING /
+  DISCONNECTED`), bounded reconnect with backoff, a ping keep-alive, and
+  event/state listeners. No fake events — only real backend messages.
+- **`js/livePanel.js`** — `QG.livePanel`, renders the "Live Scan" card
+  (connection badge, pipeline stage statuses, error/result slots) and wires
+  the snapshot/events into the calling view.
+- **`js/ui.js`** — the toast system was upgraded from a single auto-dismiss
+  notice into a toast **region** with severity (`success / warning / error /
+  info`), a manual dismiss button, caps + auto-prune to avoid spam,
+  `aria-live="polite"` announcements, and mobile-safe styling. The existing
+  `U.toast(message, severity, duration)` call signature is preserved.
+- **`views/scanner.js`** and **`views/dashboard.js`** run a scan through the
+  existing `POST /api/v1/analysis/scan`, attach the Live Scan panel for the
+  returned `analysis_id`, render the result summary, and raise a toast on
+  start / completion / failure.
+- **Responsive / mobile nav** — added breakpoints at `768px` (sidebar becomes
+  a slide-in drawer with a hamburger toggle + backdrop) and `480px` (compact
+  paddings, stacked grids, full-width toasts/buttons). The existing `1024px`
+  horizontal nav layout is preserved above 768px.
+
+### Tests
+
+- `tests/integration/test_console_api.py` gained `TestLiveScanEvents`
+  (service publishes real `scan.started` / `scan.completed`; ML status is
+  truthful) and `TestLiveWebSocket` (replay of a real completed event after a
+  scan, plus ping→pong and clean close). Suite baseline was 24 passing; it is
+  now 28 passing. `ruff` and `mypy` pass for the new/changed backend modules.
+

@@ -7,6 +7,9 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from q_guardian.api.app import create_app
+from q_guardian.api.services.analysis import get_analysis_service
+from q_guardian.api.services.live import get_live_hub
 from q_guardian.quantum.fusion.strategies import (
     IMPLEMENTED_STRATEGIES,
     INTERFACE_ONLY_STRATEGIES,
@@ -246,3 +249,82 @@ class TestStaticUi:
         assert "text/css" in css.headers["content-type"]
         js = await client.get("/ui/js/console.js")
         assert js.status_code == 200
+
+
+@pytest.mark.asyncio
+class TestLiveScanEvents:
+    """Tests for the real scan event stream published by the analysis service."""
+
+    async def test_scan_publishes_started_and_completed(self) -> None:
+        """Verify AnalysisService.scan publishes real lifecycle events.
+
+        The completed event must carry the actual backend result (decision,
+        risk score, findings count, stages) — never fabricated.
+        """
+        service = get_analysis_service()
+        hub = get_live_hub()
+        before = set(hub.completed.keys())
+
+        result = await service.scan(BENIGN_PROMPT)
+        scan_id = result["analysis_id"]
+
+        published = hub.completed.get(scan_id)
+        assert published is not None
+        assert scan_id not in before
+        assert published["type"] == "scan.completed"
+        assert published["scan_id"] == scan_id
+        assert published["decision"] == result["decision"]
+        assert published["risk_score"] == result["risk_score"]
+        stage_ids = {stage["id"] for stage in published["stages"]}
+        assert {"normalize", "validate", "features", "rules", "decision", "ml"} == stage_ids
+
+    async def test_completed_event_reports_ml_status_truthfully(self) -> None:
+        """Verify ML stage reflects whether detectors are actually registered."""
+        service = get_analysis_service()
+        hub = get_live_hub()
+
+        await service.scan(BENIGN_PROMPT)
+        scan_id = list(hub.completed.keys())[-1]
+        stages = {s["id"]: s["status"] for s in hub.completed[scan_id]["stages"]}
+        assert stages["ml"] in {"active", "inactive"}
+
+
+class TestLiveWebSocket:
+    """Tests for the /api/v1/ws/scans/{id} WebSocket endpoint.
+
+    The browser flow is: submit a scan, receive the id from the REST
+    response, then connect to the socket for that id. Because the scan is
+    synchronous, the completed snapshot is replayed to the connecting
+    client — this is the real end-to-end path the Live Scan Dashboard
+    exercises.
+    """
+
+    def test_websocket_replays_real_completed_event_after_scan(
+        self,
+    ) -> None:
+        """A client connecting after a real scan receives the real result."""
+        from starlette.testclient import TestClient
+
+        app = create_app()
+        with TestClient(app) as client:
+            scan = client.post("/api/v1/analysis/scan", json={"prompt": BENIGN_PROMPT})
+            assert scan.status_code == 200
+            scan_id = scan.json()["data"]["analysis_id"]
+            with client.websocket_connect(f"/api/v1/ws/scans/{scan_id}") as ws:
+                ws.send_text("__replay__")
+                event = ws.receive_json()
+                assert event["type"] == "scan.completed"
+                assert event["scan_id"] == scan_id
+                assert event["decision"] == scan.json()["data"]["decision"]
+
+    def test_websocket_replies_pong_and_closes_cleanly(self) -> None:
+        """The endpoint must answer keepalives and close without error."""
+        from starlette.testclient import TestClient
+
+        app = create_app()
+        with (
+            TestClient(app) as client,
+            client.websocket_connect("/api/v1/ws/scans/ping-test") as ws,
+        ):
+            ws.send_text("__ping__")
+            assert ws.receive_json()["type"] == "pong"

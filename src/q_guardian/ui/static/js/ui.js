@@ -359,17 +359,99 @@
 
   /* ---- Toast ----------------------------------------------------------- */
 
-  var toastTimer = null;
+  /* Severity-style, manual-dismissible toast notifications rendered into a
+   * single live region (#toastRegion). Keeps the existing call signature
+   * toast(message, severity, duration) but treats severity as one of
+   * success / warning / error / info (default info). Toasts are capped and
+   * deduped to avoid spam, dismissible via a button, and close
+   * automatically after their timeout. */
+  var TOAST_SEVERITIES = {
+    success: "success",
+    warning: "warning",
+    warn: "warning",
+    error: "error",
+    info: "info",
+  };
+  var TOAST_MAX = 4;
+  var TOAST_DEFAULT_DURATION = 3500;
+  var TOAST_SLIDE_MS = 180;
+  var toastCount = 0;
 
-  function toast(message, tone, duration) {
-    var el = document.getElementById("toast");
-    if (!el) return;
-    el.className = "toast" + (tone === "error" ? " error" : "");
-    el.textContent = message;
-    if (toastTimer) clearTimeout(toastTimer);
-    toastTimer = setTimeout(function () {
-      el.className = "toast hidden";
-    }, duration || 3500);
+  function toastSeverity(severity) {
+    return TOAST_SEVERITIES[String(severity || "").toLowerCase()] || "info";
+  }
+
+  function toastIcon(severity) {
+    var paths = {
+      success:
+        '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>',
+      warning:
+        '<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>',
+      error:
+        '<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>',
+      info:
+        '<circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>',
+    };
+    return (
+      '<svg class="toast-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+      'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+      (paths[severity] || paths.info) +
+      "</svg>"
+    );
+  }
+
+  function toastRegion() {
+    return document.getElementById("toastRegion");
+  }
+
+  function dismissToast(node) {
+    node.classList.add("leaving");
+    setTimeout(function () {
+      if (node.parentNode) node.parentNode.removeChild(node);
+      toastCount = Math.max(0, toastCount - 1);
+    }, TOAST_SLIDE_MS);
+  }
+
+  function toast(message, severity, duration) {
+    var region = toastRegion();
+    if (!region) return;
+    severity = toastSeverity(severity);
+    var timeout = typeof duration === "number" ? duration : TOAST_DEFAULT_DURATION;
+
+    var visible = region.querySelectorAll(".toast:not(.hidden)");
+    if (visible.length >= TOAST_MAX) {
+      dismissToast(visible[0]);
+    }
+
+    var text = String(message == null ? "" : message);
+    var node = document.createElement("div");
+    node.className = "toast " + severity;
+    node.innerHTML =
+      toastIcon(severity) +
+      '<span class="toast-text">' +
+      text +
+      "</span>" +
+      '<button type="button" class="toast-close" aria-label="Dismiss notification">' +
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
+      'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+      '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>' +
+      "</svg>" +
+      "</button>";
+    region.appendChild(node);
+    toastCount += 1;
+
+    node.querySelector(".toast-close").addEventListener("click", function () {
+      dismissToast(node);
+    });
+
+    var timer = setTimeout(function () {
+      dismissToast(node);
+    }, timeout);
+    node.addEventListener("animationend", function (e) {
+      if (e.animationName === "toast-in") {
+        node.classList.add("shown");
+      }
+    });
   }
 
   /* ---- Params ---------------------------------------------------------- */

@@ -9,6 +9,7 @@
   QG.views = QG.views || {};
   var api = QG.api;
   var U = QG.ui;
+  var livePanel = QG.livePanel;
 
   function renderDistribution(history) {
     var total = history.total || 0;
@@ -70,6 +71,30 @@
     );
   }
 
+  function renderDashboardResult(host, item) {
+    var body =
+      item.finding_count + " finding" + (item.finding_count === 1 ? "" : "s") +
+      " · risk " + Math.round(Number(item.risk_score || 0) * 100) + "% · " +
+      (item.processing_time_ms == null ? "—" : item.processing_time_ms + " ms");
+    host.innerHTML =
+      '<div class="dash-result">' +
+      '<div class="dash-result-head">' +
+      '<div class="card-title">Result Summary</div>' +
+      '<a class="btn ghost" href="#/detection/' + encodeURIComponent(item.analysis_id) + '">Open Full Report</a>' +
+      "</div>" +
+      U.keyValue([
+        { label: "Analysis ID", value: item.analysis_id, mono: true },
+        { label: "Decision", html: U.decisionBadge(item.decision) },
+        { label: "Risk Score", value: Math.round(Number(item.risk_score || 0) * 100) + "%" },
+        { label: "Findings", value: item.finding_count },
+        { label: "High / Critical", value: item.high_severity_count },
+        { label: "Processing Time", value: item.processing_time_ms == null ? "—" : item.processing_time_ms + " ms" },
+        { label: "Validation", html: U.statusBadge(item.is_valid ? "valid" : "invalid") },
+        { label: "Body", value: String(body), mono: true },
+      ]) +
+      "</div>";
+  }
+
   QG.views.dashboard = {
     title: "Dashboard",
     group: "overview",
@@ -109,6 +134,8 @@
         "</form>" +
         "</div>" +
 
+        '<div id="dashLive"></div>' +
+
         '<div class="grid grid-4">' +
         U.statCard("Pipeline Components", components, "stages reported", "success") +
         U.statCard("Detection Rules", rules.enabled != null ? rules.enabled + " / " + rules.total : rules.total, "enabled / total", "success") +
@@ -134,6 +161,9 @@
       var form = el.querySelector("#dashboardScanForm");
       var input = el.querySelector("#dashboardScanInput");
       var btn = el.querySelector("#dashboardScanBtn");
+      var live = el.querySelector("#dashLive");
+      var dispose = null;
+
       form.addEventListener("submit", async function (event) {
         event.preventDefault();
         var prompt = input.value.trim();
@@ -141,12 +171,27 @@
           U.toast("Enter a prompt to analyze.", "error");
           return;
         }
+        if (dispose) {
+          dispose();
+          dispose = null;
+        }
+        live.innerHTML = "";
         btn.disabled = true;
+        U.toast("Scan started — running the detection pipeline…", "info");
         try {
           var result = await api.post(api.endpoints.scan, { prompt: prompt });
           var item = api.data(result);
-          U.toast("Analysis completed — " + item.decision);
-          window.location.hash = "#/detection/" + encodeURIComponent(item.analysis_id);
+          dispose = livePanel.attach(live, item.analysis_id, {
+            onResult: function (host) {
+              renderDashboardResult(host, item);
+              U.toast("Analysis completed — " + item.decision, "success");
+            },
+            onDone: function (ok) {
+              if (!ok) {
+                U.toast("Scan failed during analysis.", "error");
+              }
+            },
+          });
         } catch (err) {
           U.toast(err.message || "Scan failed.", "error");
         } finally {
