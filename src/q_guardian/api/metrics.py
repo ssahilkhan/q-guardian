@@ -108,3 +108,53 @@ def snapshot() -> dict[str, Any]:
             },
             "scans": dict(_scan_decisions),
         }
+
+
+def observability() -> dict[str, Any]:
+    """Return a live operational view for the console observability surface.
+
+    Aggregates the in-process request counters per route template and the
+    per-decision scan counters recorded by the response-timing middleware.
+
+    Returns:
+        A JSON-serialisable dict with ``routes`` (list), ``scan_decisions``,
+        ``total_requests``, ``error_count``, ``error_rate``, ``uptime_seconds``
+        and ``generated_at``.
+    """
+    now = time.time()
+    with _lock:
+        total_requests = sum(int(stats["count"]) for stats in _http_stats.values())
+        error_count = sum(
+            int(stats["count"])
+            for (_, _, status), stats in _http_stats.items()
+            if 500 <= int(status) < 600
+        )
+        routes: list[dict[str, Any]] = []
+        by_route: dict[tuple[str, str], dict[str, float]] = {}
+        for (method, route, _status), stats in _http_stats.items():
+            key = (method, route)
+            agg = by_route.setdefault(key, {"count": 0.0, "total_ms": 0.0, "max_ms": 0.0})
+            agg["count"] += int(stats["count"])
+            agg["total_ms"] += stats["total_ms"]
+            agg["max_ms"] = max(agg["max_ms"], stats["max_ms"])
+        for (method, route), agg in sorted(by_route.items()):
+            count = int(agg["count"])
+            routes.append(
+                {
+                    "method": method,
+                    "route": route,
+                    "count": count,
+                    "avg_ms": round(agg["total_ms"] / count, 2) if count else 0.0,
+                    "max_ms": round(agg["max_ms"], 2),
+                }
+            )
+        error_rate = round(error_count / total_requests, 4) if total_requests else 0.0
+        return {
+            "generated_at": now,
+            "uptime_seconds": round(max(0.0, now - _started_at), 3),
+            "total_requests": total_requests,
+            "error_count": error_count,
+            "error_rate": error_rate,
+            "routes": routes,
+            "scan_decisions": dict(_scan_decisions),
+        }
