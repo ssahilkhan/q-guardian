@@ -28,9 +28,11 @@ class TestMetricsEndpoint:
         response = await client.get("/metrics")
         assert "qg_process_uptime_seconds" in response.text
 
-    async def test_metrics_counts_requests_via_middleware(self, client: AsyncClient) -> None:
-        await client.get("/api/v1/health")
-        response = await client.get("/metrics")
+    async def test_metrics_counts_requests_via_middleware(
+        self, authorized_client: AsyncClient
+    ) -> None:
+        await authorized_client.get("/api/v1/health")
+        response = await authorized_client.get("/metrics")
         assert (
             'qg_http_requests_total{method="GET",route="/api/v1/health",status="200"} 1'
             in response.text

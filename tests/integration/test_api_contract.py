@@ -25,8 +25,10 @@ BENIGN_PROMPT = "What is the capital of France?"
 
 @pytest.mark.asyncio
 class TestScanValidInputs:
-    async def test_scan_benign_prompt_allowed(self, client: AsyncClient) -> None:
-        response = await client.post("/api/v1/analysis/scan", json={"prompt": BENIGN_PROMPT})
+    async def test_scan_benign_prompt_allowed(self, authorized_client: AsyncClient) -> None:
+        response = await authorized_client.post(
+            "/api/v1/analysis/scan", json={"prompt": BENIGN_PROMPT}
+        )
 
         assert response.status_code == 200
         body = response.json()
@@ -38,8 +40,10 @@ class TestScanValidInputs:
         assert data["analysis_id"]
         assert data["processing_time_ms"] >= 0.0
 
-    async def test_scan_malicious_prompt_flagged(self, client: AsyncClient) -> None:
-        response = await client.post("/api/v1/analysis/scan", json={"prompt": MALICIOUS_PROMPT})
+    async def test_scan_malicious_prompt_flagged(self, authorized_client: AsyncClient) -> None:
+        response = await authorized_client.post(
+            "/api/v1/analysis/scan", json={"prompt": MALICIOUS_PROMPT}
+        )
 
         assert response.status_code == 200
         data = response.json()["data"]
@@ -47,8 +51,10 @@ class TestScanValidInputs:
         assert data["finding_count"] > 0
         assert data["high_severity_count"] > 0
 
-    async def test_scan_response_schema_complete(self, client: AsyncClient) -> None:
-        response = await client.post("/api/v1/analysis/scan", json={"prompt": "Hello world."})
+    async def test_scan_response_schema_complete(self, authorized_client: AsyncClient) -> None:
+        response = await authorized_client.post(
+            "/api/v1/analysis/scan", json={"prompt": "Hello world."}
+        )
 
         data = response.json()["data"]
         expected_fields = {
@@ -67,8 +73,8 @@ class TestScanValidInputs:
         assert "normalized_prompt" in payload
         assert "findings" in payload
 
-    async def test_scan_unicode_and_emoji_safe(self, client: AsyncClient) -> None:
-        response = await client.post(
+    async def test_scan_unicode_and_emoji_safe(self, authorized_client: AsyncClient) -> None:
+        response = await authorized_client.post(
             "/api/v1/analysis/scan",
             json={"prompt": "héllo 你好 🚀 مرحبا"},
         )
@@ -76,9 +82,9 @@ class TestScanValidInputs:
         assert response.status_code == 200
         assert response.json()["success"] is True
 
-    async def test_scan_max_boundary_prompt(self, client: AsyncClient) -> None:
+    async def test_scan_max_boundary_prompt(self, authorized_client: AsyncClient) -> None:
         prompt = "a" * 100_000
-        response = await client.post("/api/v1/analysis/scan", json={"prompt": prompt})
+        response = await authorized_client.post("/api/v1/analysis/scan", json={"prompt": prompt})
 
         assert response.status_code == 200
 
@@ -90,33 +96,35 @@ class TestScanValidInputs:
 
 @pytest.mark.asyncio
 class TestScanInvalidInputs:
-    async def test_missing_prompt_field(self, client: AsyncClient) -> None:
-        response = await client.post("/api/v1/analysis/scan", json={})
+    async def test_missing_prompt_field(self, authorized_client: AsyncClient) -> None:
+        response = await authorized_client.post("/api/v1/analysis/scan", json={})
 
         assert response.status_code == 422
 
-    async def test_empty_prompt_rejected(self, client: AsyncClient) -> None:
-        response = await client.post("/api/v1/analysis/scan", json={"prompt": ""})
+    async def test_empty_prompt_rejected(self, authorized_client: AsyncClient) -> None:
+        response = await authorized_client.post("/api/v1/analysis/scan", json={"prompt": ""})
 
         assert response.status_code == 422
 
-    async def test_null_prompt_rejected(self, client: AsyncClient) -> None:
-        response = await client.post("/api/v1/analysis/scan", json={"prompt": None})
+    async def test_null_prompt_rejected(self, authorized_client: AsyncClient) -> None:
+        response = await authorized_client.post("/api/v1/analysis/scan", json={"prompt": None})
 
         assert response.status_code == 422
 
-    async def test_wrong_type_prompt_rejected(self, client: AsyncClient) -> None:
-        response = await client.post("/api/v1/analysis/scan", json={"prompt": 12345})
+    async def test_wrong_type_prompt_rejected(self, authorized_client: AsyncClient) -> None:
+        response = await authorized_client.post("/api/v1/analysis/scan", json={"prompt": 12345})
 
         assert response.status_code == 422
 
-    async def test_oversized_prompt_rejected(self, client: AsyncClient) -> None:
-        response = await client.post("/api/v1/analysis/scan", json={"prompt": "a" * 100_001})
+    async def test_oversized_prompt_rejected(self, authorized_client: AsyncClient) -> None:
+        response = await authorized_client.post(
+            "/api/v1/analysis/scan", json={"prompt": "a" * 100_001}
+        )
 
         assert response.status_code == 422
 
-    async def test_malformed_json_rejected(self, client: AsyncClient) -> None:
-        response = await client.post(
+    async def test_malformed_json_rejected(self, authorized_client: AsyncClient) -> None:
+        response = await authorized_client.post(
             "/api/v1/analysis/scan",
             content="{not valid json",
             headers={"Content-Type": "application/json"},
@@ -124,23 +132,23 @@ class TestScanInvalidInputs:
 
         assert response.status_code == 422
 
-    async def test_empty_body_rejected(self, client: AsyncClient) -> None:
-        response = await client.post("/api/v1/analysis/scan")
+    async def test_empty_body_rejected(self, authorized_client: AsyncClient) -> None:
+        response = await authorized_client.post("/api/v1/analysis/scan")
 
         assert response.status_code in {422}
 
 
 @pytest.mark.asyncio
 class TestScanErrorHygiene:
-    async def test_validation_error_no_stack_trace(self, client: AsyncClient) -> None:
-        response = await client.post("/api/v1/analysis/scan", json={"prompt": ""})
+    async def test_validation_error_no_stack_trace(self, authorized_client: AsyncClient) -> None:
+        response = await authorized_client.post("/api/v1/analysis/scan", json={"prompt": ""})
         text = response.text.lower()
 
         assert "traceback" not in text
         assert ".py" not in text or "validation" in text
 
-    async def test_unexpected_field_ignored_safely(self, client: AsyncClient) -> None:
-        response = await client.post(
+    async def test_unexpected_field_ignored_safely(self, authorized_client: AsyncClient) -> None:
+        response = await authorized_client.post(
             "/api/v1/analysis/scan",
             json={"prompt": BENIGN_PROMPT, "admin": True, "debug": "yes"},
         )
@@ -155,25 +163,27 @@ class TestScanErrorHygiene:
 
 @pytest.mark.asyncio
 class TestAnalysisHistory:
-    async def test_scan_then_retrieve_by_id(self, client: AsyncClient) -> None:
-        scan = await client.post("/api/v1/analysis/scan", json={"prompt": MALICIOUS_PROMPT})
+    async def test_scan_then_retrieve_by_id(self, authorized_client: AsyncClient) -> None:
+        scan = await authorized_client.post(
+            "/api/v1/analysis/scan", json={"prompt": MALICIOUS_PROMPT}
+        )
         analysis_id = scan.json()["data"]["analysis_id"]
 
-        detail = await client.get(f"/api/v1/analysis/{analysis_id}")
+        detail = await authorized_client.get(f"/api/v1/analysis/{analysis_id}")
 
         assert detail.status_code == 200
         assert detail.json()["data"]["analysis_id"] == analysis_id
 
-    async def test_unknown_analysis_id_404(self, client: AsyncClient) -> None:
-        response = await client.get("/api/v1/analysis/nonexistent-id-123")
+    async def test_unknown_analysis_id_404(self, authorized_client: AsyncClient) -> None:
+        response = await authorized_client.get("/api/v1/analysis/nonexistent-id-123")
 
         assert response.status_code == 404
         assert "traceback" not in response.text.lower()
 
-    async def test_history_lists_recent_scans(self, client: AsyncClient) -> None:
-        await client.post("/api/v1/analysis/scan", json={"prompt": BENIGN_PROMPT})
+    async def test_history_lists_recent_scans(self, authorized_client: AsyncClient) -> None:
+        await authorized_client.post("/api/v1/analysis/scan", json={"prompt": BENIGN_PROMPT})
 
-        history = await client.get("/api/v1/analysis?limit=5")
+        history = await authorized_client.get("/api/v1/analysis?limit=5")
 
         assert history.status_code == 200
         body = history.json()
@@ -181,14 +191,16 @@ class TestAnalysisHistory:
         assert isinstance(body["data"], list)
 
     @pytest.mark.parametrize("limit", [1, 200])
-    async def test_limit_boundaries_valid(self, client: AsyncClient, limit: int) -> None:
-        response = await client.get(f"/api/v1/analysis?limit={limit}")
+    async def test_limit_boundaries_valid(self, authorized_client: AsyncClient, limit: int) -> None:
+        response = await authorized_client.get(f"/api/v1/analysis?limit={limit}")
 
         assert response.status_code == 200
 
     @pytest.mark.parametrize("limit", [0, 201, -1])
-    async def test_limit_out_of_bounds_rejected(self, client: AsyncClient, limit: int) -> None:
-        response = await client.get(f"/api/v1/analysis?limit={limit}")
+    async def test_limit_out_of_bounds_rejected(
+        self, authorized_client: AsyncClient, limit: int
+    ) -> None:
+        response = await authorized_client.get(f"/api/v1/analysis?limit={limit}")
 
         assert response.status_code == 422
 
@@ -212,27 +224,27 @@ CONSOLE_ENDPOINTS = [
 class TestConsoleEndpoints:
     @pytest.mark.parametrize("endpoint", CONSOLE_ENDPOINTS)
     async def test_console_endpoint_returns_envelope(
-        self, client: AsyncClient, endpoint: str
+        self, authorized_client: AsyncClient, endpoint: str
     ) -> None:
-        response = await client.get(endpoint)
+        response = await authorized_client.get(endpoint)
 
         assert response.status_code == 200, f"{endpoint} failed"
         body = response.json()
         assert body["success"] is True
         assert "data" in body
 
-    async def test_rules_catalog_nonempty(self, client: AsyncClient) -> None:
-        response = await client.get("/api/v1/console/rules")
+    async def test_rules_catalog_nonempty(self, authorized_client: AsyncClient) -> None:
+        response = await authorized_client.get("/api/v1/console/rules")
         rules = response.json()["data"]
 
         assert len(rules) > 0
         assert {"rule_id", "name", "severity"} <= set(rules[0])
 
-    async def test_configuration_sanitized(self, client: AsyncClient) -> None:
+    async def test_configuration_sanitized(self, authorized_client: AsyncClient) -> None:
         """Sanitized configuration must not leak secrets or absolute paths."""
         import re
 
-        response = await client.get("/api/v1/console/configuration")
+        response = await authorized_client.get("/api/v1/console/configuration")
         text = response.text
 
         assert response.status_code == 200
@@ -240,9 +252,9 @@ class TestConsoleEndpoints:
         assert "change-me-to-a-random-secret-key" not in text
         assert "SECRET_KEY=" not in text
 
-    async def test_models_status_truthful(self, client: AsyncClient) -> None:
+    async def test_models_status_truthful(self, authorized_client: AsyncClient) -> None:
         """Model registry must report truthfully when no models are trained."""
-        response = await client.get("/api/v1/console/models")
+        response = await authorized_client.get("/api/v1/console/models")
         data = response.json()["data"]
 
         assert isinstance(data, dict)
@@ -255,22 +267,22 @@ class TestConsoleEndpoints:
 
 @pytest.mark.asyncio
 class TestMonitoringContract:
-    async def test_health_trailing_slash_variant(self, client: AsyncClient) -> None:
-        response = await client.get("/api/v1/health/")
+    async def test_health_trailing_slash_variant(self, authorized_client: AsyncClient) -> None:
+        response = await authorized_client.get("/api/v1/health/")
 
         assert response.status_code == 200
         assert response.json()["status"] in {"healthy", "degraded"}
 
-    async def test_health_database_block_schema(self, client: AsyncClient) -> None:
-        response = await client.get("/api/v1/health")
+    async def test_health_database_block_schema(self, authorized_client: AsyncClient) -> None:
+        response = await authorized_client.get("/api/v1/health")
         db = response.json()["database"]
 
         assert {"status", "database", "message"} <= set(db)
 
-    async def test_version_matches_package_metadata(self, client: AsyncClient) -> None:
+    async def test_version_matches_package_metadata(self, authorized_client: AsyncClient) -> None:
         from q_guardian.core.constants import APP_VERSION
 
-        response = await client.get("/api/v1/system/version")
+        response = await authorized_client.get("/api/v1/system/version")
 
         assert response.json()["data"]["version"] == APP_VERSION
 
@@ -282,15 +294,15 @@ class TestMonitoringContract:
 
 @pytest.mark.asyncio
 class TestOpenApiContract:
-    async def test_openapi_schema_available(self, client: AsyncClient) -> None:
-        response = await client.get("/openapi.json")
+    async def test_openapi_schema_available(self, authorized_client: AsyncClient) -> None:
+        response = await authorized_client.get("/openapi.json")
 
         assert response.status_code == 200
         schema = response.json()
         assert schema["info"]["title"] == "Q-Guardian"
 
-    async def test_all_v1_endpoints_documented(self, client: AsyncClient) -> None:
-        response = await client.get("/openapi.json")
+    async def test_all_v1_endpoints_documented(self, authorized_client: AsyncClient) -> None:
+        response = await authorized_client.get("/openapi.json")
         paths: dict[str, Any] = response.json()["paths"]
 
         expected = {
@@ -308,8 +320,10 @@ class TestOpenApiContract:
         }
         assert expected <= set(paths), f"Undocumented endpoints: {expected - set(paths)}"
 
-    async def test_scan_request_schema_has_constraints(self, client: AsyncClient) -> None:
-        response = await client.get("/openapi.json")
+    async def test_scan_request_schema_has_constraints(
+        self, authorized_client: AsyncClient
+    ) -> None:
+        response = await authorized_client.get("/openapi.json")
         scan_schema = response.json()["components"]["schemas"]["ScanRequestSchema"]
 
         prompt = scan_schema["properties"]["prompt"]
@@ -324,12 +338,14 @@ class TestOpenApiContract:
 
 @pytest.mark.asyncio
 class TestHeaderHygiene:
-    async def test_correlation_id_on_scan(self, client: AsyncClient) -> None:
-        response = await client.post("/api/v1/analysis/scan", json={"prompt": BENIGN_PROMPT})
+    async def test_correlation_id_on_scan(self, authorized_client: AsyncClient) -> None:
+        response = await authorized_client.post(
+            "/api/v1/analysis/scan", json={"prompt": BENIGN_PROMPT}
+        )
 
         assert "X-Correlation-ID" in response.headers
 
-    async def test_security_headers_present(self, client: AsyncClient) -> None:
-        response = await client.get("/api/v1/health")
+    async def test_security_headers_present(self, authorized_client: AsyncClient) -> None:
+        response = await authorized_client.get("/api/v1/health")
 
         assert "X-Content-Type-Options" in response.headers

@@ -11,6 +11,7 @@ from typing import Any
 import structlog
 from fastapi import APIRouter, Request
 
+from q_guardian.api.metrics import observability as observability_metrics
 from q_guardian.api.services.analysis import get_analysis_service
 from q_guardian.schemas.base import ResponseSchema
 
@@ -110,6 +111,28 @@ async def summary(request: Request) -> ResponseSchema[dict[str, Any]]:
     return ResponseSchema(
         success=True,
         message="Summary retrieved successfully",
+        data=data,
+    )
+
+
+@router.get("/observability", response_model=ResponseSchema[dict[str, Any]])
+async def observability(request: Request) -> ResponseSchema[dict[str, Any]]:
+    """Return live operational metrics from the in-process registry.
+
+    Provides per-route request/latency counters and per-decision scan
+    counters recorded by the response-timing middleware.
+
+    Args:
+        request: Incoming request.
+
+    Returns:
+        Live observability snapshot (uptime, request totals, routes,
+        scan decisions).
+    """
+    data = observability_metrics()
+    return ResponseSchema(
+        success=True,
+        message="Observability metrics retrieved successfully",
         data=data,
     )
 
