@@ -4,8 +4,8 @@ This file exists to satisfy Vercel's auto-detection of FastAPI entrypoints.
 The actual application is in src/q_guardian/main.py.
 """
 
-import sys
 import os
+import sys
 
 # Add src to path for direct import
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))

@@ -11,25 +11,18 @@ Usage:
 from __future__ import annotations
 
 import asyncio
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 from q_guardian import (
     Agent,
-    AgentRequest,
-    AgentResponse,
     FrameworkConfig,
     Guardian,
     PromptAnalysis,
     PromptDecision,
     PromptScannerPlugin,
     RiskContext,
-    SecurityContext,
-    ThreatContext,
-    ThreatType,
-    ThreatSeverity,
 )
-
 
 # ---------------------------------------------------------------------------
 # Mock CrewAI Types (no external deps required)
@@ -208,7 +201,7 @@ class SecuredCrew:
     def _print_observability(self) -> None:
         blocked = sum(1 for e in self._security_log if e["action"] == "blocked")
         allowed = sum(1 for e in self._security_log if e["action"] == "allowed")
-        print(f"\n[Observability Dashboard]")
+        print("\n[Observability Dashboard]")
         print(f"  Total tasks: {len(self._security_log)}")
         print(f"  Allowed: {allowed}")
         print(f"  Blocked: {blocked}")

@@ -1,0 +1,544 @@
+{
+  "generated_at": "2026-08-25T04:51:58.224671+00:00",
+  "study_design": {
+    "primary_external_dataset": {
+      "candidate": "jbb-behaviors",
+      "reason": "Already available, public license, well-documented categories, 200 samples (100 harmful/100 benign). Already used as external eval in pipeline - but must NOT be used for training.",
+      "status": "READY"
+    },
+    "independent_external_dataset": {
+      "candidate": "wildjailbreak",
+      "reason": "MIT license, ~5000+ samples, adversarial+vanilla pairs, different source (AllenAI vs JailbreakBench), different attack distribution. Excellent for cross-dataset generalization.",
+      "requirement": "HF_TOKEN after accepting terms on Hugging Face Hub (allenai/wildjailbreak)",
+      "status": "NEEDS HF_TOKEN",
+      "action_required": "Accept terms at https://huggingface.co/datasets/allenai/wildjailbreak and set HF_TOKEN environment variable"
+    },
+    "fallback_candidates": [
+      {
+        "dataset_id": "harmbench-behaviors",
+        "requirement": "HF_TOKEN after accepting terms at https://huggingface.co/datasets/cais/harmbench_behaviors"
+      },
+      {
+        "dataset_id": "advbench",
+        "requirement": "HF_TOKEN after accepting terms at https://huggingface.co/datasets/DeepMind/AdvBench"
+      },
+      {
+        "dataset_id": "agentdojo",
+        "requirement": "HF_TOKEN after accepting terms at https://huggingface.co/datasets/ibm/agentdojo"
+      }
+    ],
+    "gaps": [
+      "No second independent external dataset currently available without HF_TOKEN",
+      "dolly-benign is benign-only (cannot evaluate malicious detection)",
+      "deepset-prompt-injections used in training (not independent)",
+      "Training diversity data (trustair, jailbreakv, harmful_behaviors) used in arm_d training (not independent)"
+    ],
+    "recommendation": "Obtain HF_TOKEN for wildjailbreak (MIT license) to enable rigorous cross-dataset generalization study with two independent external datasets."
+  },
+  "datasets": [
+    {
+      "dataset_id": "jbb-behaviors",
+      "name": "JailbreakBench JBB-Behaviors",
+      "source": "JailbreakBench/JBB-Behaviors",
+      "format": "hf",
+      "config": "behaviors",
+      "splits": [
+        "harmful",
+        "benign"
+      ],
+      "text_fields": [
+        "Goal"
+      ],
+      "label_from_split": {
+        "harmful": 1,
+        "benign": 0
+      },
+      "category_field": "Category",
+      "license": "public",
+      "homepage": "https://huggingface.co/datasets/JailbreakBench/JBB-Behaviors",
+      "requires_token": false,
+      "status": "AVAILABLE",
+      "samples": {
+        "harmful": 100,
+        "benign": 100,
+        "total": 200
+      },
+      "role": "PRIMARY EXTERNAL EVALUATION",
+      "notes": "Already used as external evaluation in existing pipeline. Well-documented categories. Public license."
+    },
+    {
+      "dataset_id": "deepset-prompt-injections",
+      "name": "deepset/prompt-injections",
+      "source": "deepset/prompt-injections",
+      "format": "hf",
+      "config": "default",
+      "splits": [
+        "train",
+        "test"
+      ],
+      "text_fields": [
+        "text"
+      ],
+      "label_field": "label",
+      "license": "Apache-2.0",
+      "homepage": "https://huggingface.co/datasets/deepset/prompt-injections",
+      "requires_token": false,
+      "status": "AVAILABLE",
+      "samples": {
+        "train": 530,
+        "test": 132,
+        "total": 662,
+        "malicious": 263,
+        "benign": 399
+      },
+      "role": "TRAINING / IN-DOMAIN",
+      "notes": "Used for control training and internal splits. NOT suitable as external eval (used in training)."
+    },
+    {
+      "dataset_id": "dolly-benign",
+      "name": "databricks/databricks-dolly-15k (benign corpus)",
+      "source": "databricks/databricks-dolly-15k",
+      "format": "hf",
+      "config": "default",
+      "splits": [
+        "train"
+      ],
+      "text_fields": [
+        "instruction"
+      ],
+      "default_label": 0,
+      "category_field": "category",
+      "license": "CC BY-SA 3.0",
+      "homepage": "https://huggingface.co/datasets/databricks/databricks-dolly-15k",
+      "requires_token": false,
+      "status": "PARTIAL - HF server 502",
+      "samples": {
+        "train": 15000,
+        "total": 15000,
+        "benign": 15000
+      },
+      "role": "BENIGN CORPUS ONLY",
+      "notes": "Benign-only dataset. Cannot evaluate malicious detection. HF datasets-server returning 502."
+    },
+    {
+      "dataset_id": "trustair_jailbreaks",
+      "name": "TrustAIRLab/in-the-wild-jailbreak-prompts (jailbreak_2023_12_25)",
+      "source": "TrustAIRLab/in-the-wild-jailbreak-prompts",
+      "format": "local",
+      "paths": [
+        "experiments/training_diversity/data_raw/trustair_jailbreaks.jsonl"
+      ],
+      "default_label": 1,
+      "license": "Unknown",
+      "status": "AVAILABLE",
+      "samples": {
+        "total": 1405,
+        "malicious": 1405
+      },
+      "role": "TRAINING ARM A/D",
+      "notes": "Used in arm_a and arm_d training. NOT independent external eval."
+    },
+    {
+      "dataset_id": "trustair_regular",
+      "name": "TrustAIRLab/in-the-wild-jailbreak-prompts (regular_2023_12_25)",
+      "source": "TrustAIRLab/in-the-wild-jailbreak-prompts",
+      "format": "local",
+      "paths": [
+        "experiments/training_diversity/data_raw/trustair_regular.jsonl"
+      ],
+      "default_label": 0,
+      "license": "Unknown",
+      "status": "AVAILABLE",
+      "samples": {
+        "total": 3500,
+        "benign": 3500
+      },
+      "role": "TRAINING BENIGN POOL",
+      "notes": "Used as benign pool for arms A-D. NOT independent."
+    },
+    {
+      "dataset_id": "jailbreakv",
+      "name": "JailbreakV-28K/JailBreakV-28k (partial)",
+      "source": "JailbreakV-28K/JailBreakV-28k",
+      "format": "local",
+      "paths": [
+        "experiments/training_diversity/data_raw/jailbreakv.jsonl"
+      ],
+      "default_label": 1,
+      "license": "Unknown",
+      "status": "AVAILABLE",
+      "samples": {
+        "total": 5900,
+        "malicious": 5900
+      },
+      "role": "TRAINING ARM B/D",
+      "notes": "Seeded 2000-sample subset used in arm_b and arm_d. NOT independent."
+    },
+    {
+      "dataset_id": "harmful_behaviors_train",
+      "name": "mlabonne/harmful_behaviors (train split)",
+      "source": "mlabonne/harmful_behaviors",
+      "format": "local",
+      "paths": [
+        "experiments/training_diversity/data_raw/harmful_behaviors_train.jsonl"
+      ],
+      "default_label": 1,
+      "license": "Unknown",
+      "status": "AVAILABLE",
+      "samples": {
+        "total": 416,
+        "malicious": 416
+      },
+      "role": "TRAINING ARM C/D",
+      "notes": "Contamination-filtered at arm build time. NOT independent."
+    },
+    {
+      "dataset_id": "harmful_behaviors_test",
+      "name": "mlabonne/harmful_behaviors (test split)",
+      "source": "mlabonne/harmful_behaviors",
+      "format": "local",
+      "paths": [
+        "experiments/training_diversity/data_raw/harmful_behaviors_test.jsonl"
+      ],
+      "default_label": 1,
+      "license": "Unknown",
+      "status": "AVAILABLE",
+      "samples": {
+        "total": 104,
+        "malicious": 104
+      },
+      "role": "TRAINING ARM C/D",
+      "notes": "Contamination-filtered at arm build time. NOT independent."
+    },
+    {
+      "dataset_id": "wildjailbreak",
+      "name": "WildJailbreak",
+      "source": "allenai/wildjailbreak",
+      "format": "hf",
+      "config": "default",
+      "splits": [
+        "train",
+        "test"
+      ],
+      "text_fields": [
+        "adversarial",
+        "vanilla"
+      ],
+      "label_field": "label",
+      "license": "MIT",
+      "homepage": "https://huggingface.co/datasets/allenai/wildjailbreak",
+      "requires_token": true,
+      "status": "GATED - NEEDS HF_TOKEN",
+      "samples": {
+        "estimated": "~5000+"
+      },
+      "role": "CANDIDATE PRIMARY EXTERNAL DATASET",
+      "notes": "MIT license. Contains adversarial + vanilla pairs. Excellent candidate for primary external dataset. NEEDS HF_TOKEN after accepting terms on HF Hub."
+    },
+    {
+      "dataset_id": "harmbench-behaviors",
+      "name": "HarmBench Behaviors",
+      "source": "cais/harmbench_behaviors",
+      "format": "hf",
+      "config": "default",
+      "splits": [
+        "default"
+      ],
+      "text_fields": [
+        "behavior"
+      ],
+      "label_field": "label",
+      "license": "research-only",
+      "homepage": "https://huggingface.co/datasets/cais/harmbench_behaviors",
+      "requires_token": true,
+      "status": "GATED - NEEDS HF_TOKEN",
+      "samples": {
+        "estimated": "~500+"
+      },
+      "role": "CANDIDATE EXTERNAL DATASET",
+      "notes": "Standard benchmark for harmful behavior evaluation. Research-only license. NEEDS HF_TOKEN."
+    },
+    {
+      "dataset_id": "advbench",
+      "name": "AdvBench",
+      "source": "DeepMind/AdvBench",
+      "format": "hf",
+      "config": "default",
+      "splits": [
+        "default"
+      ],
+      "text_fields": [
+        "goal"
+      ],
+      "label_field": "label",
+      "license": "research-only",
+      "homepage": "https://huggingface.co/datasets/DeepMind/AdvBench",
+      "requires_token": true,
+      "status": "GATED - NEEDS HF_TOKEN",
+      "samples": {
+        "estimated": "~500+"
+      },
+      "role": "CANDIDATE EXTERNAL DATASET",
+      "notes": "Adversarial benchmark from DeepMind. Research-only license. NEEDS HF_TOKEN."
+    },
+    {
+      "dataset_id": "hex-phi",
+      "name": "HEx-PHI",
+      "source": "walledai/HEx-PHI",
+      "format": "hf",
+      "config": "default",
+      "splits": [
+        "default"
+      ],
+      "text_fields": [
+        "prompt"
+      ],
+      "label_field": "label",
+      "license": "research-only",
+      "homepage": "https://huggingface.co/datasets/walledai/HEx-PHI",
+      "requires_token": true,
+      "status": "GATED - NEEDS HF_TOKEN",
+      "samples": {
+        "estimated": "~1000+"
+      },
+      "role": "CANDIDATE EXTERNAL DATASET",
+      "notes": "Philosophy/harm evaluation dataset. Research-only license. NEEDS HF_TOKEN."
+    },
+    {
+      "dataset_id": "pal",
+      "name": "ProtectAI PAL",
+      "source": "ProtectAI/PAL",
+      "format": "hf",
+      "config": "default",
+      "splits": [
+        "default"
+      ],
+      "text_fields": [
+        "prompt"
+      ],
+      "label_field": "label",
+      "license": "research-only",
+      "homepage": "https://huggingface.co/datasets/ProtectAI/PAL",
+      "requires_token": true,
+      "status": "GATED - NEEDS HF_TOKEN",
+      "samples": {
+        "estimated": "~1000+"
+      },
+      "role": "CANDIDATE EXTERNAL DATASET",
+      "notes": "Prompt injection/adversarial dataset. Research-only license. NEEDS HF_TOKEN."
+    },
+    {
+      "dataset_id": "agentdojo",
+      "name": "AgentDojo",
+      "source": "ibm/agentdojo",
+      "format": "hf",
+      "config": "default",
+      "splits": [
+        "default"
+      ],
+      "text_fields": [
+        "query"
+      ],
+      "label_field": "label",
+      "license": "CC BY 4.0",
+      "homepage": "https://huggingface.co/datasets/ibm/agentdojo",
+      "requires_token": true,
+      "status": "GATED - NEEDS HF_TOKEN",
+      "samples": {
+        "estimated": "~1000+"
+      },
+      "role": "CANDIDATE EXTERNAL DATASET",
+      "notes": "Agent security dataset. CC BY 4.0 license. NEEDS HF_TOKEN."
+    },
+    {
+      "dataset_id": "cyberseceval-prompt-injections",
+      "name": "CyberSecEval Prompt Injections",
+      "source": "facebook/CyberSecEval-PromptInjections",
+      "format": "hf",
+      "config": "default",
+      "splits": [
+        "default"
+      ],
+      "text_fields": [
+        "prompt"
+      ],
+      "label_field": "label",
+      "license": "research-only",
+      "homepage": "https://huggingface.co/datasets/facebook/CyberSecEval-PromptInjections",
+      "requires_token": true,
+      "status": "GATED - NEEDS HF_TOKEN",
+      "samples": {
+        "estimated": "~1000+"
+      },
+      "role": "CANDIDATE EXTERNAL DATASET",
+      "notes": "Meta's cybersecurity evaluation dataset. Research-only license. NEEDS HF_TOKEN."
+    },
+    {
+      "dataset_id": "jailbreakbench-attacks",
+      "name": "JailbreakBench JBB-Attacks",
+      "source": "JailbreakBench/JBB-Attacks",
+      "format": "hf",
+      "config": "attacks",
+      "splits": [
+        "default"
+      ],
+      "text_fields": [
+        "attack"
+      ],
+      "label_field": "label",
+      "license": "public",
+      "homepage": "https://huggingface.co/datasets/JailbreakBench/JBB-Attacks",
+      "requires_token": true,
+      "status": "GATED - NEEDS HF_TOKEN",
+      "samples": {
+        "estimated": "~1000+"
+      },
+      "role": "CANDIDATE EXTERNAL DATASET",
+      "notes": "JBB attack prompts. Public license but gated on HF. NEEDS HF_TOKEN."
+    },
+    {
+      "dataset_id": "advbench",
+      "name": "AdvBench",
+      "source": "DeepMind/AdvBench",
+      "format": "hf",
+      "config": "default",
+      "splits": [
+        "default"
+      ],
+      "text_fields": [
+        "goal"
+      ],
+      "label_field": "label",
+      "license": "research-only",
+      "homepage": "https://huggingface.co/datasets/DeepMind/AdvBench",
+      "requires_token": true,
+      "status": "GATED - NEEDS HF_TOKEN",
+      "samples": {
+        "estimated": "~500+"
+      },
+      "role": "CANDIDATE EXTERNAL DATASET",
+      "notes": "Adversarial benchmark from DeepMind. Research-only license. NEEDS HF_TOKEN."
+    }
+  ],
+  "label_mapping": {
+    "jbb-behaviors": {
+      "source_labels": {
+        "harmful": 1,
+        "benign": 0
+      },
+      "project_labels": {
+        "1": "malicious",
+        "0": "benign"
+      },
+      "categories": {
+        "Harassment/Discrimination": "prompt_injection",
+        "Violence": "jailbreak",
+        "Illegal Activities": "jailbreak",
+        "Malware/Exploit": "data_exfiltration",
+        "Physical Harm": "jailbreak",
+        "Sexual Content": "jailbreak",
+        "Self-Harm": "jailbreak"
+      },
+      "notes": "JBB categories map to project threat categories. Use label_from_split for binary."
+    },
+    "wildjailbreak": {
+      "source_labels": {
+        "label_field": "label",
+        "values": {
+          "0": "benign",
+          "1": "malicious"
+        }
+      },
+      "project_labels": {
+        "1": "malicious",
+        "0": "benign"
+      },
+      "notes": "Label field 'label' with 0/1. Adversarial/vanilla pairs available for robustness testing."
+    },
+    "deepset-prompt-injections": {
+      "source_labels": {
+        "label_field": "label",
+        "values": {
+          "0": "benign",
+          "1": "malicious"
+        }
+      },
+      "project_labels": {
+        "1": "malicious",
+        "0": "benign"
+      },
+      "notes": "Binary label field. Used for training only."
+    },
+    "trustair_jailbreaks": {
+      "source_labels": {
+        "default_label": 1,
+        "source": "jailbreak:true"
+      },
+      "project_labels": {
+        "1": "malicious",
+        "0": "benign"
+      },
+      "notes": "All samples are jailbreaks (malicious). Used for training only."
+    },
+    "trustair_regular": {
+      "source_labels": {
+        "default_label": 0,
+        "source": "regular_2023_12_25"
+      },
+      "project_labels": {
+        "1": "malicious",
+        "0": "benign"
+      },
+      "notes": "All benign. Used for training only."
+    }
+  },
+  "feature_contract": {
+    "production_12dim": {
+      "name": "CORE_FEATURE_NAMES (12-dim)",
+      "features": [
+        "length",
+        "word_count",
+        "line_count",
+        "token_estimate",
+        "entropy",
+        "uppercase_ratio",
+        "digit_ratio",
+        "special_char_count",
+        "code_block_count",
+        "url_count",
+        "suspicious_keyword_count",
+        "repeated_pattern_count"
+      ],
+      "extractor": "q_guardian.ml.base.extract_core_features",
+      "used_by": [
+        "IsolationForestDetector",
+        "RandomForestThreatClassifier",
+        "XGBoostThreatClassifier"
+      ],
+      "description": "Production feature contract. ALL classical models at inference time MUST use this."
+    },
+    "research_427dim": {
+      "name": "Extended features (43 handcrafted + 384 semantic embedding)",
+      "components": {
+        "x43": "43 handcrafted features from MLFeatureProvider",
+        "xemb": "384-dim sentence-transformers/all-MiniLM-L6-v2 embedding"
+      },
+      "extractor": "q_guardian.ml.feature_pipeline.MLFeatureProvider + sentence-transformers",
+      "used_by": [
+        "Training pipelines",
+        "HybridEvaluator",
+        "External generalization evaluation"
+      ],
+      "description": "Research feature space. Not used in production inference."
+    },
+    "qsvm_5dim": {
+      "name": "QSVM features (5-dim angle encoding)",
+      "features": "First 5 dimensions of standardized 427-dim vector",
+      "encoding": "AngleEncodingMap (Ry rotations)",
+      "num_qubits": 5,
+      "shots": 128,
+      "backend": "LocalSimulatorBackend",
+      "description": "Quantum feature space. Limited to 5 qubits by current hardware/simulator constraints."
+    }
+  }
+}

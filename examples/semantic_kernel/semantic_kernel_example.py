@@ -12,24 +12,16 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import dataclass, field
-from typing import Any, Callable
+from typing import Any
 
 from q_guardian import (
-    Agent,
-    AgentRequest,
-    AgentResponse,
     FrameworkConfig,
     Guardian,
     PromptAnalysis,
     PromptDecision,
     PromptScannerPlugin,
     RiskContext,
-    SecurityContext,
-    ThreatContext,
-    ThreatType,
-    ThreatSeverity,
 )
-
 
 # ---------------------------------------------------------------------------
 # Mock Semantic Kernel Types (no external deps required)
@@ -194,7 +186,7 @@ class SecuredKernel:
 
     def print_observability(self) -> None:
         """Print plugin-level observability dashboard."""
-        print(f"\n[Plugin Observability Dashboard]")
+        print("\n[Plugin Observability Dashboard]")
         print(f"  Total invocations: {len(self._function_log)}")
         allowed = sum(1 for e in self._function_log if e["action"] == "allowed")
         blocked = sum(1 for e in self._function_log if e["action"] == "blocked")

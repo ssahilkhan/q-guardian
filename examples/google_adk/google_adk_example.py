@@ -16,7 +16,6 @@ from typing import Any
 
 from q_guardian import (
     Agent,
-    AgentRequest,
     AgentResponse,
     FrameworkConfig,
     Guardian,
@@ -24,12 +23,7 @@ from q_guardian import (
     PromptDecision,
     PromptScannerPlugin,
     RiskContext,
-    SecurityContext,
-    ThreatContext,
-    ThreatType,
-    ThreatSeverity,
 )
-
 
 # ---------------------------------------------------------------------------
 # Mock Google ADK Types (no external deps required)
@@ -204,7 +198,7 @@ class SecuredGoogleADKApp:
         )
 
     def _log_cross_agent_summary(self) -> None:
-        print(f"\n[Cross-Agent Security Summary]")
+        print("\n[Cross-Agent Security Summary]")
         print(f"  Agents involved: {len(self._agents)}")
         print(f"  Alerts: {len(self._cross_agent_alerts)}")
         for alert in self._cross_agent_alerts:

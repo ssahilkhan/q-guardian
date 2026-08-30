@@ -1,6 +1,5 @@
-import asyncio
-from q_guardian.security.homoglyph import analyze_homoglyphs
 from q_guardian.security.encoding import detect_all_encodings
+from q_guardian.security.homoglyph import analyze_homoglyphs
 
 # Test homoglyph detection
 cyrillic_a = "\u0430"  # Cyrillic small letter a

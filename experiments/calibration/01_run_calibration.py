@@ -20,13 +20,11 @@ Usage:
 from __future__ import annotations
 
 import json
-import statistics
 import time
 from pathlib import Path
 
 import numpy as np
 import structlog
-from sklearn.calibration import CalibratedClassifierCV
 from sklearn.isotonic import IsotonicRegression
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import StratifiedKFold
@@ -398,11 +396,11 @@ def write_log(baseline: dict, best: dict, cal_best: dict, t0: float) -> None:
     lines = [
         "Q-Guardian calibration experiment log",
         "======================================",
-        f"frozen model: XGB(n_estimators=50, max_depth=6, random_state=42)",
-        f"frozen model: RF(n_estimators=50, random_state=42)",
-        f"representation: 43 handcrafted + 384 all-MiniLM-L6-v2 (427 total)",
-        f"training data: arm_d (6269: 4006 mal / 2263 ben)",
-        f"calibration/validation: validation split (110 samples, never JBB)",
+        "frozen model: XGB(n_estimators=50, max_depth=6, random_state=42)",
+        "frozen model: RF(n_estimators=50, random_state=42)",
+        "representation: 43 handcrafted + 384 all-MiniLM-L6-v2 (427 total)",
+        "training data: arm_d (6269: 4006 mal / 2263 ben)",
+        "calibration/validation: validation split (110 samples, never JBB)",
         f"best raw thresholds: {best}",
         f"best calibrated thresholds: {cal_best}",
         "",

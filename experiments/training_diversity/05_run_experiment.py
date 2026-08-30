@@ -352,7 +352,7 @@ def write_outputs(primary, cv, score_dist, sweep, timing, labels, log: list[str]
     log_lines = [
         "Q-Guardian training-diversity experiment log",
         "=============================================",
-        f"representation: 43 handcrafted + 384 all-MiniLM-L6-v2",
+        "representation: 43 handcrafted + 384 all-MiniLM-L6-v2",
         f"threshold: {THRESHOLD} (fixed, not tuned on JBB)",
         "",
         "Primary train-on-train results (internal test / JBB):",

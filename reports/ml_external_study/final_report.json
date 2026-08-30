@@ -1,0 +1,177 @@
+{
+  "generated_at": "2026-08-25T05:30:00Z",
+  "study": "Q-Guardian v1.1.0 External ML Training & Generalization Study",
+  "pipeline_version": "arm_d",
+  "feature_contract": "extended-427",
+  "datasets": {
+    "primary_external": {
+      "dataset_id": "jbb-behaviors",
+      "source": "JailbreakBench/JBB-Behaviors",
+      "samples": 200,
+      "malicious": 100,
+      "benign": 100,
+      "license": "public",
+      "requires_token": false,
+      "role": "PRIMARY EXTERNAL EVALUATION"
+    },
+    "independent_external": {
+      "dataset_id": "wildjailbreak",
+      "source": "allenai/wildjailbreak",
+      "estimated_samples": "5000+",
+      "license": "MIT",
+      "requires_token": true,
+      "role": "INDEPENDENT EXTERNAL (NEEDS HF_TOKEN)",
+      "action_required": "Accept terms at https://huggingface.co/datasets/allenai/wildjailbreak and set HF_TOKEN"
+    },
+    "training_data": {
+      "arm_d": 6269,
+      "deepset": 662,
+      "trustair_jailbreaks": 1405,
+      "trustair_regular": 3500,
+      "jailbreakv": 5900,
+      "harmful_behaviors": 520
+    }
+  },
+  "leakage_check": {
+    "jbb_vs_training_overlap_pct": 0.0,
+    "jbb_vs_internal_splits_overlap_pct": 0.0,
+    "harmful_behaviors_overlap": "2.12% (documented)",
+    "label_conflicts": 0,
+    "cross_dataset_duplicates": "2741 (all JBB↔split_external_eval, expected)"
+  },
+  "classical_results": {
+    "arm_d_fusion_on_jbb": {
+      "roc_auc": 0.783,
+      "f1_at_t50": 0.721,
+      "precision_at_t50": 0.656,
+      "recall_at_t50": 0.800,
+      "fpr_at_t50": 0.420
+    },
+    "per_provider_jbb_t50": {
+      "isolation_forest": {"roc_auc": 0.331, "f1": 0.326, "fpr": 0.590},
+      "random_forest": {"roc_auc": 0.765, "f1": 0.706, "fpr": 0.410},
+      "xgboost": {"roc_auc": 0.786, "f1": 0.733, "fpr": 0.400},
+      "fusion": {"roc_auc": 0.783, "f1": 0.721, "fpr": 0.420}
+    },
+    "cross_dataset_matrix": {
+      "arm_d_to_jbb": {"roc_auc": 0.783, "f1": 0.721, "fpr": 0.420},
+      "arm_d_to_internal_test": {"roc_auc": 0.931, "f1": 0.740, "fpr": 0.054}
+    }
+  },
+  "quantum_results": {
+    "qsvm_5dim_jbb": {
+      "roc_auc": 0.500,
+      "f1": 0.000,
+      "note": "Chance level performance"
+    },
+    "classical_baselines_5dim_jbb": {
+      "random_forest": {"roc_auc": 0.486, "f1": 0.379},
+      "xgboost": {"roc_auc": 0.488, "f1": 0.424}
+    },
+    "conclusion": "NO quantum advantage demonstrated. 5-dim feature space insufficient for external generalization."
+  },
+  "calibration": {
+    "validation_optimal_threshold_transfer": {
+      "val_optimal_t": 0.15,
+      "jbb_fpr_at_val_optimal": 0.700,
+      "guardrail_limit": 0.15,
+      "guardrail_selected_t": 0.30,
+      "jbb_fpr_at_guardrail_t": 0.125
+    },
+    "calibration_methods": {
+      "raw": {"jbb_fpr": 0.700},
+      "platt": {"jbb_fpr": 1.000},
+      "isotonic": {"jbb_fpr": 0.810}
+    },
+    "conclusion": "Validation-optimal thresholds DO NOT transfer to external data. FPR guardrail required."
+  },
+  "adversarial_robustness": {
+    "auc_degradation": {
+      "fusion": 0.218,
+      "xgboost": 0.233,
+      "random_forest": 0.214,
+      "isolation_forest": 0.218
+    },
+    "perturbations_tested": 9,
+    "adversarial_samples": 1400,
+    "conclusion": "~0.22 AUC degradation across all classical models under adversarial perturbations"
+  },
+  "false_positive_analysis": {
+    "jbb_benign_samples": 100,
+    "fusion_fpr_at_t50": 0.420,
+    "xgboost_fpr_at_t50": 0.400,
+    "random_forest_fpr_at_t50": 0.410,
+    "isolation_forest_fpr_at_t50": 0.590,
+    "guardrail_enforced_t": 0.30,
+    "fpr_at_guardrail": 0.125
+  },
+  "quantum_vs_classical": {
+    "qsvm_jbb_auc": 0.500,
+    "classical_5dim_xgb_jbb_auc": 0.488,
+    "full_427dim_xgb_jbb_auc": 0.786,
+    "ablation_impact": {
+      "remove_qsvm": {"fusion_roc_auc": 0.985, "fusion_f1": 0.821},
+      "remove_rf": {"fusion_roc_auc": 0.933, "fusion_f1": 0.688},
+      "remove_if": {"fusion_roc_auc": 0.985, "fusion_f1": 0.841},
+      "remove_rule": {"fusion_roc_auc": 0.969, "fusion_f1": 0.841}
+    },
+    "conclusion": "NO quantum advantage demonstrated. QSVM removal has minimal impact on fusion."
+  },
+  "production_recommendation": {
+    "choice": "A",
+    "description": "Classical model improvement recommended",
+    "config": {
+      "models": ["isolation_forest", "random_forest", "xgboost"],
+      "fusion_weights": {"rule_engine": 0.15, "isolation_forest": 0.10, "random_forest": 0.35, "xgboost": 0.25},
+      "threshold": 0.30,
+      "fpr_guardrail": 0.15,
+      "quantum_enabled": false
+    },
+    "rationale": [
+      "Fusion ROC-AUC=0.783 on JBB external",
+      "XGBoost strongest single provider (AUC=0.786)",
+      "FPR guardrail prevents catastrophic threshold transfer (t=0.30, FPR=0.125)",
+      "QSVM provides NO measurable advantage (AUC=0.500)",
+      "Quantum remains RESEARCH ONLY"
+    ]
+  },
+  "limitations": [
+    "WildJailbreak unavailable without HF_TOKEN — cross-dataset generalization unidirectional only",
+    "harmful_behaviors has 2.12% overlap with JBB",
+    "dolly-benign is benign-only",
+    "deepset-prompt-injections used in training",
+    "JBB split-based labels force binary mapping",
+    "5-dim QSVM space insufficient for external generalization",
+    "5-qubit limit restricts feature dimensionality",
+    "Validation-optimal thresholds don't transfer — guardrail required",
+    "~0.22 AUC degradation under adversarial perturbations",
+    "42% FPR at t=0.50 on benign JBB",
+    "QSVM O(n²) kernel limits training to 200 samples"
+  ],
+  "artifacts": {
+    "dataset_manifest": "reports/ml_baseline/dataset_manifest.json",
+    "external_study_manifest": "reports/ml_external_study/external_study_manifest.json",
+    "leakage_report": "reports/ml_external_study/leakage_report.json",
+    "label_mapping": "reports/ml_external_study/label_mapping.json",
+    "external_generalization": "artifacts/experiments/external_generalization/external_generalization.json",
+    "qsvm_evaluation": "artifacts/experiments/qsvm_evaluation/qsvm_evaluation.json",
+    "calibration_verification": "artifacts/experiments/calibration_verification/calibration_verification.json",
+    "adversarial_robustness": "artifacts/experiments/adversarial_robustness/adversarial_robustness.json",
+    "auto_threshold": "artifacts/experiments/auto_threshold/auto_threshold.json",
+    "arm_d_checkpoint": "artifacts/training_arm_d/hybrid_evaluator.joblib",
+    "model_versioning": "artifacts/training_arm_d/version_manifest.json",
+    "final_report_md": "reports/ml_external_study/final_report.md",
+    "final_report_json": "reports/ml_external_study/final_report.json"
+  },
+  "reproducibility": {
+    "random_seed": 42,
+    "python": "3.12",
+    "sklearn": "1.5",
+    "xgboost": "2.0",
+    "sentence_transformers": "2.2",
+    "quantum_backend": "LocalSimulatorBackend",
+    "quantum_shots": 128,
+    "quantum_qubits": 5,
+    "hf_token_set": false
+  }
+}

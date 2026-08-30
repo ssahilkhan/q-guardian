@@ -12,13 +12,11 @@ Usage:
 from __future__ import annotations
 
 import asyncio
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 from q_guardian import (
     Agent,
-    AgentRequest,
-    AgentResponse,
     AgentSession,
     FrameworkConfig,
     Guardian,
@@ -26,12 +24,10 @@ from q_guardian import (
     PromptDecision,
     PromptScannerPlugin,
     RiskContext,
-    SecurityContext,
     ThreatContext,
-    ThreatType,
     ThreatSeverity,
+    ThreatType,
 )
-
 
 # ---------------------------------------------------------------------------
 # Mock Framework Agents (no external deps required)
@@ -231,7 +227,7 @@ class SecurityCoordinator:
             print(f"    {fw}: {count}")
 
         # Security summary
-        print(f"\n  Security Summary:")
+        print("\n  Security Summary:")
         print(f"    Total scans: {self._total_scans}")
         print(f"    Total blocks: {self._total_blocks}")
         print(f"    Block rate: {self._total_blocks / max(self._total_scans, 1) * 100:.1f}%")
@@ -256,7 +252,7 @@ class SecurityCoordinator:
         # Runtime stats
         runtime = self._guardian.runtime
         if runtime:
-            print(f"\n  Runtime:")
+            print("\n  Runtime:")
             print(f"    Active session: {runtime.session_id}")
             print(f"    Tool invocations: {runtime.tool_count}")
             print(f"    Threats in context: {runtime.threat_count}")
@@ -325,7 +321,7 @@ async def main() -> None:
     coordinator.print_dashboard()
     await guardian.shutdown()
 
-    print(f"\n  Example complete.")
+    print("\n  Example complete.")
 
 
 if __name__ == "__main__":

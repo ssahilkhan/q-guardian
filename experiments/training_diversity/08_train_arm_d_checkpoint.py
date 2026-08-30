@@ -33,7 +33,7 @@ from __future__ import annotations
 import json
 import subprocess
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import structlog
@@ -229,7 +229,7 @@ def main() -> None:
     }
     metadata = {
         "run": "training_arm_d",
-        "created_utc": datetime.now(timezone.utc).isoformat(),
+        "created_utc": datetime.now(UTC).isoformat(),
         "git_commit": git_commit(),
         "model_type": (
             "HybridEvaluator (rule-engine + isolation-forest + random-forest + xgboost fusion)"

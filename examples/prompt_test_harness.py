@@ -31,7 +31,8 @@ from q_guardian.quantum.fusion.strategies.weighted_voting import WeightedVotingS
 from q_guardian.quantum.kernels.quantum_kernel import QuantumKernelEstimator
 from q_guardian.quantum.models.qsvm import QSVMModel
 from q_guardian.response.data import PolicyDecision as ResponsePolicyDecision
-from q_guardian.response.data import ResponseRequest, RiskAssessment as ResponseRiskAssessment
+from q_guardian.response.data import ResponseRequest
+from q_guardian.response.data import RiskAssessment as ResponseRiskAssessment
 from q_guardian.response.engine.response_engine import ResponseEngine
 from q_guardian.risk.assessment.risk_engine import RiskAssessmentEngine
 from q_guardian.risk.config import RiskConfig, ScoringWeights
@@ -130,7 +131,7 @@ class _RuleProvider(PredictionProvider):
     provider_type = "rule"
     display_name = "Rule Engine"
 
-    def __init__(self, pipeline: "Pipeline") -> None:
+    def __init__(self, pipeline: Pipeline) -> None:
         self._pipeline = pipeline
 
     async def predict(self, prompt: str, features=None) -> ThreatPrediction:
@@ -158,7 +159,7 @@ class _AnomalyProvider(PredictionProvider):
 
     provider_id = "isolation-forest"
 
-    def __init__(self, pipeline: "Pipeline") -> None:
+    def __init__(self, pipeline: Pipeline) -> None:
         self._pipeline = pipeline
 
     async def predict(self, prompt: str, features=None) -> ThreatPrediction:
@@ -181,7 +182,7 @@ class _ClassifierProvider(PredictionProvider):
 
     provider_id = "random-forest"
 
-    def __init__(self, pipeline: "Pipeline") -> None:
+    def __init__(self, pipeline: Pipeline) -> None:
         self._pipeline = pipeline
 
     async def predict(self, prompt: str, features=None) -> ThreatPrediction:
@@ -211,7 +212,7 @@ class _QuantumProvider(PredictionProvider):
 
     provider_id = "qsvm"
 
-    def __init__(self, pipeline: "Pipeline") -> None:
+    def __init__(self, pipeline: Pipeline) -> None:
         self._pipeline = pipeline
 
     async def predict(self, prompt: str, features=None) -> ThreatPrediction:
@@ -408,9 +409,9 @@ class Pipeline:
         with open(os.path.join(state_dir, "rf.pkl"), "rb") as f:
             self.rf = pickle.load(f)
         self.qsvm = QSVMModel(kernel=self._q_kernel, feature_map=self._q_feature_map)
-        with open(os.path.join(state_dir, "qsvm.json"), "r") as f:
+        with open(os.path.join(state_dir, "qsvm.json")) as f:
             self.qsvm.load(json.load(f))
-        with open(os.path.join(state_dir, "corpus.json"), "r") as f:
+        with open(os.path.join(state_dir, "corpus.json")) as f:
             self._train_texts = json.load(f)
         print(f"    State loaded from {state_dir} ({len(self._train_texts)} corpus samples)")
 

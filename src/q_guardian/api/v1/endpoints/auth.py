@@ -75,7 +75,8 @@ async def _check_login_rate_limit(request: Request, username: str) -> tuple[bool
 
 @router.post("/login", response_model=ResponseSchema[dict[str, Any]])
 async def login(
-    request: Request, body: LoginRequestSchema
+    request: Request,
+    body: LoginRequestSchema,
 ) -> ResponseSchema[dict[str, Any]] | JSONResponse:
     """Authenticate a provisioned user and issue a token pair.
 

@@ -455,7 +455,7 @@ def generalization_analysis() -> dict:
 
     def stats_of(a: np.ndarray) -> dict:
         return {
-            "n": int(len(a)),
+            "n": len(a),
             "mean_length": round(float(a[:, 0].mean()), 1),
             "mean_keyword_count": round(float(a[:, 8].mean()), 3),
             "mean_punct_ratio": round(float(a[:, 41].mean()), 4),

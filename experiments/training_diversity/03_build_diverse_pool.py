@@ -239,7 +239,7 @@ def family_counts(texts: list[str]) -> tuple[dict[str, int], int, dict[str, list
     """Count texts matching each family detector. Returns (counts, no_match, examples)."""
     engine, heuristics = build_detectors()
     order = list(DETECTOR_BASIS.keys())
-    counts: dict[str, int] = {f: 0 for f in order}
+    counts: dict[str, int] = dict.fromkeys(order, 0)
     examples: dict[str, list[str]] = {f: [] for f in order}
     no_match = 0
     for t in texts:
@@ -507,7 +507,7 @@ def main() -> None:
     for set_name in fam_out["sets"]:
         d = fam_out["sets"][set_name]
         row = [f"| {set_name} | {d['n']} |"]
-        for fam in DETECTOR_BASIS.keys():
+        for fam in DETECTOR_BASIS:
             row.append(f" {d['per_family'][fam]} |")
         row.append(f" {d['no_family_detector_matched']} |")
         md.append("".join(row))
@@ -517,7 +517,7 @@ def main() -> None:
         md.append(f"- **{fam}**: {basis}")
     md.append("")
     md.append("## Sample matches per family (first 3, truncated)")
-    for fam in DETECTOR_BASIS.keys():
+    for fam in DETECTOR_BASIS:
         md.append(f"### {fam}")
         for set_name in ("control_train", "diverse_additions", "jbb_malicious_eval"):
             ex = fam_out["sets"][set_name]["examples"].get(fam, [])

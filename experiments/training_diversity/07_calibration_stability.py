@@ -20,9 +20,9 @@ from pathlib import Path
 
 import numpy as np
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import brier_score_loss, log_loss
 from sklearn.model_selection import RepeatedStratifiedKFold, StratifiedShuffleSplit
 from sklearn.preprocessing import StandardScaler
-from sklearn.metrics import brier_score_loss, log_loss
 
 ROOT = Path(__file__).resolve().parent.parent.parent
 RUN = ROOT / "artifacts" / "training_xgboost_fix" / "splits"
@@ -662,7 +662,7 @@ def write_report(results: dict, elapsed: float) -> None:
         "",
         "## 3. BEST CALIBRATED MODEL",
         "",
-        f"- **Model**: RF (single-provider, no fusion overhead)",
+        "- **Model**: RF (single-provider, no fusion overhead)",
         f"- **Threshold**: {rf['selected_threshold']} (FPR-constrained on validation, budget ≤ {FPR_BUDGET})",
         f"- **Fusion alternative**: RF/XGB weighted (RF weight={fus['best_weight_rf']}), threshold {fus['selected']['selected_threshold']}",
         "",

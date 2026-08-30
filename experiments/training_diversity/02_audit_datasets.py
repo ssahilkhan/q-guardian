@@ -267,7 +267,7 @@ def main() -> None:
                 cat[r["category"] or "unknown"] += 1
             if "format" in r:
                 cat[r["format"] or "unknown"] += 1
-            if "policy" in r and r["policy"]:
+            if r.get("policy"):
                 cat[r["policy"] + " (policy)"] += 1
         if not cat:
             cat["harmful-behavior"] = len(rows)
