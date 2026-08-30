@@ -77,11 +77,12 @@ vanilla HTML/CSS/JS SPA:
 | **Overview** | Dashboard | System status, stage/rule/model/quantum counts, decision distribution, recent scans, quick-scan entry | `/api/v1/system/status`, `/api/v1/system/version`, `/api/v1/console/summary`, `/api/v1/analysis` |
 | **Overview** | Scanner | Primary workflow: submit prompt → run pipeline → inspect verdict, findings, features, normalized text, timing | `POST /api/v1/analysis/scan` |
 | **Analysis** | Detection | Browsable history list, drill into any scan record with full report (verdict banner, risk bar, findings, features, metadata, prompts) | `GET /api/v1/analysis`, `GET /api/v1/analysis/{id}` |
+| **Analysis** | Analytics | Historical analytics over retained scan history: time-range/preset filters, verdict & severity & detection-category distributions, scan volume, risk & processing-time trends, day-grouped scan timeline | `GET /api/v1/analysis` (bounded, 200 records max) |
 | **Analysis** | Pipeline | Stage inventory with live availability + truthful execution order (quantum is a research layer, not in the default path) | `GET /api/v1/console/components` |
 | **Analysis** | Rules | Read-only catalog of active detection rules | `GET /api/v1/console/rules` |
 | **Analysis** | Models | Read-only classical ML registry and health | `GET /api/v1/console/models` |
 | **Analysis** | Quantum | Research-layer fusion strategies + backend availability | `GET /api/v1/console/models` |
-| **Research** | Training | On-disk JSONL datasets + trained model storage (metadata only) | `GET /api/v1/console/research` |
+| **Research** | Training | On-disk JSONL datasets + trained model storage (metadata only); training *state* card reports live-run/progress as UNAVAILABLE when the backend exposes no such information | `GET /api/v1/console/research` |
 | **Research** | Evaluation | Cross-validation report from `docs/output/evaluation/report.json` | `GET /api/v1/console/research` |
 | **Research** | Benchmarks | Benchmark suites + load-test results saved by the scripts | `GET /api/v1/console/research` |
 | **System** | Audit | Security posture (redacted config flags), decision distribution, pipeline health, recent activity trail | `/api/v1/console/summary`, `/api/v1/console/configuration`, `/api/v1/analysis` |
@@ -189,3 +190,91 @@ following are updated: this page, `docs/04_Configuration_File_Documentation.md`,
   existing network-level controls until this lands.
 - The console reports the framework's built-in model/quantum inventory but
   does not train models or retrain anything.
+
+## 10. Historical Analytics, Complete Dashboard & Training/Quantum Status
+
+Implemented on top of the existing vanilla-JS SPA with **zero new
+dependencies** — charts are hand-rolled inline SVG (`U.chart.bars`,
+`U.chart.line`, `U.chart.horizBars` in `js/ui.js`) and all analytics math lives
+in a dependency-free, intentionally simple module
+(`js/analytics.js`) that also runs under Node for testing.
+
+### 10.1 Historical Analytics view (`#/analytics`)
+
+- **Source of truth**: `GET /api/v1/analysis` (the backend caps history at
+  200 records — in-memory, resets on restart). The view never synthesizes
+  records.
+- **Filters**: preset time ranges (24h / 7d / 30d / all) applied client-side
+  **over the returned records**, plus verdict and free-text prompt search.
+  Every place where a filter is local (browser-side) is labeled as such; the
+  console does not claim server-side aggregation it does not perform.
+- **Overview cards**: total scans, average risk, invalid-input count,
+  high-severity count, average processing time, verdict counts.
+- **Distributions**: verdict, severity (across findings), and top detection
+  categories (stacked severity bars).
+- **Trends**: scan volume (hourly when the window fits 48 h, otherwise daily)
+  and average risk + processing-time trends.
+- **Scan timeline**: records grouped by local calendar day (most recent
+  first), each row shows verdict badge, risk, finding totals, processing time,
+  timestamp and a link into the full Detection report.
+- **ML notes**: a card states how many retained records had classical ML
+  inference and ML-assigned findings — statistics only.
+- **Empty/error states**: zero-history and API-failure states are explicit.
+
+### 10.2 Complete Dashboard (`#/dashboard`)
+
+The landing page now composes live API data:
+
+- Quick Scan (unchanged behavior; POST `/api/v1/analysis/scan`,
+  redirect to the Detection report).
+- System health cards (API health, active rules, ML availability, quantum
+  presence) + overall status.
+- System Components table with **real** status derivations (classical ML
+  `installed`/`active`, quantum backends from `quantum.backends[]`, database
+  row from `/api/v1/health`). No component is claimed healthy without backend
+  evidence.
+- Quantum Layer card and Training/Research card wired to `/api/v1/console/models`
+  and `/api/v1/console/research`.
+- Decision distribution + scan volume trend + Recent Scans table, linking to
+  Analytics.
+
+### 10.3 Quantum status (fix to `js/views/quantum.js`)
+
+The previous card read a non-existent `quantum.local_simulator` backend field
+and always displayed a misleading status. Status is now **derived from the
+live payload**: `quantum.active === true` → *Active*; otherwise if backends
+exist in `quantum.backends[]` with `installed === true` → *Available — Not
+Executed*; otherwise *Unavailable*. Because the backend currently reports
+`active: false`, the console never shows quantum as active — the scan-path
+note and pipeline order make this explicit.
+
+### 10.4 Training status (`js/views/training.js`)
+
+The backend exposes **no** running-training process, progress percentage,
+epochs or loss/accuracy through any console endpoint or event stream — so the
+Training page states this truthfully: live run = **Not running**, progress =
+**Unavailable (not reported by backend)**, alongside the real on-disk
+artifacts (datasets, model storage metadata, evaluation report presence).
+No progress bar or metric is simulated.
+
+### 10.5 Responsive behavior (≤768px, ≤480px)
+
+`console.css` previously had no tablet/phone breakpoints. New
+`@media (max-width: 768px)` and `@media (max-width: 480px)` rules stack grids,
+the page head, toolbars and the timeline; charts already scale via `viewBox`.
+
+### 10.6 Frontend tests
+
+- `tests/frontend/analytics.test.js` exercises `js/analytics.js` on plain Node
+  (`node:assert`, zero packages; run with `node tests/frontend/analytics.test.js`)
+  using sanitized records shaped exactly like the backend schema
+  (`analysis_id`, `decision`, `risk_score`, `is_valid`, `finding_count`,
+  `high_severity_count`, `processing_time_ms`, `timestamp`, `payload`).
+  It forces `TZ=UTC` because day-grouping is intentionally local-calendar.
+- Result: **all analytics frontend tests pass**; every modified/created JS file
+  passes `node --check`.
+- Python gates: `ruff check src/ tests/` and `ruff format --check` still pass
+  for this work package; `mypy` is unaffected (no Python sources changed);
+  `pytest tests/ --cov=q_guardian --cov-fail-under=80` reaches ~89% coverage.
+  Environment-only pre-existing failures are documented in the UI delivery
+  report.

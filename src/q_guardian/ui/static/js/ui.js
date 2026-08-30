@@ -379,6 +379,154 @@
     return isNaN(parsed) ? fallback : parsed;
   }
 
+  /* ---- Charts (dependency-free SVG) -------------------------------------- */
+
+  var CHART_COLORS = {
+    allow: "chart-cls-allow",
+    warn: "chart-cls-warn",
+    warning: "chart-cls-warn",
+    review: "chart-cls-review",
+    block: "chart-cls-block",
+    info: "chart-cls-info",
+    low: "chart-cls-low",
+    medium: "chart-cls-medium",
+    high: "chart-cls-high",
+    critical: "chart-cls-critical",
+    accent: "chart-cls-accent",
+  };
+
+  function chartCls(key) {
+    return CHART_COLORS[String(key || "").toLowerCase()] || "";
+  }
+
+  function chartValueLabel(value) {
+    if (value == null || isNaN(Number(value))) return null;
+    var num = Number(value);
+    return String(Math.round(num) === num ? num : num.toFixed(2));
+  }
+
+  /* Vertical bar chart. data: [{label, value, cls, title}] */
+  function barChart(opts) {
+    var data = (opts && opts.data) || [];
+    var empty = (opts && opts.empty) || "No data to display.";
+    if (!data.length) return U.emptyState(empty);
+    var values = data.map(function (d) { return Number(d.value) || 0; });
+    var max = Math.max.apply(null, values) || 1;
+    var height = (opts && opts.height) || 150;
+    var plotH = height - 8;
+    var n = data.length;
+    var gap = Math.min(4, Math.max(1, 100 / n - 2));
+    var bars = data.map(function (d, i) {
+      var h = Math.max(0, Math.round((Number(d.value) || 0) / max * plotH));
+      var x = (i / n) * 100 + gap / 2;
+      var w = Math.max(2, 100 / n - gap);
+      var title = (d.title || (d.label + ": " + U.fmtNum(d.value)));
+      var cls = "chart-bar " + (d.cls || chartCls(d.clsKey || "accent"));
+      return (
+        '<rect class="' + cls.trim() + '" x="' + x.toFixed(4) + '" y="' +
+        (plotH - h) + '" width="' + w.toFixed(4) + '" height="' + h + '" rx="2">' +
+        "<title>" + esc(title) + "</title></rect>"
+      );
+    });
+    var ticks = data.map(function (d) {
+      return '<span class="chart-tick" title="' + esc(d.label) + '">' + text(d.label) + "</span>";
+    }).join("");
+    var aria = (opts && opts.ariaLabel) ||
+      ("Bar chart: " + data.map(function (d) { return d.label + " = " + U.fmtNum(d.value); }).join(", "));
+    return (
+      '<figure class="chart-figure">' +
+      '<div class="chart" role="img" aria-label="' + esc(aria) + '">' +
+      '<svg viewBox="0 0 100 ' + height + '" preserveAspectRatio="none" aria-hidden="true">' +
+      bars.join("") +
+      "</svg></div>" +
+      '<figcaption class="chart-ticks">' + ticks + "</figcaption>" +
+      "</figure>"
+    );
+  }
+
+  /* Line chart. data: [{label, value, title}] */
+  function lineChart(opts) {
+    var data = (opts && opts.data) || [];
+    var empty = (opts && opts.empty) || "No data to display.";
+    var notEnough = (opts && opts.notEnough) || "Not enough scan records to plot a trend.";
+    if (!data.length) return U.emptyState(empty);
+    var height = (opts && opts.height) || 150;
+    var plotH = height - 8;
+    var series = data
+      .map(function (d) { return { label: d.label, value: Number(d.value) }; })
+      .filter(function (d) { return !isNaN(d.value); });
+    if (series.length < 2) {
+      return U.note(notEnough);
+    }
+    var min = Math.min.apply(null, series.map(function (d) { return d.value; }));
+    var max = Math.max.apply(null, series.map(function (d) { return d.value; }));
+    var span = max - min || 1;
+    var n = series.length;
+    var coords = series.map(function (d, i) {
+      var x = n === 1 ? 50 : (i / (n - 1)) * 100;
+      var y = plotH - ((d.value - min) / span) * plotH;
+      return { x: x, y: y, label: d.label, value: d.value };
+    });
+    var linePoints = coords.map(function (p) {
+      return p.x.toFixed(4) + "," + p.y.toFixed(4);
+    }).join(" ");
+    var dots = coords.map(function (p) {
+      return (
+        '<circle class="chart-dot" cx="' + p.x.toFixed(4) + '" cy="' + p.y.toFixed(4) + '" r="2.5">' +
+        "<title>" + esc(p.label + ": " + U.fmtNum(p.value)) + "</title></circle>"
+      );
+    }).join("");
+    var prefix = opts.valuePrefix != null ? opts.valuePrefix : "";
+    var suffix = opts.valueSuffix != null ? opts.valueSuffix : "";
+    var ticks = coords.map(function (p) {
+      return (
+        '<span class="chart-tick" title="' + esc(p.label + " = " + prefix + U.fmtNum(p.value) + suffix) + '">' +
+        text(p.label) + "</span>"
+      );
+    }).join("");
+    var aria = (opts && opts.ariaLabel) ||
+      ("Line chart: " + coords.map(function (p) { return p.label + " = " + prefix + U.fmtNum(p.value) + suffix; }).join(", "));
+    return (
+      '<figure class="chart-figure">' +
+      '<div class="chart" role="img" aria-label="' + esc(aria) + '">' +
+      '<svg viewBox="0 0 100 ' + height + '" preserveAspectRatio="none" aria-hidden="true">' +
+      '<polyline class="chart-line ' + (opts.clsKey ? chartCls(opts.clsKey) : "") + '" points="' + linePoints +
+      '" fill="none" stroke-linejoin="round" stroke-linecap="round"/>' +
+      dots +
+      "</svg></div>" +
+      '<figcaption class="chart-ticks">' + ticks + "</figcaption>" +
+      "</figure>"
+    );
+  }
+
+  /* Horizontal value rows. items: [{label, value, clsKey, title}] */
+  function horizBars(items, empty) {
+    if (!items || !items.length) return U.emptyState(empty || "No data to display.");
+    var total = items.reduce(function (sum, item) { return sum + (Number(item.value) || 0); }, 0);
+    var rows = items.map(function (item) {
+      var count = Number(item.value) || 0;
+      var pct = total ? Math.round((count / total) * 100) : 0;
+      return (
+        '<div class="dist-row">' +
+        '<span class="dist-label" title="' + esc(item.label) + '">' + text(item.label) + "</span>" +
+        '<div class="dist-track" role="img" aria-label="' + esc(item.label + ": " + count + " (" + pct + "%)") + '">' +
+        '<div class="dist-fill ' + chartCls(item.clsKey || "accent") + '" style="width:' + pct + '%">' +
+        "<span>" + (item.title || (count + " (" + pct + "%)")) + "</span>" +
+        '</div></div>' +
+        '<span class="dist-value">' + U.fmtNum(count) + "</span>" +
+        "</div>"
+      );
+    }).join("");
+    return '<div class="distribution">' + rows + "</div>";
+  }
+
+  U.chart = {
+    bars: barChart,
+    line: lineChart,
+    horizBars: horizBars,
+    color: chartCls,
+  };
+
   U.esc = esc;
   U.text = text;
   U.fmtBytes = fmtBytes;
