@@ -371,6 +371,21 @@ class TestEnsureProductionSecret:
         monkeypatch.setenv("ENVIRONMENT", "development")
         ensure_production_secret(self.PLACEHOLDER)
 
+    def test_placeholder_rejected_when_app_environment_is_production(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.delenv("ENVIRONMENT", raising=False)
+        monkeypatch.setenv("APP_ENVIRONMENT", "production")
+        with pytest.raises(SecurityError):
+            ensure_production_secret(self.PLACEHOLDER)
+
+    def test_placeholder_tolerated_when_both_variables_unset(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.delenv("ENVIRONMENT", raising=False)
+        monkeypatch.delenv("APP_ENVIRONMENT", raising=False)
+        ensure_production_secret(self.PLACEHOLDER)
+
 
 class TestAuthSingletons:
     """Tests for singleton accessors."""

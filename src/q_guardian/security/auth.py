@@ -17,6 +17,7 @@ import hashlib
 import hmac
 import json
 import os
+import re
 import secrets
 import time
 import uuid as uuid_module
@@ -29,8 +30,17 @@ import jwt
 import structlog
 from bcrypt import checkpw, gensalt, hashpw
 
-from q_guardian.config.settings import get_settings
-from q_guardian.exceptions.base import AuthenticationError, SecurityError
+from q_guardian.config.settings import get_settings, is_production_environment
+from q_guardian.database.repositories.user_repository import (
+    ALLOWED_ROLES,
+    UserRepository,
+    build_default_user_repository,
+)
+from q_guardian.exceptions.base import AuthenticationError, DatabaseError, SecurityError
+from q_guardian.security.token_blocklist import (
+    TokenBlocklistService,
+    default_token_blocklist_service,
+)
 
 logger = structlog.get_logger("security.auth")
 
@@ -49,6 +59,9 @@ AUTH_USERS_ENV_VAR = "AUTH_USERS"
 #: Each entry may be a raw key (hashed on load) or a ``sha256:<hexdigest>``
 #: entry that is already hashed. Example: ``API_KEYS=qg_ab12...,sha256:feed...``
 API_KEYS_ENV_VAR = "API_KEYS"
+
+#: Usernames accepted for registration: ASCII letters/digits plus '_', '-', '.'.
+_VALID_USERNAME_RE = re.compile(r"^[A-Za-z0-9_.-]{3,64}$")
 
 
 def hash_password(password: str) -> str:
@@ -258,25 +271,66 @@ class JWTService:
 
 
 class AuthenticationService:
-    """User authentication against an environment-provisioned store.
+    """User authentication against a persistent + env-provisioned store.
 
-    Users are provisioned through the ``AUTH_USERS`` environment variable
-    containing a JSON mapping of username to ``{password_hash, roles}``
-    where ``password_hash`` is a bcrypt hash produced by :func:`hash_password`.
-    No credentials ship with the code; when ``AUTH_USERS`` is unset no
-    user can authenticate.
+    Two sources of accounts are combined transparently:
+
+    1. **Environment-provisioned users** via the ``AUTH_USERS`` environment
+       variable (``{username: {password_hash, roles}}``). These are boot
+       credentials and never change at runtime.
+    2. **Registered users** persisted through a :class:`UserRepository`
+       (MongoDB by default). A brand-new operator can create an account
+       through the registration endpoint; the account survives restarts.
+
+    No credentials ship with the code, no plaintext password is ever kept,
+    and token signing/verification stays in :class:`JWTService`.
     """
 
-    def __init__(self, jwt_service: JWTService | None = None) -> None:
+    #: Minimum password length for new registrations.
+    MIN_PASSWORD_LENGTH = 8
+
+    #: Default role assigned to a newly registered account. Self-service
+    #: registration never grants elevated roles (no self-escalation).
+    DEFAULT_REGISTRATION_ROLES: tuple[str, ...] = ("analyst",)
+
+    def __init__(
+        self,
+        jwt_service: JWTService | None = None,
+        user_repository: UserRepository | None = None,
+        token_blocklist: TokenBlocklistService | None = None,
+    ) -> None:
         """Initialize the authentication service.
 
         Args:
             jwt_service: Optional JWT service instance. Defaults to a
                 singleton shared instance.
+            user_repository: Optional persistent user store (mainly tests).
+                Defaults to the MongoDB-backed repository.
+            token_blocklist: Optional token revocation service (mainly
+                tests). Defaults to the MongoDB-backed blocklist.
         """
         self._jwt_service = jwt_service or get_jwt_service()
         self._users: dict[str, dict[str, Any]] = {}
         self._load_users_from_env()
+        self._user_repository = user_repository
+        self._token_blocklist = token_blocklist or get_token_blocklist()
+
+    @property
+    def user_repository(self) -> UserRepository:
+        """Return the persistent user store (lazily initialized)."""
+        if self._user_repository is None:
+            self._user_repository = build_default_user_repository()
+        return self._user_repository
+
+    @user_repository.setter
+    def user_repository(self, repository: UserRepository) -> None:
+        """Replace the persistent user store (mainly tests)."""
+        self._user_repository = repository
+
+    @property
+    def token_blocklist(self) -> TokenBlocklistService:
+        """Return the token revocation service."""
+        return self._token_blocklist
 
     def _load_users_from_env(self) -> None:
         """Load provisioned users from the ``AUTH_USERS`` environment variable."""
@@ -302,8 +356,73 @@ class AuthenticationService:
         """Check whether any users are provisioned."""
         return bool(self._users)
 
+    async def register_user(self, username: str, password: str) -> dict[str, Any]:
+        """Create a new user account and persist it durably.
+
+        The password is hashed with bcrypt before anything is stored; the
+        returned payload never contains a password (hashed or plain).
+
+        Args:
+            username: The requested username.
+            password: The plaintext password.
+
+        Returns:
+            Public account information (``username`` and ``roles``).
+
+        Raises:
+            ValidationError: When the username or password is unsuitable,
+                or when the username is already registered.
+            DatabaseError: When the persistent store cannot be reached.
+        """
+        from q_guardian.exceptions.base import ValidationError
+
+        username = username.strip()
+        if not _VALID_USERNAME_RE.fullmatch(username):
+            raise ValidationError(
+                message=(
+                    "Usernames may contain letters, digits, underscores, "
+                    "hyphens and periods (3-64 characters)"
+                ),
+                details={"field": "username"},
+            )
+        if len(password) < self.MIN_PASSWORD_LENGTH:
+            raise ValidationError(
+                message=(f"Password must be at least {self.MIN_PASSWORD_LENGTH} characters"),
+                details={"field": "password"},
+            )
+
+        try:
+            password_hash = hash_password(password)
+        except ValueError:
+            raise ValidationError(
+                message="Password is too long (max 72 bytes)",
+                details={"field": "password"},
+            ) from None
+
+        record = await self.user_repository.create_user(
+            username,
+            password_hash,
+            list(self.DEFAULT_REGISTRATION_ROLES),
+        )
+        if record is None:
+            raise ValidationError(
+                message="A user with that name is already registered",
+                details={"field": "username", "reason": "duplicate"},
+            )
+        logger.info("user_registered", username=username, roles=record.get("roles"))
+        return {
+            "username": record["username"],
+            "roles": [str(r) for r in record.get("roles", [])],
+        }
+
     async def authenticate(self, username: str, password: str) -> dict[str, Any] | None:
         """Authenticate a user with credentials and issue a token pair.
+
+        Environment-provisioned users are checked first; registered
+        (database) users are resolved afterwards. Unreachable registered
+        storage surfaces as a clear error in production, while other
+        environments degrade gracefully to a failed login with a logged
+        warning.
 
         Args:
             username: The username.
@@ -312,20 +431,52 @@ class AuthenticationService:
         Returns:
             Dictionary with ``username``, ``roles``, and ``tokens``
             (``access`` and ``refresh``), or ``None`` when credentials
-            are invalid or no users are configured.
+            are invalid or no matching user exists.
         """
         user = self._users.get(username)
-        if user is None:
+        if user is not None:
+            if not verify_password(password, str(user.get("password_hash", ""))):
+                logger.info("authentication_failed", username=username)
+                return None
+            roles = [str(r) for r in user.get("roles", [])]
+            return await self._issue_tokens(username, roles)
+
+        return await self._authenticate_registered_user(username, password)
+
+    async def _authenticate_registered_user(
+        self, username: str, password: str
+    ) -> dict[str, Any] | None:
+        """Authenticate against the persistent user store."""
+        try:
+            record = await self.user_repository.get_by_username(username)
+        except Exception as exc:
+            # Covers DatabaseError and the "MongoDB not connected"
+            # RuntimeError that surfaces in tests / early startup.
+            if get_settings().app.is_production:
+                raise DatabaseError(
+                    message=(
+                        "Authentication store unavailable; "
+                        "check database connectivity and configuration"
+                    ),
+                    details={"module": "user_repository"},
+                ) from exc
+            logger.warning("registered_authentication_store_unavailable", username=username)
+            return None
+
+        if record is None:
             logger.info("authentication_failed", username=username)
             return None
-        if not verify_password(password, str(user.get("password_hash", ""))):
+        if not verify_password(password, str(record.get("password_hash", ""))):
             logger.info("authentication_failed", username=username)
             return None
 
-        roles = [str(r) for r in user.get("roles", [])]
-        subject = username
-        access = await self._jwt_service.create_access_token({"sub": subject, "roles": roles})
-        refresh = await self._jwt_service.create_refresh_token({"sub": subject, "roles": roles})
+        roles = [str(r) for r in record.get("roles", []) if r in ALLOWED_ROLES]
+        return await self._issue_tokens(username, roles)
+
+    async def _issue_tokens(self, username: str, roles: list[str]) -> dict[str, Any]:
+        """Build and return a token pair for an authenticated principal."""
+        access = await self._jwt_service.create_access_token({"sub": username, "roles": roles})
+        refresh = await self._jwt_service.create_refresh_token({"sub": username, "roles": roles})
         logger.info("authentication_succeeded", username=username)
         return {
             "username": username,
@@ -340,13 +491,17 @@ class AuthenticationService:
             refresh_token: A refresh token previously issued by this service.
 
         Returns:
-            New token pair dictionary, or ``None`` if invalid/expired.
+            New token pair dictionary, or ``None`` if invalid, expired,
+            or revoked by a logout.
         """
         try:
             payload = await self._jwt_service.verify_token(
                 refresh_token, expected_type=JWTService.REFRESH_TOKEN_TYPE
             )
         except AuthenticationError:
+            return None
+        if await self._token_blocklist.is_token_blocked(str(payload.get("jti", ""))):
+            logger.info("refresh_token_revoked", username=str(payload.get("sub", "")))
             return None
         subject = str(payload["sub"])
         roles = [str(r) for r in payload.get("roles", [])]
@@ -356,6 +511,44 @@ class AuthenticationService:
             "roles": roles,
             "tokens": {"access": access, "refresh": refresh_token},
         }
+
+    async def revoke_tokens(
+        self,
+        access_token: str | None,
+        refresh_token: str | None = None,
+    ) -> int:
+        """Revoke a token pair so it can no longer authenticate.
+
+        Revocations are recorded until each token's natural expiry; when
+        the backing store is unreachable the revocation is skipped with a
+        warning (fail-open on check, tokens still expire naturally).
+
+        Args:
+            access_token: The access token to revoke.
+            refresh_token: The refresh token to revoke.
+
+        Returns:
+            Number of tokens successfully revoked.
+        """
+        blocked = 0
+        for token, expected_type in (
+            (access_token, JWTService.ACCESS_TOKEN_TYPE),
+            (refresh_token, JWTService.REFRESH_TOKEN_TYPE),
+        ):
+            if not token:
+                continue
+            try:
+                payload = await self._jwt_service.verify_token(token, expected_type=expected_type)
+            except AuthenticationError:
+                logger.info("revocation_skipped_invalid_token")
+                continue
+            if await self._token_blocklist.block_token(
+                str(payload.get("jti", "")),
+                datetime.fromtimestamp(payload["exp"], tz=UTC),
+                kind=expected_type,
+            ):
+                blocked += 1
+        return blocked
 
 
 # =============================================================================
@@ -732,10 +925,7 @@ def ensure_production_secret(secret_key: str) -> None:
         SecurityError: When the value equals the well-known placeholder
             and the runtime environment is production.
     """
-    if (
-        secret_key == "change-me-to-a-random-secret-key"
-        and os.getenv("ENVIRONMENT") == "production"
-    ):
+    if secret_key == "change-me-to-a-random-secret-key" and is_production_environment():
         msg = "SECRET_KEY must be changed in production!"
         raise SecurityError(msg)
 
@@ -749,6 +939,7 @@ _authentication_service_instance: AuthenticationService | None = None
 _authorization_service_instance: AuthorizationService | None = None
 _api_key_service_instance: APIKeyService | None = None
 _rate_limit_service_instance: RateLimitService | None = None
+_token_blocklist_instance: TokenBlocklistService | None = None
 
 
 def get_jwt_service() -> JWTService:
@@ -773,6 +964,18 @@ def get_authentication_service() -> AuthenticationService:
     if _authentication_service_instance is None:
         _authentication_service_instance = AuthenticationService(get_jwt_service())
     return _authentication_service_instance
+
+
+def get_token_blocklist() -> TokenBlocklistService:
+    """Get the singleton token revocation service instance.
+
+    Returns:
+        The singleton TokenBlocklistService instance.
+    """
+    global _token_blocklist_instance
+    if _token_blocklist_instance is None:
+        _token_blocklist_instance = default_token_blocklist_service()
+    return _token_blocklist_instance
 
 
 def get_authorization_service() -> AuthorizationService:
@@ -818,8 +1021,10 @@ def reset_auth_singletons() -> None:
     global _authorization_service_instance
     global _api_key_service_instance
     global _rate_limit_service_instance
+    global _token_blocklist_instance
     _jwt_service_instance = None
     _authentication_service_instance = None
     _authorization_service_instance = None
     _api_key_service_instance = None
     _rate_limit_service_instance = None
+    _token_blocklist_instance = None

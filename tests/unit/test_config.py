@@ -68,3 +68,28 @@ class TestSecuritySettings:
 
         settings = SecuritySettings()
         assert settings.api_key_header == "X-API-Key"
+
+    def test_placeholder_secret_rejected_in_production(self) -> None:
+        """Verify the placeholder secret is rejected with APP_ENVIRONMENT=production."""
+        os.environ["APP_ENVIRONMENT"] = "production"
+        os.environ.pop("ENVIRONMENT", None)
+        from pydantic import ValidationError
+
+        from q_guardian.config.settings import SecuritySettings
+
+        try:
+            SecuritySettings(secret_key="change-me-to-a-random-secret-key")
+            raise AssertionError("placeholder secret must be rejected in production")
+        except ValidationError as exc:
+            assert "SECRET_KEY must be changed in production" in str(exc)
+        finally:
+            os.environ.pop("APP_ENVIRONMENT", None)
+
+    def test_placeholder_secret_allowed_in_development(self) -> None:
+        """Verify the placeholder secret is accepted outside production."""
+        os.environ.pop("APP_ENVIRONMENT", None)
+        os.environ.pop("ENVIRONMENT", None)
+        from q_guardian.config.settings import SecuritySettings
+
+        settings = SecuritySettings(secret_key="change-me-to-a-random-secret-key")
+        assert settings.secret_key == "change-me-to-a-random-secret-key"

@@ -19,7 +19,7 @@ from fastapi.staticfiles import StaticFiles
 from q_guardian.api.metrics import render_metrics
 from q_guardian.api.services.analysis import get_analysis_service
 from q_guardian.api.v1.endpoints.auth import router as auth_router
-from q_guardian.api.v1.router import api_v1_router
+from q_guardian.api.v1.router import api_v1_router, public_router
 from q_guardian.config.settings import get_settings
 from q_guardian.core.constants import API_V1_PREFIX, APP_DESCRIPTION, APP_TITLE, APP_VERSION
 from q_guardian.database.client import get_db_client
@@ -74,7 +74,12 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     db_client = get_db_client()
     try:
         await db_client.connect()
+        from q_guardian.database.repositories.user_repository import build_default_user_repository
+        from q_guardian.security.token_blocklist import default_token_blocklist_service
+
         await get_analysis_service().history_repository.ensure_indexes()
+        await build_default_user_repository().ensure_indexes()
+        await default_token_blocklist_service().repository.ensure_indexes()
     except Exception as e:
         logger.warning("mongodb_connection_failed", error=str(e))
 
@@ -169,6 +174,7 @@ def _register_routes(app: FastAPI) -> None:
         }
 
     app.include_router(api_v1_router, prefix=API_V1_PREFIX)
+    app.include_router(public_router, prefix=API_V1_PREFIX)
     app.include_router(auth_router, prefix=f"{API_V1_PREFIX}/auth", tags=["auth"])
 
     @app.get("/metrics", include_in_schema=False, tags=["Ops"])

@@ -14,7 +14,35 @@ from fastapi.responses import JSONResponse
 from q_guardian.exceptions.base import ApplicationError, ValidationError
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from fastapi import FastAPI, Request
+
+
+def _safe_error_list(errors: Sequence[Any]) -> list[dict[str, Any]]:
+    """Return validation errors with any non-JSON-safe context removed.
+
+    Pydantic embeds the raised exception (e.g. a ``ValueError``) in the
+    ``ctx`` of a custom validator error. That object is not JSON
+    serializable, so only the string ``ctx`` values (if any) survive;
+    the exception itself is dropped.
+    """
+    safe: list[dict[str, Any]] = []
+    for item in errors:
+        if not isinstance(item, dict):
+            continue
+        entry = dict(item)
+        ctx = entry.get("ctx")
+        if isinstance(ctx, dict):
+            clean_ctx = {
+                key: value
+                for key, value in ctx.items()
+                if isinstance(value, (str, int, float, bool, type(None)))
+            }
+            entry["ctx"] = clean_ctx or None
+        entry.pop("input", None)
+        safe.append(entry)
+    return safe
 
 
 async def application_exception_handler(request: Request, exc: ApplicationError) -> JSONResponse:
@@ -45,8 +73,7 @@ async def validation_exception_handler(
     Returns:
         JSONResponse with structured validation error details.
     """
-    errors = exc.errors()
-    details: dict[str, Any] = {"validation_errors": errors}
+    details: dict[str, Any] = {"validation_errors": _safe_error_list(exc.errors())}
     exception = ValidationError(
         message="Request validation failed",
         details=details,

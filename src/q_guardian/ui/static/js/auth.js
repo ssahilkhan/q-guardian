@@ -114,7 +114,18 @@
       return false;
     },
 
-    logout: function () {
+    logout: async function () {
+      var refreshToken = get(KEY_REFRESH);
+      try {
+        /* Revoke tokens server-side so they cannot be replayed. The
+         * access token is taken from the Authorization header. */
+        await QG.api.post(QG.api.endpoints.logout, {
+          refresh_token: refreshToken || undefined,
+        });
+      } catch (err) {
+        /* Even if the revoke call fails, clear the local session so the
+         * browser never keeps a stale credential around. */
+      }
       this.clear();
       if (window.QG.console && window.QG.console.onLogout) {
         window.QG.console.onLogout();

@@ -6,6 +6,7 @@ multiple environment profiles (development, testing, production).
 
 from __future__ import annotations
 
+import os
 from enum import StrEnum
 from functools import lru_cache
 from typing import Any
@@ -20,6 +21,27 @@ class Environment(StrEnum):
     DEVELOPMENT = "development"
     TESTING = "testing"
     PRODUCTION = "production"
+
+
+_PRODUCTION_ENV_VARS = ("APP_ENVIRONMENT", "ENVIRONMENT")
+
+
+def is_production_environment() -> bool:
+    """Return whether the runtime selects the production environment.
+
+    ``AppSettings`` reads ``APP_ENVIRONMENT`` (prefix-based), while
+    legacy code paths read bare ``ENVIRONMENT``. Treat either signalling
+    production as production so security hardening (e.g. rejecting the
+    placeholder secret key) can never be silently bypassed by setting
+    only one of the two variables.
+
+    Returns:
+        True when either variable is set to ``production``.
+    """
+    return any(
+        os.getenv(name, "").strip().lower() == Environment.PRODUCTION.value
+        for name in _PRODUCTION_ENV_VARS
+    )
 
 
 class AppSettings(BaseSettings):
@@ -80,6 +102,14 @@ class DatabaseSettings(BaseSettings):
         default="analysis_history",
         description="Collection used to persist the analysis scan history",
     )
+    user_collection: str = Field(
+        default="users",
+        description="Collection used to persist registered user accounts",
+    )
+    token_blocklist_collection: str = Field(
+        default="token_blocklist",
+        description="Collection used to persist revoked token identifiers",
+    )
 
     @property
     def client_kwargs(self) -> dict[str, Any]:
@@ -114,13 +144,16 @@ class SecuritySettings(BaseSettings):
     @field_validator("secret_key")
     @classmethod
     def validate_secret_key(cls, value: str) -> str:
-        """Validate that the secret key has been changed from default."""
-        if value == "change-me-to-a-random-secret-key":
-            import os
+        """Validate that the secret key has been changed from default.
 
-            if os.getenv("ENVIRONMENT") == "production":
-                msg = "SECRET_KEY must be changed in production!"
-                raise ValueError(msg)
+        Production is detected through :func:`is_production_environment`,
+        which honours both ``APP_ENVIRONMENT`` (the variable the
+        application reads for its ``environment`` setting) and the bare
+        ``ENVIRONMENT`` used by the security env helpers.
+        """
+        if value == "change-me-to-a-random-secret-key" and is_production_environment():
+            msg = "SECRET_KEY must be changed in production!"
+            raise ValueError(msg)
         return value
 
 

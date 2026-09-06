@@ -25,6 +25,7 @@ from q_guardian.security.auth import (
     JWTService,
     get_api_key_service,
     get_jwt_service,
+    get_token_blocklist,
 )
 
 logger = structlog.get_logger("security.http_auth")
@@ -39,6 +40,7 @@ class Principal:
     auth_type: str
     subject: str
     roles: list[str] = field(default_factory=list)
+    jti: str = ""
 
 
 def _unauthorized(reason: str) -> AuthenticationError:
@@ -70,7 +72,12 @@ async def authenticate_bearer(token: str) -> Principal:
         reason = str(exc.details.get("reason", "token_invalid"))
         raise _unauthorized(reason) from exc
     roles = [str(r) for r in payload.get("roles", [])]
-    return Principal(auth_type="jwt", subject=str(payload.get("sub", "")), roles=roles)
+    return Principal(
+        auth_type="jwt",
+        subject=str(payload.get("sub", "")),
+        roles=roles,
+        jti=str(payload.get("jti", "")),
+    )
 
 
 def authenticate_api_key(raw_key: str) -> Principal:
@@ -113,7 +120,11 @@ async def get_current_principal(request: Request) -> Principal:
         scheme, _, token = authorization.partition(" ")
         if scheme.lower() != BEARER_SCHEME or not token.strip():
             raise _unauthorized("malformed_authorization_header")
-        return await authenticate_bearer(token.strip())
+        principal = await authenticate_bearer(token.strip())
+        if principal.jti and await get_token_blocklist().is_token_blocked(principal.jti):
+            logger.info("access_token_revoked", subject=principal.subject)
+            raise _unauthorized("token_revoked")
+        return principal
 
     api_key = request.headers.get(get_settings().security.api_key_header)
     if api_key:

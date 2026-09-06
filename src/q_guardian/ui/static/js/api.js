@@ -12,18 +12,68 @@
     return typeof value === "object" && value !== null && !Array.isArray(value);
   }
 
+  function authHeaders() {
+    return (QG.auth && typeof QG.auth.headers === "function") ? QG.auth.headers() : {};
+  }
+
+  /* Resolve the API base URL. Defaults to the same origin that serves the
+   * console; override with ?__api= or the qg.apiBase query/hash for a
+   * separate (e.g. cloud) deployment. Trailing slashes are trimmed. */
+  function baseUrl() {
+    var custom = QG.apiBase;
+    if (!custom) {
+      try {
+        var q = parseHashQuery(window.location.hash);
+        if (q.__api) custom = q.__api;
+      } catch (e) { /* ignore */ }
+      if (!custom) {
+        var m = (window.location.search || "").match(/[?&]__api=([^&]+)/);
+        if (m) custom = decodeURIComponent(m[1]);
+      }
+    }
+    if (custom) {
+      return String(custom).replace(/\/+$/, "");
+    }
+    return "";
+  }
+
+  function parseHashQuery(hash) {
+    var out = {};
+    var raw = (hash || "").replace(/^#/, "");
+    var q = raw.split("?").slice(1).join("?");
+    q.split("&").forEach(function (pair) {
+      if (!pair) return;
+      var eq = pair.indexOf("=");
+      if (eq === -1) out[decodeURIComponent(pair)] = "";
+      else out[decodeURIComponent(pair.slice(0, eq))] = decodeURIComponent(pair.slice(eq + 1));
+    });
+    return out;
+  }
+
+  function fullUrl(path) {
+    var base = baseUrl();
+    return base ? base + path : path;
+  }
+
   async function request(path, options) {
     var opts = Object.assign({ headers: {} }, options || {});
+    var auth = authHeaders();
+    for (var key in auth) {
+      if (Object.prototype.hasOwnProperty.call(auth, key)) {
+        opts.headers[key] = auth[key];
+      }
+    }
     if (opts.body) {
       opts.headers["Content-Type"] = "application/json";
     }
+    var url = fullUrl(path);
     var response;
     try {
-      response = await fetch(path, opts);
+      response = await fetch(url, opts);
     } catch (networkError) {
       var err = new Error(
         "Cannot reach the Q-Guardian API at " +
-          path +
+          url +
           ". Is the server running?"
       );
       err.cause = networkError;
@@ -41,10 +91,22 @@
       var detail =
         (payload && (payload.detail || payload.message || payload.error)) ||
         "Request failed (HTTP " + response.status + ")";
+      /* The backend error envelope is {error: {code, message, details}};
+       * surface the human-readable message instead of the whole object. */
       var message =
-        typeof detail === "string" ? detail : JSON.stringify(detail);
+        typeof detail === "string"
+          ? detail
+          : detail && detail.message
+            ? detail.message
+            : JSON.stringify(detail);
       var failure = new Error(message);
       failure.status = response.status;
+      if (failure.status === 401 && QG.auth && typeof QG.auth.handleUnauthorized === "function") {
+        var retry = await QG.auth.handleUnauthorized();
+        if (retry) {
+          return request(path, options);
+        }
+      }
       throw failure;
     }
 
@@ -96,6 +158,10 @@
     },
 
     endpoints: {
+      login: "/api/v1/auth/login",
+      register: "/api/v1/auth/register",
+      refresh: "/api/v1/auth/refresh",
+      logout: "/api/v1/auth/logout",
       health: "/api/v1/health",
       version: "/api/v1/system/version",
       status: "/api/v1/system/status",

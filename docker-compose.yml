@@ -14,6 +14,7 @@ services:
       - MONGODB_URL=mongodb://mongo:27017
       - MONGODB_DATABASE=q_guardian
       - LOG_LEVEL=INFO
+      - 'AUTH_USERS={"admin": {"password_hash": "$$2b$$12$$Dp5gn8RlBG.HHLyUzAhVi.CivBnt8.m8ZkWvqh.lEngvoWijBRlbi", "roles": ["admin"]}}'
     volumes:
       - ../src:/app/src
       - ../logs:/app/logs

@@ -28,9 +28,12 @@
     <div class="workspace">
       <header class="topbar">
         <nav id="breadcrumbs" class="breadcrumbs" aria-label="Breadcrumb"></nav>
-        <div class="sys-status">
-          <span class="pulse" id="statusDot" aria-hidden="true"></span>
-          <span id="statusText">checking…</span>
+        <div class="topbar-right">
+          <div id="userBar" class="user-bar"></div>
+          <div class="sys-status">
+            <span class="pulse" id="statusDot" aria-hidden="true"></span>
+            <span id="statusText">checking…</span>
+          </div>
         </div>
       </header>
 
@@ -47,6 +50,8 @@
 
   <script src="js/api.js?v=2"></script>
   <script src="js/ui.js?v=2"></script>
+  <script src="js/auth.js?v=2"></script>
+  <script src="js/views/login.js?v=2"></script>
   <script src="js/views/dashboard.js?v=2"></script>
   <script src="js/views/scanner.js?v=2"></script>
   <script src="js/views/detection.js?v=2"></script>

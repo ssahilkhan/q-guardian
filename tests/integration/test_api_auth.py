@@ -1,8 +1,12 @@
 """Integration tests for API authentication enforcement.
 
-Verifies that every v1 endpoint rejects unauthenticated and invalid
-credentials with a structured 401, accepts valid JWT access tokens and
-API keys, and that public non-API routes remain open.
+Verifies that protected v1 endpoints reject unauthenticated and invalid
+credentials with a structured 401, accept valid JWT access tokens and API
+keys, and that public routes (root, health, docs, console UI) remain open.
+
+The health endpoint is intentionally public so orchestration platforms can
+probe readiness without credentials; system/analysis/console endpoints are
+protected.
 """
 
 from __future__ import annotations
@@ -16,8 +20,8 @@ from q_guardian.security.auth import APIKeyService, JWTService, get_api_key_serv
 if TYPE_CHECKING:
     from httpx import AsyncClient
 
-# Every protected operation exposed under /api/v1 (13 total; the root
-# ``/`` route is public by design).
+# Every protected operation exposed under /api/v1 (11 total; the root
+# ``/`` and ``/api/v1/health`` routes are public by design).
 ALL_ENDPOINTS: list[tuple[str, str]] = [
     ("GET", "/api/v1/analysis"),
     ("POST", "/api/v1/analysis/scan"),
@@ -28,8 +32,6 @@ ALL_ENDPOINTS: list[tuple[str, str]] = [
     ("GET", "/api/v1/console/research"),
     ("GET", "/api/v1/console/rules"),
     ("GET", "/api/v1/console/summary"),
-    ("GET", "/api/v1/health"),
-    ("GET", "/api/v1/health/"),
     ("GET", "/api/v1/system/status"),
     ("GET", "/api/v1/system/version"),
 ]
@@ -37,6 +39,9 @@ ALL_ENDPOINTS: list[tuple[str, str]] = [
 ENDPOINT_IDS = [f"{method}_{path.replace('/', '_')}" for method, path in ALL_ENDPOINTS]
 
 SCAN_BODY = {"prompt": "What is the weather like in Paris today?"}
+
+#: A protected endpoint used to probe credential rejection behaviour.
+PROBE_PATH = "/api/v1/system/version"
 
 
 async def _request(client: AsyncClient, method: str, path: str) -> AsyncClient | object:
@@ -56,7 +61,7 @@ def api_key_headers() -> dict[str, str]:
 
 @pytest.mark.asyncio
 class TestUnauthenticatedRejected:
-    """Every v1 endpoint must reject requests without credentials."""
+    """Every protected v1 endpoint must reject requests without credentials."""
 
     @pytest.mark.parametrize(("method", "path"), ALL_ENDPOINTS, ids=ENDPOINT_IDS)
     async def test_missing_credentials_returns_401(
@@ -72,15 +77,13 @@ class TestUnauthenticatedRejected:
         assert body["error"]["details"]["reason"] == "missing_credentials"
 
     async def test_malformed_authorization_scheme_rejected(self, client: AsyncClient) -> None:
-        response = await client.get(
-            "/api/v1/health", headers={"Authorization": "Basic dXNlcjpwYXNz"}
-        )
+        response = await client.get(PROBE_PATH, headers={"Authorization": "Basic dXNlcjpwYXNz"})
         assert response.status_code == 401
         reason = response.json()["error"]["details"]["reason"]
         assert reason == "malformed_authorization_header"
 
     async def test_empty_bearer_token_rejected(self, client: AsyncClient) -> None:
-        response = await client.get("/api/v1/health", headers={"Authorization": "Bearer "})
+        response = await client.get(PROBE_PATH, headers={"Authorization": "Bearer "})
         assert response.status_code == 401
 
 
@@ -89,14 +92,14 @@ class TestInvalidCredentialsRejected:
     """Invalid credentials of every flavor are rejected."""
 
     async def test_garbage_jwt_rejected(self, client: AsyncClient) -> None:
-        response = await client.get("/api/v1/health", headers={"Authorization": "Bearer not-a-jwt"})
+        response = await client.get(PROBE_PATH, headers={"Authorization": "Bearer not-a-jwt"})
         assert response.status_code == 401
         reason = response.json()["error"]["details"]["reason"]
         assert reason == "token_invalid"
 
     async def test_expired_jwt_rejected(self, client: AsyncClient) -> None:
         token = await JWTService().create_access_token({"sub": "tester"}, expires_minutes=-1)
-        response = await client.get("/api/v1/health", headers={"Authorization": f"Bearer {token}"})
+        response = await client.get(PROBE_PATH, headers={"Authorization": f"Bearer {token}"})
         assert response.status_code == 401
         reason = response.json()["error"]["details"]["reason"]
         assert reason == "token_expired"
@@ -104,7 +107,7 @@ class TestInvalidCredentialsRejected:
     async def test_refresh_token_rejected_as_access_credential(self, client: AsyncClient) -> None:
         refresh_token = await JWTService().create_refresh_token({"sub": "tester"})
         response = await client.get(
-            "/api/v1/health", headers={"Authorization": f"Bearer {refresh_token}"}
+            PROBE_PATH, headers={"Authorization": f"Bearer {refresh_token}"}
         )
         assert response.status_code == 401
         reason = response.json()["error"]["details"]["reason"]
@@ -114,12 +117,12 @@ class TestInvalidCredentialsRejected:
         forged = await JWTService(secret_key="rogue-signing-secret").create_access_token(
             {"sub": "tester"}
         )
-        response = await client.get("/api/v1/health", headers={"Authorization": f"Bearer {forged}"})
+        response = await client.get(PROBE_PATH, headers={"Authorization": f"Bearer {forged}"})
         assert response.status_code == 401
 
     async def test_unknown_api_key_rejected(self, client: AsyncClient) -> None:
         headers = {"X-API-Key": f"{APIKeyService.KEY_PREFIX}{'0' * 64}"}
-        response = await client.get("/api/v1/health", headers=headers)
+        response = await client.get(PROBE_PATH, headers=headers)
         assert response.status_code == 401
         reason = response.json()["error"]["details"]["reason"]
         assert reason == "invalid_api_key"
@@ -129,7 +132,7 @@ class TestInvalidCredentialsRejected:
         raw_key, record = service.generate_api_key(name="revoke-me")
         assert service.revoke_api_key(record.key_id) is True
 
-        response = await client.get("/api/v1/health", headers={"X-API-Key": raw_key})
+        response = await client.get(PROBE_PATH, headers={"X-API-Key": raw_key})
 
         assert response.status_code == 401
         reason = response.json()["error"]["details"]["reason"]
@@ -138,7 +141,7 @@ class TestInvalidCredentialsRejected:
     async def test_expired_api_key_rejected(self, client: AsyncClient) -> None:
         raw_key, _record = get_api_key_service().generate_api_key(ttl_days=-1)
 
-        response = await client.get("/api/v1/health", headers={"X-API-Key": raw_key})
+        response = await client.get(PROBE_PATH, headers={"X-API-Key": raw_key})
 
         assert response.status_code == 401
         reason = response.json()["error"]["details"]["reason"]
@@ -147,7 +150,7 @@ class TestInvalidCredentialsRejected:
 
 @pytest.mark.asyncio
 class TestValidAuthenticationAccepted:
-    """Valid credentials authenticate every v1 endpoint."""
+    """Valid credentials authenticate every protected v1 endpoint."""
 
     @pytest.mark.parametrize(("method", "path"), ALL_ENDPOINTS, ids=ENDPOINT_IDS)
     async def test_valid_jwt_accepted_on_all_endpoints(
@@ -167,7 +170,6 @@ class TestValidAuthenticationAccepted:
             ("POST", "/api/v1/analysis/scan"),
             ("GET", "/api/v1/analysis"),
             ("GET", "/api/v1/console/summary"),
-            ("GET", "/api/v1/health"),
             ("GET", "/api/v1/system/version"),
         ],
     )
@@ -194,10 +196,19 @@ class TestValidAuthenticationAccepted:
 
 @pytest.mark.asyncio
 class TestPublicRoutesRemainOpen:
-    """Non-API surfaces stay accessible without credentials."""
+    """Public surfaces stay accessible without credentials."""
 
     async def test_root_open(self, client: AsyncClient) -> None:
         assert (await client.get("/")).status_code == 200
+
+    async def test_health_open(self, client: AsyncClient) -> None:
+        response = await client.get("/api/v1/health")
+        assert response.status_code == 200
+        body = response.json()
+        assert body["status"] in {"healthy", "degraded"}
+
+    async def test_health_trailing_slash_open(self, client: AsyncClient) -> None:
+        assert (await client.get("/api/v1/health/")).status_code == 200
 
     async def test_openapi_schema_open(self, client: AsyncClient) -> None:
         assert (await client.get("/openapi.json")).status_code == 200
@@ -226,7 +237,7 @@ async def test_error_paths_never_leak_credentials(client: AsyncClient) -> None:
     """Rejection responses never echo presented credential material."""
     secret_material = APIKeyService.KEY_PREFIX + "a" * 64
     response = await client.get(
-        "/api/v1/health",
+        PROBE_PATH,
         headers={"X-API-Key": secret_material, "Authorization": "Bearer garbage"},
     )
     assert response.status_code == 401

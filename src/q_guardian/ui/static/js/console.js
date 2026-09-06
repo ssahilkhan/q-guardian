@@ -174,11 +174,42 @@
     }
   }
 
+  function renderUserBar() {
+    var el = document.getElementById("userBar");
+    if (!el) return;
+    var authed = QG.auth && QG.auth.isAuthed();
+    var user = (QG.auth && QG.auth.user()) || "";
+    if (!authed) {
+      el.innerHTML = "";
+      return;
+    }
+    var label = user ? U.text(user) : "Operator";
+    el.innerHTML =
+      '<span class="user-chip">' + label + "</span>" +
+      '<button type="button" class="btn ghost" id="logoutBtn">Log out</button>';
+    var btn = el.querySelector("#logoutBtn");
+    if (btn) {
+      btn.addEventListener("click", function () {
+        if (QG.auth && typeof QG.auth.logout === "function") {
+          QG.auth.logout();
+        }
+      });
+    }
+  }
+
   function render() {
     var route = parseHash(window.location.hash);
     var resolved = resolveRoute(route);
 
     renderNav(resolved.activeId);
+    renderUserBar();
+
+    /* Route guard: everything except the login view requires an active
+     * session. Unauthenticated visitors are routed to the login view. */
+    if (resolved.activeId !== "login" && !(QG.auth && QG.auth.isAuthed())) {
+      QG.console.requireLogin();
+      return;
+    }
 
     if (!resolved.view) {
       renderCrumbs(null, null);
@@ -242,6 +273,23 @@
     refreshStatus();
     setInterval(refreshStatus, 20000);
   }
+
+  QG.console = {
+    requireLogin: function () {
+      var next = window.location.hash || "#/dashboard";
+      window.location.hash = "#/login?next=" + encodeURIComponent(next);
+    },
+
+    onLogout: function () {
+      window.location.hash = "#/login";
+    },
+
+    logout: function () {
+      if (QG.auth && typeof QG.auth.logout === "function") {
+        QG.auth.logout();
+      }
+    },
+  };
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", boot);
