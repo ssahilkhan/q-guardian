@@ -131,8 +131,9 @@ class TestConsoleEndpoints:
     ) -> None:
         """Verify quantum fusion strategies reflect the implemented registry.
 
-        Phantom strategies (``max_confidence``) and interface-only stubs
-        (``bayesian``) must not be advertised as implemented.
+        Phantom strategies (``max_confidence``) must not be advertised as
+        implemented. As of the Bayesian fusion implementation, ``bayesian``
+        is an implemented strategy.
         """
         response = await authorized_client.get("/api/v1/console/models")
         assert response.status_code == 200
@@ -140,7 +141,7 @@ class TestConsoleEndpoints:
         strategies = quantum["fusion_strategies"]
         assert set(strategies) == set(IMPLEMENTED_STRATEGIES)
         assert "max_confidence" not in strategies
-        assert "bayesian" not in strategies
+        assert "bayesian" in strategies
         assert quantum["fusion_interface_only"] == list(INTERFACE_ONLY_STRATEGIES)
 
     async def test_configuration_redacts_secrets(self, authorized_client: AsyncClient) -> None:

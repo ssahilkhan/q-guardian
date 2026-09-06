@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from q_guardian.quantum.enums import (
     EncodingType,
@@ -80,6 +80,65 @@ class QuantumTrainingConfig(BaseModel):
     random_state: int = Field(default=42, description="Random seed for reproducibility")
 
 
+class BayesianFusionConfig(BaseModel):
+    """Configuration specific to the BayesianFusionStrategy.
+
+    All values are validated by Pydantic. Defaults are conservative and
+    documented: a neutral prior (0.5) that adds no belief, a conservative
+    decision threshold (0.7), and a uniform reliability mode that makes no
+    unvalidated assumptions about per-detector reliability.
+    """
+
+    model_config = ConfigDict(extra="allow")
+
+    prior: float = Field(
+        default=0.5,
+        ge=0.0,
+        le=1.0,
+        description="Prior probability of threat used to seed the Bayesian update",
+    )
+    decision_threshold: float = Field(
+        default=0.7,
+        ge=0.0,
+        le=1.0,
+        description="Posterior threat probability above which the label is 'threat'",
+    )
+    epsilon: float = Field(
+        default=1e-12,
+        gt=0.0,
+        lt=0.5,
+        description="Numerical-stability floor used when computing logits",
+    )
+    reliability_mode: str = Field(
+        default="uniform",
+        description="'uniform' (naive unity weights) or 'configured' (per-provider weights)",
+    )
+    reliability: dict[str, float] = Field(
+        default_factory=dict,
+        description=(
+            "provider_id -> non-negative evidence weight used in 'configured' reliability_mode"
+        ),
+    )
+    prior_weight: float = Field(
+        default=1.0,
+        ge=0.0,
+        description="Weight applied to the prior log-odds",
+    )
+
+    @model_validator(mode="after")
+    def _validate_reliability_weights(self) -> BayesianFusionConfig:
+        if self.reliability_mode not in ("uniform", "configured"):
+            raise ValueError(
+                f"reliability_mode must be 'uniform' or 'configured', got {self.reliability_mode!r}"
+            )
+        if self.reliability_mode != "uniform" and not self.reliability:
+            raise ValueError("reliability_mode='configured' requires a non-empty 'reliability' map")
+        for pid, w in self.reliability.items():
+            if not isinstance(w, (int, float)) or not (w >= 0):
+                raise ValueError(f"reliability weight for '{pid}' must be >= 0, got {w!r}")
+        return self
+
+
 class QuantumFusionConfig(BaseModel):
     """Configuration for hybrid fusion strategies."""
 
@@ -107,6 +166,10 @@ class QuantumFusionConfig(BaseModel):
     stacking_meta_learner: str = Field(
         default="logistic_regression",
         description="Meta-learner for stacking fusion",
+    )
+    bayesian: BayesianFusionConfig = Field(
+        default_factory=BayesianFusionConfig,
+        description="Configuration for the BayesianFusionStrategy",
     )
 
 

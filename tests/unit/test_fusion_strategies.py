@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import math
+
 import numpy as np
 import pytest
 
@@ -313,26 +315,224 @@ class TestStackingFusionStrategy:
 # ── BayesianFusionStrategy ─────────────────────────────────────────────
 
 
+def _bayes_threat_pred(pid: str, threat: float, label: str | None = None) -> ThreatPrediction:
+    """Build a prediction with an explicit {benign, threat} probability table."""
+    label = "threat" if threat >= 0.5 else "benign" if label is None else label
+    return ThreatPrediction(
+        provider_id=pid,
+        predicted_label=label,
+        confidence=threat if label == "threat" else 1.0 - threat,
+        risk_score=threat,
+        probabilities={"benign": round(1.0 - threat, 6), "threat": round(threat, 6)},
+    )
+
+
 class TestBayesianFusionStrategy:
     def test_name(self):
         s = BayesianFusionStrategy()
         assert s.name == "bayesian"
+        assert s.display_name == "Bayesian Fusion"
 
-    def test_fuse_raises(self):
+    def test_defaults(self):
         s = BayesianFusionStrategy()
-        preds = [_pred("a", "benign", 0.8)]
-        with pytest.raises(FusionError, match="not yet implemented"):
-            s.fuse(preds)
+        assert s.prior == 0.5
+        assert s.decision_threshold == 0.7
+        assert s.reliability_mode == "uniform"
 
-    def test_predict_with_uncertainty_raises(self):
+    def test_neutral_prior_agreement(self):
+        # With a neutral prior (0.5), a single detector reporting
+        # threat=0.5 contributes zero log-odds, so posterior stays at 0.5.
         s = BayesianFusionStrategy()
+        result = s.fuse([_bayes_threat_pred("a", 0.5)])
+        assert abs(result.risk_score - 0.5) < 1e-6
+        assert result.num_providers == 1
+
+    def test_single_detector_posterior_math(self):
+        # posterior = sigmoid(logit(0.5) + logit(p)). For p=0.9 and
+        # neutral prior, posterior == 0.9.
+        s = BayesianFusionStrategy()
+        result = s.fuse([_bayes_threat_pred("a", 0.9)])
+        assert abs(result.risk_score - 0.9) < 1e-6
+
+    def test_two_detectors_agree_raises_posterior(self):
+        s = BayesianFusionStrategy()
+        result = s.fuse([_bayes_threat_pred("a", 0.75), _bayes_threat_pred("b", 0.75)])
+        # logit(0.75) = 1.0986; posterior = sigmoid(2 * 1.0986) = 0.9
+        assert abs(result.risk_score - 0.9) < 1e-6
+
+    def test_conflicting_detectors_neutralize(self):
+        s = BayesianFusionStrategy()
+        result = s.fuse([_bayes_threat_pred("a", 0.9), _bayes_threat_pred("b", 0.1)])
+        # logit(0.9)+logit(0.1) = 0 -> posterior = prior = 0.5
+        assert abs(result.risk_score - 0.5) < 1e-6
+
+    def test_aggressive_evidence_crosses_conservative_threshold(self):
+        # 0.9 and 0.8 -> posterior well above the 0.7 threshold.
+        s = BayesianFusionStrategy()
+        result = s.fuse([_bayes_threat_pred("a", 0.9), _bayes_threat_pred("b", 0.8)])
+        assert result.predicted_label == "threat"
+        assert result.risk_score > 0.7
+
+    def test_benign_evidence_stays_benign(self):
+        s = BayesianFusionStrategy()
+        result = s.fuse([_bayes_threat_pred("a", 0.1)])
+        assert result.predicted_label == "benign"
+
+    def test_custom_prior(self):
+        s = BayesianFusionStrategy(prior=0.1)
+        assert s.prior == 0.1
+        result = s.fuse([_bayes_threat_pred("a", 0.5)])
+        # neutral evidence leaves posterior == prior
+        assert abs(result.risk_score - 0.1) < 1e-6
+
+    def test_empty_predictions(self):
+        s = BayesianFusionStrategy()
+        result = s.fuse([])
+        assert result.predicted_label == "unknown"
+        assert result.confidence == 0.0
+
+    def test_all_invalid(self):
+        s = BayesianFusionStrategy()
+        result = s.fuse([_invalid_pred("a"), _invalid_pred("b")])
+        assert result.predicted_label == "unknown"
+        assert result.num_failed == 2
+
+    def test_partial_invalid(self):
+        s = BayesianFusionStrategy()
+        result = s.fuse([_bayes_threat_pred("a", 0.9), _invalid_pred("b")])
+        assert result.predicted_label == "threat"
+        assert result.num_providers == 1
+        assert result.num_failed == 1
+
+    def test_missing_threat_key_uses_label_confidence(self):
+        # A prediction with no "threat" key but predicted_label/confidence.
+        pred = ThreatPrediction(
+            provider_id="a",
+            predicted_label="threat",
+            confidence=0.8,
+            probabilities={},
+        )
+        s = BayesianFusionStrategy()
+        result = s.fuse([pred])
+        assert abs(result.risk_score - 0.8) < 1e-6
+
+    def test_invalid_probability_ignored_as_missing(self):
+        # Threat probability outside [0,1] is treated as missing evidence,
+        # not fabricated. Since prior is neutral, posterior stays 0.5.
+        pred = ThreatPrediction(
+            provider_id="a",
+            predicted_label="unknown",
+            confidence=0.0,
+            probabilities={"threat": 1.5, "benign": -0.5},
+        )
+        s = BayesianFusionStrategy()
+        result = s.fuse([pred])
+        assert result.num_providers == 1
+        assert abs(result.risk_score - 0.5) < 1e-6
+
+    def test_nan_probability_ignored(self):
+        pred = ThreatPrediction(
+            provider_id="a",
+            predicted_label="threat",
+            confidence=0.0,
+            probabilities={"threat": float("nan"), "benign": float("nan")},
+        )
+        s = BayesianFusionStrategy()
+        result = s.fuse([pred])
+        assert abs(result.risk_score - 0.5) < 1e-6
+
+    def test_constant_probability_adds_no_evidence(self):
+        # A detector fixed at threat=0.5 must not shift the posterior.
+        s = BayesianFusionStrategy()
+        result = s.fuse([_bayes_threat_pred("a", 0.5), _bayes_threat_pred("b", 0.9)])
+        assert abs(result.risk_score - 0.9) < 1e-6
+
+    def test_configured_reliability_downweights(self):
+        s = BayesianFusionStrategy(
+            reliability_mode="configured",
+            reliability={"a": 0.0, "b": 1.0},
+        )
+        result = s.fuse([_bayes_threat_pred("a", 0.999), _bayes_threat_pred("b", 0.5)])
+        # a is fully neutralized; b is neutral -> posterior == prior
+        assert abs(result.risk_score - 0.5) < 1e-6
+
+    def test_health(self):
+        s = BayesianFusionStrategy()
+        h = s.health()
+        assert h["strategy"] == "bayesian"
+
+    def test_explainability_metadata(self):
+        s = BayesianFusionStrategy()
+        result = s.fuse([_bayes_threat_pred("a", 0.8), _bayes_threat_pred("b", 0.9)])
+        md = result.metadata
+        assert "prior" in md
+        assert "evidence_log_odds" in md
+        assert "posterior_logit" in md
+        assert "decision_threshold" in md
+        assert md["prior"] == 0.5
+        assert "a" in md["evidence_log_odds"]
+        assert "b" in md["evidence_log_odds"]
+
+    def test_update_posterior_records_outcome(self):
+        s = BayesianFusionStrategy()
+        s.update_posterior("a", True)
+        assert s.posterior_recorded_count("a") == 1
         with pytest.raises(FusionError):
-            s.predict_with_uncertainty([])
+            s.update_posterior("a", "not-a-bool")
 
-    def test_update_posterior_raises(self):
+    def test_predict_with_uncertainty(self):
         s = BayesianFusionStrategy()
+        out = s.predict_with_uncertainty([_bayes_threat_pred("a", 0.8)])
+        assert isinstance(out["fused_prediction"], FusedPrediction)
+        assert abs(out["posterior"] - 0.8) < 1e-6
+        assert "a" in out["evidence"]
+
+    def test_invalid_constructor_prior(self):
         with pytest.raises(FusionError):
-            s.update_posterior("a", True)
+            BayesianFusionStrategy(prior=-0.1)
+        with pytest.raises(FusionError):
+            BayesianFusionStrategy(prior=1.5)
+
+    def test_invalid_threshold(self):
+        with pytest.raises(FusionError):
+            BayesianFusionStrategy(decision_threshold=1.5)
+        with pytest.raises(FusionError):
+            BayesianFusionStrategy(decision_threshold=-0.1)
+
+    def test_invalid_reliability_mode(self):
+        with pytest.raises(FusionError):
+            BayesianFusionStrategy(reliability_mode="bogus")
+
+    def test_invalid_reliability_weight(self):
+        with pytest.raises(FusionError):
+            BayesianFusionStrategy(reliability_mode="configured", reliability={"a": -1.0})
+
+    def test_boundary_probabilities_are_stable(self):
+        s = BayesianFusionStrategy()
+        result = s.fuse([_bayes_threat_pred("a", 1.0)])
+        assert math.isfinite(result.risk_score)
+        assert 0.0 < result.risk_score <= 1.0
+
+    def test_extreme_evidence_no_overflow(self):
+        s = BayesianFusionStrategy()
+        result = s.fuse(
+            [
+                _bayes_threat_pred("a", 0.999999),
+                _bayes_threat_pred("b", 0.999999),
+                _bayes_threat_pred("c", 0.999999),
+            ]
+        )
+        assert math.isfinite(result.risk_score)
+        assert result.predicted_label == "threat"
+
+    def test_quantum_median_when_unavailable_handled(self):
+        # Quantum absence is just another missing provider: removing the
+        # quantum detector must not change the posterior of the remaining
+        # providers. This guards against artificially favouring quantum.
+        s = BayesianFusionStrategy()
+        both = s.fuse([_bayes_threat_pred("classical", 0.8), _bayes_threat_pred("quantum", 0.5)])
+        classical_only = s.fuse([_bayes_threat_pred("classical", 0.8)])
+        assert abs(both.risk_score - classical_only.risk_score) < 1e-6
 
 
 # ── Strategy switching ─────────────────────────────────────────────────

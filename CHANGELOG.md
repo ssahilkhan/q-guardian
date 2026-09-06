@@ -114,7 +114,7 @@ The first public release. All 10 modules are complete, the documentation set is 
 #### Known Limitations
 
 - Quantum backends beyond the local simulator (Qiskit Aer / IBM Runtime, PennyLane) are implemented as optional extras and not exercised in CI
-- `StackingFusionStrategy` remains the default fusion strategy; `BayesianFusionStrategy` is interface-only
+- `StackingFusionStrategy` remains the default fusion strategy; `BayesianFusionStrategy` is implemented as a log-odds fusion strategy (see `docs/Bayesian_Fusion.md`)
 - MongoDB persistence and enterprise observability integrations are covered by unit tests but not integration-tested against live services
 
 #### Future Work

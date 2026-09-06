@@ -20,14 +20,14 @@ __all__ = [
 
 # Single source of truth for fusion strategies the backend can actually
 # execute at runtime. `max_confidence` is deliberately absent — no
-# implementation exists (enum-only). `bayesian` is interface-only and is
-# reported separately (its fuse() raises).
+# implementation exists (enum-only).
 IMPLEMENTED_STRATEGIES: dict[str, type[FusionStrategy]] = {
     FusionStrategyType.WEIGHTED_VOTING.value: WeightedVotingStrategy,
     FusionStrategyType.CONFIDENCE_BASED.value: ConfidenceFusionStrategy,
     FusionStrategyType.STACKING.value: StackingFusionStrategy,
     FusionStrategyType.ADAPTIVE.value: AdaptiveFusionStrategy,
+    FusionStrategyType.BAYESIAN.value: BayesianFusionStrategy,
 }
 
 # Strategies whose interface exists but whose implementation is a stub.
-INTERFACE_ONLY_STRATEGIES: tuple[str, ...] = (FusionStrategyType.BAYESIAN.value,)
+INTERFACE_ONLY_STRATEGIES: tuple[str, ...] = ()

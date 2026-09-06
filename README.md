@@ -233,7 +233,7 @@ Backend management (simulator, Qiskit Aer, IBM Quantum), quantum feature maps (A
 QSVM classifier, quantum kernel hyper-parameter trainer (grid/random search with cross-validation), quantum inference engine with fallback, quantum model manager with versioning, and JSON-based model persistence.
 
 **Phase 3 — Hybrid Fusion Engine:**
-`PredictionProvider` ABC and `FusedPrediction` standardize how any detection source contributes to fusion. `ConfidenceCalibrator` normalizes scores across heterogeneous models. `HybridFusionEngine` orchestrates provider collection, calibration, and strategy delegation. Interchangeable fusion strategies: `WeightedVotingStrategy`, `ConfidenceFusionStrategy`, `AdaptiveFusionStrategy`, `StackingFusionStrategy` (default), and `BayesianFusionStrategy` (interface). Provider adapters bridge existing rule engines, classical ML models, and quantum models without modifying their source code.
+`PredictionProvider` ABC and `FusedPrediction` standardize how any detection source contributes to fusion. `ConfidenceCalibrator` normalizes scores across heterogeneous models. `HybridFusionEngine` orchestrates provider collection, calibration, and strategy delegation. Interchangeable fusion strategies: `WeightedVotingStrategy`, `ConfidenceFusionStrategy`, `AdaptiveFusionStrategy`, `StackingFusionStrategy` (default), and `BayesianFusionStrategy` (log-odds fusion with a configurable prior). Provider adapters bridge existing rule engines, classical ML models, and quantum models without modifying their source code.
 
 ### Module 7 — Risk & Decision Intelligence
 

@@ -484,8 +484,12 @@ confidences across providers. Methods:
   regression / softmax) trained via `train_metalearner(training_samples,
   ground_truth_labels)`; feature vector = per-provider confidences in sorted provider
   order; untrained → confidence-weighted fallback. **This is the default.**
-- **`BayesianFusionStrategy`** (`name="bayesian"`) — interface only; `fuse`,
-  `predict_with_uncertainty`, `update_posterior` all raise `FusionError` (planned).
+- **`BayesianFusionStrategy`** (`name="bayesian"`) — fusion in log-odds space:
+  `logit(p_post) = w0 * logit(prior) + Σ w_i * logit(p_i)` (see
+  `docs/Bayesian_Fusion.md`). Default `prior=0.5`, `decision_threshold=0.7`,
+  `reliability_mode="uniform"` (naive Bayes). `predict_with_uncertainty`
+  returns posterior + evidence; `update_posterior` is outcome-bookkeeping
+  only and never mutates the runtime reliability weights.
 
 ---
 
