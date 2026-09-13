@@ -147,6 +147,26 @@ os.environ["QGUARDIAN_BENCHMARK_CACHE"] = "C:\\path\\to\\cache"
 Gated datasets: `runner.run("wildjailbreak")` raises `DatasetError` mentioning
 `gated` until a token is supplied (`DatasetDownloader(token=...)` or `HF_TOKEN`).
 
+### 4.1 Authentication-aware downloads
+
+The `DatasetDownloader` now integrates with the centralized authentication
+module (`q_guardian.ml.datasets.auth`) for consistent token handling:
+
+```python
+from q_guardian.benchmark.download import DatasetDownloader
+from q_guardian.ml.datasets.auth import AuthConfig
+
+# Using AuthConfig for centralized auth management
+auth_config = AuthConfig.from_env()  # Reads HF_TOKEN from environment
+downloader = DatasetDownloader(auth_config=auth_config)
+
+# Check access without downloading
+from q_guardian.ml.datasets.auth import DatasetAccessType
+access_type = downloader.check_access(spec)
+if access_type == DatasetAccessType.GATED:
+    print("Dataset requires HF_TOKEN after accepting terms on Hugging Face Hub")
+```
+
 ## 5. Quality gates
 
 - **Ruff** — `python -m ruff check src/q_guardian/benchmark tests/unit/test_benchmark_*.py`
@@ -186,8 +206,11 @@ python -c "from q_guardian.benchmark import BenchmarkRunner; r = BenchmarkRunner
 
 ## 7. Roadmap hooks
 
-- **M1b** — authenticated downloads for the 8 gated datasets (HF token / gated-cli
-  path), finalized column mappings, and gated-suite reports.
+- **M1b** ✅ — authenticated downloads for the 8 gated datasets implemented via
+  centralized auth module (`q_guardian.ml.datasets.auth`), `DatasetDownloader` integration,
+  `HuggingFaceLoader` token support, and CLI commands `dataset check-access` /
+  `dataset authenticate-status`. Column mappings for gated datasets can now be
+  finalized with authenticated access.
 - **M2** — a `scripts/benchmark_cli.py` (or similar) wrapping `BenchmarkRunner` with
   `--datasets --k --seed --output`, matching `scripts/evaluate_pipeline.py`'s CLI
   conventions; dataset-merge + cross-dataset aggregate reports.

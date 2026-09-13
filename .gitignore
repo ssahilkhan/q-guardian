@@ -65,6 +65,15 @@ docs/output/
 artifacts/
 runs/
 
+# Binary tools (downloaded, not source-controlled)
+bore.zip
+playit.exe
+
 # Generated documentation artifacts
 docs/*.pdf
+docs/pdf's/
+docs/ppt/
 docs/Research/
+
+# Generated analytics report artifacts
+reports/analytics/

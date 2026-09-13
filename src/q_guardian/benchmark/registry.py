@@ -10,10 +10,25 @@ reports stay comparable across runs and releases.
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
+from enum import Enum
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
+
+
+class DatasetSourceType(Enum):
+    """Where a dataset artifact is acquired from.
+
+    ``HUGGINGFACE`` preserves the original behavior: the ``source`` is a
+    Hugging Face repo id acquired through the datasets-server ``/rows`` API
+    (or a local file for ``jsonl`` / ``csv`` / ``json`` formats).
+    """
+
+    HUGGINGFACE = "huggingface"
+    GITHUB = "github"
+    DIRECT_URL = "direct_url"
+    EXTERNAL = "external"
 
 
 @dataclass(frozen=True)
@@ -33,9 +48,11 @@ class DatasetSpec:
     Args:
         dataset_id: Stable identifier used across reports and the registry.
         name: Human-readable dataset name.
-        source: Hugging Face repo id (``owner/repo``) or a local file path.
-        format: ``hf`` (Hugging Face datasets-server rows) or a local
-            ``jsonl`` / ``csv`` / ``json`` file.
+        source: Hugging Face repo id (``owner/repo``), a local file path,
+            a GitHub ``owner/repo`` id, or a complete HTTPS URL depending on
+            ``source_type``.
+        format: ``hf`` (Hugging Face datasets-server rows) or a local /
+            remote ``jsonl`` / ``csv`` / ``json`` file.
         config: Hugging Face config name, if any.
         splits: Split names to download (order is preserved).
         text_fields: Candidate text columns; the first non-empty wins.
@@ -50,6 +67,13 @@ class DatasetSpec:
         homepage: Dataset homepage / repository URL.
         requires_token: Whether the source is gated on Hugging Face.
         max_samples: Optional cap on rows downloaded per split.
+        source_type: Where the artifact is acquired from. Defaults to
+            ``HUGGINGFACE`` so existing specifications keep their current
+            behavior without needing an explicit value.
+        artifact_path: File location within a GitHub repository (the
+            ``<ref>/<path>`` portion of a ``raw.githubusercontent.com`` URL,
+            e.g. ``main/data/advbench/harmful_behaviors.csv``). Required for
+            ``GITHUB`` sources; must be empty otherwise.
     """
 
     dataset_id: str
@@ -69,10 +93,35 @@ class DatasetSpec:
     homepage: str = ""
     requires_token: bool = False
     max_samples: int | None = None
+    source_type: DatasetSourceType = DatasetSourceType.HUGGINGFACE
+    artifact_path: str = ""
+
+    def __post_init__(self) -> None:
+        """Validate ``source_type`` and the ``artifact_path`` contract."""
+        if isinstance(self.source_type, str):
+            try:
+                object.__setattr__(self, "source_type", DatasetSourceType(self.source_type))
+            except ValueError as exc:
+                valid = ", ".join(t.value for t in DatasetSourceType)
+                msg = f"invalid dataset source_type {self.source_type!r}; expected one of: {valid}"
+                raise ValueError(msg) from exc
+        elif not isinstance(self.source_type, DatasetSourceType):
+            msg = f"invalid dataset source_type: {self.source_type!r}"
+            raise ValueError(msg)
+
+        if self.source_type is DatasetSourceType.GITHUB:
+            if not self.artifact_path.strip():
+                msg = "github sources require an 'artifact_path' (e.g. 'main/data/advbench/x.csv')"
+                raise ValueError(msg)
+        elif self.artifact_path:
+            msg = f"artifact_path is only valid for github sources, not {self.source_type.value!r}"
+            raise ValueError(msg)
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize the spec (for registry listings and reports)."""
-        return asdict(self)
+        data = asdict(self)
+        data["source_type"] = data["source_type"].value
+        return data
 
 
 def _gated_spec(
@@ -167,19 +216,29 @@ _BUILTIN_SPECS: tuple[DatasetSpec, ...] = (
         license_name="research-only",
         homepage="https://huggingface.co/datasets/cais/harmbench_behaviors",
     ),
-    _gated_spec(
+    DatasetSpec(
         dataset_id="advbench",
-        name="AdvBench (gated)",
-        source="DeepMind/AdvBench",
-        license_name="research-only",
-        homepage="https://huggingface.co/datasets/DeepMind/AdvBench",
+        name="AdvBench (official GitHub)",
+        source="llm-attacks/llm-attacks",
+        format="csv",
+        splits=("default",),
+        text_fields=("goal",),
+        label_field=None,
+        default_label=1,
+        license="MIT",
+        homepage="https://github.com/llm-attacks/llm-attacks",
+        requires_token=False,
+        source_type=DatasetSourceType.GITHUB,
+        artifact_path=(
+            "a62d1307e38b3a076e614b20781c785fd860d813/data/advbench/harmful_behaviors.csv"
+        ),
     ),
     _gated_spec(
         dataset_id="hex-phi",
         name="HEx-PHI (gated)",
-        source="walledai/HEx-PHI",
+        source="LLM-Tuning-Safety/HEx-PHI",
         license_name="research-only",
-        homepage="https://huggingface.co/datasets/walledai/HEx-PHI",
+        homepage="https://huggingface.co/datasets/LLM-Tuning-Safety/HEx-PHI",
     ),
     _gated_spec(
         dataset_id="pal",

@@ -157,6 +157,7 @@ class _FakeLeakage:
 
 class TestCommandDatasetPrepare:
     def test_prepare_writes_counts(self, tmp_path, monkeypatch) -> None:
+        monkeypatch.delenv("HF_TOKEN", raising=False)
         calls: dict = {}
 
         class _FakePipeline:

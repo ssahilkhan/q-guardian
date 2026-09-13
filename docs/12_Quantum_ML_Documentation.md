@@ -516,6 +516,12 @@ confidences across providers. Methods:
 7. **Threat categories (8)**: `benign, prompt_injection, jailbreak,
    role_manipulation, system_prompt_leak, data_exfiltration, excessive_encoding,
    suspicious_formatting` — shared by classical classifiers and `QSVMModel`.
+8. **Embedding Pipeline (V2.0 M3) extends fusion**: `embeddings/fusion.py` provides
+   `FeatureMode` (handcrafted_only/embedding_only/hybrid) and `ModeFeatureExtractor`
+   that feeds fused vectors (43/16/59-dim) into `HybridFusionEngine` via
+   `EmbeddingFeatureProvider` and `ModeHybridEvaluator`. Trainer adapters
+   (`ModeTrainingAdapter`, `ModeQuantumAdapter`) allow training on fused features
+   without modifying `ml/` or `quantum/` internals. See `docs/20_Embedding_Pipeline.md`.
 
 ---
 
@@ -525,6 +531,8 @@ confidences across providers. Methods:
 |---|---|
 | ML feature vector | 43 dims (`MLFeatureProvider`) |
 | Built-in model vector | 12 dims (classical + quantum) |
+| **Embedding vector (V2.0 M3)** | **16 dims (`HashEmbeddingProvider` / `SentenceTransformers`)** |
+| **Hybrid feature vector (V2.0 M3)** | **59 dims (43 handcrafted + 16 embedding)** |
 | Suspicious keywords | 24 |
 | Isolation Forest | `contamination=0.1`, `n_estimators=100` |
 | Random Forest | `n_estimators=100`, `max_depth=None` |

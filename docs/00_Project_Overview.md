@@ -80,12 +80,12 @@ counts per the test audit in `18_Tests_Scripts_Examples_Documentation.md`.
 
 | Area | Files (non-`.pyc`) | Lines |
 |---|---|---|
-| `src/q_guardian/` (Python source) | 326 | 30,472 |
-| `tests/` (Python tests) | 131 | 16,261 |
+| `src/q_guardian/` (Python source) | 354 | 32,000+ |
+| `tests/` (Python tests) | 156 | 18,000+ |
 | `scripts/` | 29 (23 `.py`, 6 `.json`) | 3,996 |
 | `examples/` | 13 | 2,382 |
 | `docs/` (pre-existing user guides) | 17 | 5,710 |
-| **Test functions** (per `agent_tests` audit) | — | 2,650 across 123 test files |
+| **Test functions** (per `agent_tests` audit) | — | 2,755 across 133 test files |
 
 ## 7. Feature Highlights
 
@@ -93,6 +93,9 @@ counts per the test audit in `18_Tests_Scripts_Examples_Documentation.md`.
 |---|---|---|
 | Hybrid classical+quantum ML | `ml/`, `quantum/` | QSVM, quantum kernels, hybrid fusion strategies |
 | Runtime prompt security | `security/` | normalization, rules, feature extraction, `SecurityDecisionEngine` |
+| **Embedding pipeline (v1.1+)** | `embeddings/` | semantic embeddings (MiniLM/BGE/E5/hash), hybrid features, trainer adapters |
+| **Training pipeline (v1.2)** | `training/` + `cli.py` | dataset prep, leakage checks, reproducible training, `q-guardian` CLI |
+| **Benchmark platform (v1.1+)** | `benchmark/` | third-party datasets, K-fold CV, provider ablation, honest measurement |
 | Policy DSL adapters | `policy/adapters/` | Rego, Cedar, YAML, JSON adapters in one module |
 | RBAC + policy composition | `policy/rbac/`, `policy/composition/` | role-based access control, composition & conflict detection |
 | Risk assessment & explainability | `risk/` | scoring, SHAP-style/rule-based explanation |
@@ -138,8 +141,8 @@ The currently exposed HTTP surface is minimal: `GET /health` (liveness + DB heal
 
 ## 10. Testing Snapshot
 
-- 123 test files, 2,650 test functions (authoritative count per the current test run),
-- Directories: `tests/unit` (88 files), `tests/observability` (24), `tests/response` (9), `tests/integration` (2), plus `tests/fixtures` and `conftest.py`,
+- 133 test files, 2,755 test functions (authoritative count per the current test run),
+- Directories: `tests/unit` (98 files), `tests/observability` (24), `tests/response` (9), `tests/integration` (2), plus `tests/fixtures` and `conftest.py`,
 - Root `conftest.py` applies `asyncio.WindowsSelectorEventLoopPolicy()` on Windows and an autouse `_set_test_environment` fixture,
 - `pytest` is the test runner; coverage and lint targets exist in `Makefile`.
 
@@ -168,3 +171,4 @@ The currently exposed HTTP surface is minimal: `GET /health` (liveness + DB heal
 | `19_Benchmark_Platform_Documentation.md` | V2.0 benchmark platform (M1a) |
 | `20_Embedding_Pipeline.md` | V2.0 semantic embedding pipeline (M3) |
 | `21_Training_Pipeline_Documentation.md` | V2.0 dataset prep + training + evaluation pipeline + `q-guardian` CLI |
+| `ARCHITECTURE_QUICK_REFERENCE.md` | **One-page architecture for AI agents** |

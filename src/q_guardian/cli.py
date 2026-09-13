@@ -39,6 +39,8 @@ _LABEL_SUMMARY = {0: "benign", 1: "malicious"}
 
 def _load_config(args: argparse.Namespace) -> TrainingPipelineConfig:
     """Load config from a JSON file (or defaults) and apply CLI overrides."""
+    from pydantic import SecretStr
+
     if args.config is not None:
         config = TrainingPipelineConfig.from_file(args.config)
     else:
@@ -56,7 +58,7 @@ def _load_config(args: argparse.Namespace) -> TrainingPipelineConfig:
     if getattr(args, "learning_rate", None) is not None:
         config.model.learning_rate = args.learning_rate
     if getattr(args, "hf_token", None) is not None:
-        config.hf_token = args.hf_token
+        config.hf_token = SecretStr(args.hf_token)
     return config
 
 
@@ -150,6 +152,94 @@ def _cmd_dataset_validate(args: argparse.Namespace) -> int:
         for issue in validation.issues[:5]:
             print(f"      issue: {issue}")
     return exit_code
+
+
+def _cmd_dataset_check_access(args: argparse.Namespace) -> int:
+    """Check access requirements for specified datasets."""
+    config = _load_config(args)
+    from q_guardian.benchmark.registry import DatasetRegistry
+    from q_guardian.ml.datasets.auth import DatasetAccessType
+
+    token = _resolve_token(config)
+    from q_guardian.ml.datasets.auth import create_auth_resolver
+
+    resolver = create_auth_resolver(token)
+    registry = DatasetRegistry.builtin()
+
+    exit_code = 0
+    print("Dataset access check:")
+    print(f"  Token configured: {'YES' if resolver.has_token else 'NO'}")
+    print()
+
+    for dataset_id in args.dataset_ids:
+        try:
+            spec = registry.get(dataset_id)
+        except KeyError:
+            print(f"  {dataset_id:<32} INVALID: unknown dataset id")
+            exit_code = 1
+            continue
+
+        access_info = resolver.check_dataset_access(spec, allow_offline=args.offline)
+
+        status_map = {
+            DatasetAccessType.PUBLIC: "PUBLIC",
+            DatasetAccessType.AUTHENTICATED: "AUTHENTICATED",
+            DatasetAccessType.GATED: "GATED (needs token + terms acceptance)",
+            DatasetAccessType.PRIVATE: "PRIVATE (access denied)",
+            DatasetAccessType.UNAVAILABLE: "UNAVAILABLE",
+            DatasetAccessType.INVALID: "INVALID",
+        }
+
+        status = status_map.get(access_info.access_type, access_info.access_type.value.upper())
+        print(f"  {dataset_id:<32} {status}")
+        if access_info.message:
+            print(f"      {access_info.message}")
+        if access_info.homepage:
+            print(f"      Homepage: {access_info.homepage}")
+
+        if access_info.access_type in (
+            DatasetAccessType.GATED,
+            DatasetAccessType.PRIVATE,
+            DatasetAccessType.UNAVAILABLE,
+            DatasetAccessType.INVALID,
+        ):
+            exit_code = 1
+
+    return exit_code
+
+
+def _cmd_dataset_auth_status(args: argparse.Namespace) -> int:
+    """Show authentication configuration status."""
+    config = _load_config(args)
+    from q_guardian.ml.datasets.auth import AuthProvider, create_auth_resolver
+
+    token = _resolve_token(config)
+    resolver = create_auth_resolver(token)
+
+    print("Dataset Authentication Status")
+    print("=" * 40)
+    print(f"Provider: {AuthProvider.HUGGINGFACE.value}")
+    print(f"Token environment variable: {resolver._config.token_env_var}")
+    print(f"Token configured: {'YES' if resolver.has_token else 'NO'}")
+
+    if resolver.has_token:
+        is_valid, msg = resolver.validate_token()
+        print(f"Token format valid: {'YES' if is_valid else 'NO'}")
+        print(f"  {msg}")
+
+    print()
+    print("Configuration sources (in priority order):")
+    print("  1. HF_TOKEN environment variable")
+    print("  2. --hf-token CLI argument (stored in config)")
+    print("  3. hf_token in config file (SecretStr, masked in artifacts)")
+    print()
+    print("Security notes:")
+    print("  - Tokens are never printed in full or in part")
+    print("  - Tokens are never persisted to artifacts or logs")
+    print("  - Tokens are masked as '***' in configuration dumps")
+    print("  - Prefer HF_TOKEN environment variable over config file")
+
+    return 0
 
 
 def _cmd_model_train(args: argparse.Namespace) -> int:
@@ -286,6 +376,74 @@ def _cmd_benchmark(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_analytics(args: argparse.Namespace) -> int:
+    """Aggregate benchmark/evaluation/baseline results across datasets."""
+    from pathlib import Path
+
+    from q_guardian.analytics import CrossDatasetAnalytics
+
+    report_paths: list[Path] = []
+    for raw in args.reports:
+        candidate = Path(raw)
+        if candidate.is_dir():
+            report_paths.extend(sorted(candidate.glob("*.json")))
+        elif candidate.is_file():
+            report_paths.append(candidate)
+        else:
+            print(f"No such report path: {raw}", file=sys.stderr)
+            return 2
+    if not report_paths:
+        print("No report JSON files found in the provided inputs.", file=sys.stderr)
+        return 2
+
+    service = CrossDatasetAnalytics(aggregation_mode=args.aggregation, strict=not args.no_strict)
+    try:
+        report = service.analyze(report_paths)
+    except ValueError as exc:
+        print(f"Analytics failed: {exc}", file=sys.stderr)
+        return 1
+
+    print(f"\nCross-dataset analytics over {len(report.inputs)} result(s):")
+    print(f"  compatible : {'YES' if report.compatibility.compatible else 'NO'}")
+    for warning in report.compatibility.warnings:
+        print(f"  warning    : {warning}")
+    if report.compatibility.errors:
+        for error in report.compatibility.errors:
+            print(f"  error      : {error}")
+
+    if report.aggregation is not None:
+        providers = report.aggregation.provider_ids
+        print(f"  providers  : {', '.join(providers)}")
+        roc = report.aggregation.providers.get("fusion", {}).metrics.get("roc_auc")
+        if roc is not None:
+            std_repr = f" (std {roc.std:.4f})" if roc.std is not None else ""
+            print(f"  fusion ROC-AUC: {roc.mean:.4f}{std_repr} over {roc.datasets} dataset(s)")
+
+    if report.leaderboards:
+        board = report.leaderboards.get("roc_auc")
+        if board is not None and board.providers:
+            ordered = board.order()
+            top = ordered[0] if ordered else None
+            if top is not None:
+                entry = board.providers[top]
+                print(
+                    f"  leaderboard: best by avg rank = {top} "
+                    f"(avg rank {entry.average_rank:.3f}, {entry.datasets_ranked} dataset(s))"
+                )
+
+    if report.comparison is not None:
+        for conclusion in report.comparison.conclusions:
+            print(f"  classical-vs-quantum: {conclusion}")
+    if report.generalization is not None and report.generalization.conclusion:
+        print(f"  generalization: {report.generalization.conclusion}")
+
+    outputs = service.save(report, args.output_dir)
+    print("\nReport written:")
+    for kind, path in outputs.items():
+        print(f"  {kind:<10} {path}")
+    return 0
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="q-guardian",
@@ -315,6 +473,24 @@ def _build_parser() -> argparse.ArgumentParser:
     p_validate_cmd = prepare_sub.add_parser("validate", help="check configured datasets")
     _add_common(p_validate_cmd)
     p_validate_cmd.set_defaults(func=_cmd_dataset_validate)
+    p_check_access_cmd = prepare_sub.add_parser(
+        "check-access", help="check dataset access requirements (public/gated/private)"
+    )
+    _add_common(p_check_access_cmd)
+    p_check_access_cmd.add_argument(
+        "dataset_ids", nargs="+", help="dataset ids to check access for"
+    )
+    p_check_access_cmd.add_argument(
+        "--offline",
+        action="store_true",
+        help="skip network checks, use registry classification only",
+    )
+    p_check_access_cmd.set_defaults(func=_cmd_dataset_check_access)
+    p_auth_status_cmd = prepare_sub.add_parser(
+        "authenticate-status", help="show authentication configuration status"
+    )
+    _add_common(p_auth_status_cmd)
+    p_auth_status_cmd.set_defaults(func=_cmd_dataset_auth_status)
 
     p_train = sub.add_parser("model", help="train/evaluate the detection model")
     train_sub = p_train.add_subparsers(dest="model_command", required=True)
@@ -352,6 +528,34 @@ def _build_parser() -> argparse.ArgumentParser:
     p_bench.add_argument("--no-ablate", action="store_true", help="skip provider ablation")
     p_bench.add_argument("--output", default=None, help="output directory for reports")
     p_bench.set_defaults(func=_cmd_benchmark)
+
+    p_analytics = sub.add_parser(
+        "analytics",
+        help="aggregate benchmark/evaluation results across datasets into a report",
+    )
+    p_analytics.add_argument(
+        "--reports",
+        nargs="+",
+        required=True,
+        help="report JSON files or directories containing *.json artifacts",
+    )
+    p_analytics.add_argument(
+        "--aggregation",
+        choices=["macro", "weighted", "micro"],
+        default="macro",
+        help="cross-dataset aggregation mode (default: macro)",
+    )
+    p_analytics.add_argument(
+        "--output-dir",
+        default="reports/analytics",
+        help="directory for report.json / report.csv / report.md (default: reports/analytics)",
+    )
+    p_analytics.add_argument(
+        "--no-strict",
+        action="store_true",
+        help="proceed even when results are incompatible (warnings are always shown)",
+    )
+    p_analytics.set_defaults(func=_cmd_analytics)
 
     return parser
 

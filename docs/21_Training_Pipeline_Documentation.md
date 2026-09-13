@@ -181,10 +181,23 @@ The `q-guardian` entry point is defined in `pyproject.toml`:
 ```bash
 q-guardian dataset prepare  --config configs/training.json --output-dir runs/01
 q-guardian dataset validate --config configs/training.json
+q-guardian dataset check-access deepset-prompt-injections wildjailbreak [--offline] [--hf-token TOKEN]
+q-guardian dataset authenticate-status [--hf-token TOKEN]
 q-guardian model train     --config configs/training.json --output-dir runs/01 --max-samples 500
 q-guardian model evaluate  --config configs/training.json --output-dir runs/01 --threshold 0.5
 q-guardian benchmark       --config configs/training.json --k 3
 ```
+
+### 8.1 Dataset access commands
+
+- **`dataset check-access <dataset_ids>...`** — Check access requirements for one or more datasets.
+  Shows whether each dataset is PUBLIC, GATED (needs token + terms acceptance), or AUTHENTICATED.
+  Use `--offline` to skip network checks and use registry classification only.
+  Use `--hf-token` to override the token for this check.
+
+- **`dataset authenticate-status`** — Show current authentication configuration status.
+  Displays token configuration, format validation, and masked preview.
+  Tokens are never printed in full.
 
 - `model train` automatically runs preparation first if `splits/train.jsonl`
   is missing, and reuses existing splits when present.

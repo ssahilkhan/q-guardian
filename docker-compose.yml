@@ -1,9 +1,7 @@
-version: "3.9"
-
 services:
   api:
     build:
-      context: ..
+      context: .
       dockerfile: docker/Dockerfile
     container_name: q-guardian-api
     ports:

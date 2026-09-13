@@ -13,7 +13,6 @@ Q_Gaudrail/
 ├── docs/                     Markdown guides (17 user guides + this 00–18 set)
 ├── examples/                 Runnable examples + generated state artifacts
 ├── logs/                     Runtime log directory (q_guardian.log, effectively empty)
-├── models/ml/                ML artifact directory (present, effectively empty)
 ├── scripts/                  Benchmarks, load testing, packaging, profiling, CLIs
 ├── src/q_guardian/           The q_guardian package (all production code)
 ├── tests/                    pytest suite (unit, response, observability, integration)
@@ -556,6 +555,11 @@ Q_Gaudrail/
     ├── response/
     │   ├── __init__.py
     │   └── test_*.py (9 files)
+    ├── manual/
+    │   ├── __init__.py
+    │   ├── test_base64.py
+    │   ├── test_homoglyph_encoding.py
+    │   └── test_login_rate_limit.py
     └── unit/
         ├── __init__.py
         └── test_*.py (70 files)
@@ -598,20 +602,20 @@ The package is organized into 12 top-level capability domains plus infrastructur
 
 | Directory | Non-`.pyc` files |
 |---|---|
-| `src/q_guardian/` | 338 Python files (306 pre-existing + 8 `benchmark/` + 12 `embeddings/` + 11 `training/` + `cli.py`) |
-| `tests/` | 141 files (133 `test_*.py` + 6 `__init__.py` + 2 conftest) |
+| `src/q_guardian/` | 354 Python files (306 pre-existing + 8 `benchmark/` + 12 `embeddings/` + 11 `training/` + `cli.py` + embeddings/tests) |
+| `tests/` | 156 files (148 `test_*.py` + 6 `__init__.py` + 2 conftest) |
 | `scripts/` | 29 files (23 `.py` + 6 `.json`) |
 | `examples/` | 13 files |
-| `docs/` | 39 `.md` files (17 pre-existing guides + 00-21 numbered docs, incl. `19_Benchmark_Platform_Documentation.md`, `20_Embedding_Pipeline.md`, `21_Training_Pipeline_Documentation.md`) |
+| `docs/` | 40 `.md` files (17 pre-existing guides + 00-22 numbered docs, incl. `19_Benchmark_Platform_Documentation.md`, `20_Embedding_Pipeline.md`, `21_Training_Pipeline_Documentation.md`, `ARCHITECTURE_QUICK_REFERENCE.md`) |
 | root files | 14 |
 | `.github/workflows/` | 3 |
 | `docker/` | 1 |
 | `logs/` | 1 (effectively empty) |
-| **Total (canonical inventory)** | **544** (excluding `.pytest_cache/`) |
+| **Total (canonical inventory)** | **573** (excluding `.pytest_cache/`) |
 
 ## 5. File Inventory Notes
 
-- The canonical inventory file used to validate "every project file documented exactly once" contains **541 entries**; the extra 5 are the `.pytest_cache/` artifacts (`v/cache/*`, `CACHEDIR.TAG`, etc.) which are test-runner caches and are excluded from per-file documentation.
+- The canonical inventory file used to validate "every project file documented exactly once" contains **570 entries**; the extra 3 are the `.pytest_cache/` artifacts (`v/cache/*`, `CACHEDIR.TAG`, etc.) which are test-runner caches and are excluded from per-file documentation.
 - `models/ml/` appears in tree generation only if present; it contains no files.
 - `src/__init__.py` exists as a marker for the src-layout root.
 - `policy/adapters/`, `policy/composition/`, `policy/rbac/`, `policy/storage/`, `quantum/base/`, `sdk/`, `schemas/` contain their primary logic in single modules or `__init__.py` files (see `03_Source_File_Documentation.md`).

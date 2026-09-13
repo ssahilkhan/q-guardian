@@ -32,6 +32,7 @@ flowchart TB
         SEC[security/pipeline]
         ML[ml/feature_pipeline + models]
         QML[quantum/ backends, QSVM, kernels, fusion]
+        EMB[embeddings/ providers, manager, fusion]  %% NEW
     end
     subgraph L3["Decision & Response"]
         RISK[risk/ assessment + explainability]
@@ -41,20 +42,29 @@ flowchart TB
     subgraph L4["Observability"]
         OBS[observability/ metrics, tracing, health, analytics, alerts, dashboard]
     end
+    subgraph L5["Training & Evaluation (V2.0)"]
+        TRN[training/ prepare, train, evaluate]
+        BEN[benchmark/ registry, runner, reports]
+    end
     SDK --> L1
     API --> L1
     CLI --> SDK
     SDK --> SEC
     SDK --> ML
     SDK --> QML
+    SDK --> EMB  %% NEW
     SEC --> RISK
     ML --> RISK
     QML --> RISK
+    EMB --> ML  %% NEW: embeddings extend ML feature pipeline
+    EMB --> QML  %% NEW: embeddings can feed quantum
     RISK --> POL
     POL --> RESP
     L1 -.-> OBS
     L2 -.-> OBS
     L3 -.-> OBS
+    L5 --> ML
+    L5 --> QML
 ```
 
 ## 3. Runtime Flow (end-to-end decision pipeline)
@@ -131,6 +141,7 @@ Runtime helpers: `set_agent()`, `create_session()` (publishes `SessionStarted`),
 - **Security pipeline** (`security/pipeline.py`, 478 lines): normalizer → validator → feature extractor → rule engine; feeds `ml/`, `quantum/`, fusion.
 - **ML** (`ml/`): `feature_pipeline`, model base, anomaly/classifier/ensemble models, `ModelManager`, `trainer`, `InferenceEngine`, dataset loaders, evaluation metrics, storage, `ThreatAnalysisPlugin`.
 - **Quantum** (`quantum/`): backends (Qiskit adapter + `LocalSimulatorBackend`), feature maps (angle/Pauli/ZZ), `QuantumKernelEstimator`, `QSVMModel`, `QuantumInferenceEngine`, fusion engine + 5 strategies, `KernelTrainer`, model manager, storage.
+- **Embeddings (V2.0 M3)** (`embeddings/`): provider interface (`EmbeddingProvider`), `HashEmbeddingProvider` (default, no deps), `SentenceTransformers` providers (MiniLM/BGE/E5), cloud placeholders; `EmbeddingManager` with LRU + disk cache, batching, fallback; `FeatureMode` (handcrafted_only/embedding_only/hybrid) extending ML feature pipeline; trainer adapters for `ModelTrainer`/`QuantumTrainer`.
 
 ### 4.8 Decision & response layer
 - **Risk** (`risk/`): `ThreatScorer`, `TrustEngine`, `ConfidenceEngine`, `SeverityEngine`, `RiskAssessmentEngine`, explainability (reasoning graph, report generator), actions, risk policies.
@@ -160,14 +171,20 @@ flowchart LR
     SDK --- HOOK[hooks]
     SEC[security] --- ML[ml]
     SEC --- QML[quantum]
+    SEC --- EMB[embeddings]
     QML --- FUS[fusion]
+    EMB --- ML
+    EMB --- QML
     SEC & ML & QML --- RISK[risk]
     RISK --- POL[policy]
     POL --- RES[response]
     RES --- OBS[observability]
     OBS --- EXPO[exporters: OTel/Prometheus]
     OBS --- INTEG[integrations]
-    RES --- RINT[response integrations: Splunk/QRadar/...]
+    TRN[training/] --- ML
+    TRN --- QML
+    BEN[benchmark/] --- ML
+    BEN --- QML
 ```
 
 ## 7. Design Notes & Limitations

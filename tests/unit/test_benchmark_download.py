@@ -71,7 +71,8 @@ class TestDownloaderHf:
         assert json.loads(_read_lines(paths["train"])[0])["text"] == "train row"
         assert json.loads(_read_lines(paths["test"])[0])["text"] == "test row"
 
-    def test_gated_without_token_raises(self, tmp_path):
+    def test_gated_without_token_raises(self, tmp_path, monkeypatch):
+        monkeypatch.delenv("HF_TOKEN", raising=False)
         downloader = DatasetDownloader(tmp_path)
         with pytest.raises(DatasetError, match="gated"):
             downloader.download(_hf_spec(requires_token=True))

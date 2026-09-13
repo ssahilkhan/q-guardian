@@ -94,6 +94,9 @@ Q-Guardian follows **Clean Architecture** with strict separation of concerns. Th
 | **Classical ML Security** | Isolation Forest, Random Forest, XGBoost, and ensemble threat detection |
 | **Quantum Analysis** | Quantum kernels, feature maps, and QSVM for high-dimensional threat spaces |
 | **Hybrid Fusion Engine** | Fuses rule, classical, and quantum predictions with interchangeable strategies |
+| **Embedding Pipeline (v1.1+)** | Semantic embeddings (MiniLM/BGE/E5/hash), hybrid features, trainer adapters |
+| **Training Pipeline (v1.2)** | Dataset prep, leakage checks, reproducible training, `q-guardian` CLI |
+| **Benchmark Platform (v1.1+)** | Third-party datasets, K-fold CV, provider ablation, honest measurement |
 | **Risk & Explainability** | Risk scoring, severity/threat/trust engines, and reasoning-graph explanations |
 | **Policy Engine** | Policy-as-code DSLs (Rego, Cedar, YAML, JSON), RBAC, composition, simulation |
 | **Response & Recovery** | Playbook orchestration, quarantine, evidence, rollback, and SOAR integrations |
@@ -110,6 +113,7 @@ Q-Guardian follows **Clean Architecture** with strict separation of concerns. Th
 q-guardian/
 ├── src/q_guardian/
 │   ├── benchmark/           # Third-party dataset ingestion + benchmarking
+│   ├── embeddings/          # Semantic embeddings, caching, hybrid fusion (v1.1+)
 │   ├── evaluation/          # HybridEvaluator detector + metrics
 │   ├── training/            # Dataset prep + training + evaluation pipeline
 │   ├── cli.py               # q-guardian CLI (dataset prepare/validate, model train/evaluate, benchmark)
@@ -141,7 +145,7 @@ q-guardian/
 │   ├── logging/             # Structured logging (structlog)
 │   ├── exceptions/          # Exception hierarchy
 │   └── utils/               # Utility functions
-├── tests/                   # 2,650 unit/integration tests
+├── tests/                   # 2,755 unit/integration tests
 ├── docs/                    # Architecture, API, and research documentation
 ├── examples/                # Framework examples + explainable demo
 ├── scripts/                 # Benchmark, load-test, profile, packaging scripts
@@ -177,16 +181,17 @@ Full documentation index (technical documentation set in [`docs/`](docs/)):
 | 17 | [`docs/17_Observability_Operations_Documentation.md`](docs/17_Observability_Operations_Documentation.md) | Observability subsystem |
 | 18 | [`docs/18_Tests_Scripts_Examples_Documentation.md`](docs/18_Tests_Scripts_Examples_Documentation.md) | Tests, scripts, examples |
 | 19 | [`docs/19_Benchmark_Platform_Documentation.md`](docs/19_Benchmark_Platform_Documentation.md) | Benchmark platform |
-| 20 | [`docs/20_Embedding_Pipeline.md`](docs/20_Embedding_Pipeline.md) | Embedding pipeline |
-| 21 | [`docs/21_Web_Console_UI.md`](docs/21_Web_Console_UI.md) | Web console architecture & API |
-| 22 | [`docs/21_Training_Pipeline_Documentation.md`](docs/21_Training_Pipeline_Documentation.md) | Dataset prep + training + evaluation pipeline |
+| 20 | [`docs/20_Embedding_Pipeline.md`](docs/20_Embedding_Pipeline.md) | Embedding pipeline (v1.1+) |
+| 21 | [`docs/21_Training_Pipeline_Documentation.md`](docs/21_Training_Pipeline_Documentation.md) | Dataset prep + training + evaluation pipeline |
+| 22 | [`docs/21_Web_Console_UI.md`](docs/21_Web_Console_UI.md) | Web console architecture & API |
+| — | [`docs/ARCHITECTURE_QUICK_REFERENCE.md`](docs/ARCHITECTURE_QUICK_REFERENCE.md) | **One-page architecture for AI agents** |
 
 `docs/` also contains 17 user-facing guides: `user-guide.md`, `architecture-guide.md`,
 `configuration-guide.md`, `deployment-guide.md`, `developer-guide.md`, `event-system.md`,
 `framework-architecture.md`, `migration-guide.md`, `ml-security.md`, `operations-guide.md`,
 `plugin-development.md`, `plugin-dev-guide.md`, `quantum-analysis-research.md`,
 `runtime-architecture.md`, `security-review.md`, `troubleshooting-guide.md`,
-`api-reference.md`.
+`api-reference.md`, **and `ARCHITECTURE_QUICK_REFERENCE.md` for AI agents**.
 
 ---
 
