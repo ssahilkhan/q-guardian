@@ -12,7 +12,7 @@ The web console is **real-data end-to-end**. All 13 UI views render live API res
 The gaps are concentrated where the **API layer reports optimistic or hardcoded state**, and where **fully implemented backend subsystems have no UI surface at all**. All three API-truthfulness gaps found below (P0) were fixed on 2026-08-16 (see §9):
 
 - ~~`/system/status` hardcoded `"operational"`~~ → now derived from live database health (reports `degraded` while MongoDB is down, agreeing with `/health`).
-- ~~models endpoint advertising 6 fusion strategies~~ → now returns only the 4 actually implemented; `bayesian` is reported separately as interface-only and phantom `max_confidence` is gone.
+- ~~models endpoint advertising 6 fusion strategies~~ → now returns only the strategies actually implemented (5 today, `bayesian` now included after its implementation); phantom `max_confidence` is gone.
 - ~~`ml.xgboost_available` static default~~ → now a live runtime probe (`importlib.find_spec`), independent of the config default.
 
 ### 1.1 Status percentage
@@ -89,7 +89,7 @@ Legend: B = backend implemented, API = exposed via REST, UI = consumed by consol
 | Item | Before | After |
 |---|---|---|
 | `GET /api/v1/system/status` | `api/v1/endpoints/system.py:53-54` → `data={"status": "operational"}` hardcoded, contradicted `/health` | Derived from `check_database_health()`; `operational` only when DB healthy, else `degraded`, with the `database` dependency snapshot included (`system.py:44-66`). |
-| Quantum `fusion_strategies` | `api/services/analysis.py:206-213` hardcoded 6 names incl. stub `bayesian` + phantom `max_confidence` | Built from the real registry `IMPLEMENTED_STRATEGIES` in `quantum/fusion/strategies/__init__.py` (4 strategies); `bayesian` surfaced separately as `fusion_interface_only`; `max_confidence` gone. |
+| Quantum `fusion_strategies` | `api/services/analysis.py:206-213` hardcoded 6 names incl. stub `bayesian` + phantom `max_confidence` | Built from the real registry `IMPLEMENTED_STRATEGIES` in `quantum/fusion/strategies/__init__.py` (4 strategies at the time; 5 as of the Bayesian fusion implementation — `bayesian` moved from `fusion_interface_only` into the implemented set); `max_confidence` gone. |
 | `ml.xgboost_available` | `ml/config.py:61` static default `False`, never re-probed | Live runtime probe via `self._sdk_installed("xgboost")` in `api/services/analysis.py` `configuration()`; independent of the config default. |
 
 Still static by design (not part of this P0): the pipeline `components` inventory (`_COMPONENTS`, §5 note below) and `quantum.active=False` (accurate — quantum is not in the scan path).
@@ -115,7 +115,7 @@ Remaining static item (out of P0 scope): components inventory — `_COMPONENTS` 
 | Task | Files changed | Status |
 |---|---|---|
 | Make `/system/status` reflect real health | `api/v1/endpoints/system.py`, `tests/integration/test_api.py` | Done — derived from `check_database_health()`, returns `operational`/`degraded` + `database` snapshot. |
-| Build `fusion_strategies` from the real registry | `quantum/fusion/strategies/__init__.py` (registry), `api/services/analysis.py`, `tests/integration/test_console_api.py` | Done — `IMPLEMENTED_STRATEGIES` (4) + `INTERFACE_ONLY_STRATEGIES` (`bayesian`); phantom `max_confidence` removed. |
+| Build `fusion_strategies` from the real registry | `quantum/fusion/strategies/__init__.py` (registry), `api/services/analysis.py`, `tests/integration/test_console_api.py` | Done — `IMPLEMENTED_STRATEGIES` (4 at the time) + `INTERFACE_ONLY_STRATEGIES`; `bayesian` later implemented and added to `IMPLEMENTED_STRATEGIES` (now 5); phantom `max_confidence` removed. |
 | Probe `xgboost_available` at runtime | `api/services/analysis.py`, `tests/integration/test_console_api.py` | Done — `importlib.util.find_spec("xgboost")` per request via `_sdk_installed`, independent of the config default. |
 
 Tests added: `test_status_agrees_with_health`, `test_status_response_structure` (test_api.py); `test_models_fusion_strategies_match_registry`, `test_configuration_xgboost_availability_is_runtime_probe` (test_console_api.py). Result: 72/72 focused tests passed; full suite 2671 passed / 4 pre-existing XGBoost failures (unchanged); ruff + mypy clean. Live-verified against the restarted server.

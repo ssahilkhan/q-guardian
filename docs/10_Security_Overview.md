@@ -6,8 +6,8 @@
 > Q-Gaudrail protects AI agents at two levels: **HTTP transport** (headers, CORS,
 > correlation IDs, exception hygiene) and **application-level prompt security**
 > (normalization, validation, feature extraction, rule detection, decision making).
-> A third level — authentication/authorization/rate limiting — is scaffolded but
-> intentionally not implemented yet.
+> A third level — authentication (JWT + API keys) and authorization — is
+> implemented and enforced on every protected v1 endpoint (see §5).
 
 ---
 
@@ -35,9 +35,10 @@ LEVEL 2 — DETECTION EXTENSIONS (future + partial)
 LEVEL 3 — POLICY + RISK + RESPONSE (see docs 13, 14)
    BLOCK/WARN/REVIEW/ALLOW feed into RiskAssessment -> PolicyDecision -> Response
 
-LEVEL 4 — PLACEHOLDERS (not implemented)
+LEVEL 4 — AUTHN/Z + RATE LIMITING (implemented, §5)
    security/auth.py: JWTService, AuthenticationService, AuthorizationService,
-   APIKeyService, RateLimitService  (all raise NotImplementedError)
+   APIKeyService, RateLimitService  (all functional, enforced on protected
+   /api/v1 endpoints via the router-level get_current_principal dependency)
 ```
 
 ---
@@ -246,18 +247,57 @@ Implementation status:
 
 ---
 
-## 5. Auth / API Security Placeholders — `src\q_guardian\security\auth.py`
+## 5. Auth / API Security — `src\q_guardian\security\auth.py`
 
-All classes raise `NotImplementedError`; nothing is functional. Documented as
-"Security infrastructure placeholders."
+Authentication and authorization are fully implemented and enforced at the
+router level: every endpoint under `/api/v1` except `GET /api/v1/health`
+requires a principal, resolved by the `get_current_principal` dependency
+(`security/http_auth.py`) from either:
 
-| Class | Planned capability | Stub signature |
-|-------|--------------------|----------------|
-| `JWTService` | access + refresh tokens | `create_access_token(payload, expires_minutes=30)`, `verify_token(token)` |
-| `AuthenticationService` | credentials, OAuth, MFA | `authenticate(username, password)` |
-| `AuthorizationService` | RBAC, permission checks | `check_permission(user_id, resource, action)` |
-| `APIKeyService` | key lifecycle | `validate_api_key(api_key)` |
-| `RateLimitService` | rate limiting | `check_rate_limit(identifier, limit=100, window=60)` |
+1. `Authorization: Bearer <jwt>` — an access token from `JWTService`, checked
+   against the persistent token blocklist (`security/token_blocklist.py`) so
+   logged-out/revoked tokens stay rejected; or
+2. the `X-API-Key` header (configurable via `api_key_header`) validated by
+   `APIKeyService`.
+
+Unauthenticated or invalid requests produce the structured 401 envelope via
+the global exception handlers; `AuthenticationError` carries a stable
+machine-readable `reason` (`missing_credentials`, `invalid_token`,
+`token_revoked`, `invalid_api_key`, …).
+
+| Component | Capability | Public API |
+|-----------|------------|------------|
+| `hash_password` / `verify_password` | bcrypt hashing (72-byte input limit) | module-level helpers |
+| `JWTService` | HS256 access + refresh tokens, distinguished by a `type` claim so one kind never replays as the other | `create_access_token(claims)`, `create_refresh_token(claims)`, `verify_token(token, expected_type=…)` |
+| `AuthenticationService` | username/password login, durable registration, token refresh + revocation | `authenticate`, `register_user`, `refresh`, `revoke_tokens`, `users_configured` |
+| `AuthorizationService` | role → permission mapping | `assign_role`, `get_user_roles` |
+| `APIKeyService` | key lifecycle | `generate_api_key`, `authenticate_api_key`, `revoke_api_key`, `list_api_keys` |
+| `RateLimitService` | in-memory sliding-window throttle | `check_rate_limit(identifier, limit, window)`, `retry_after`, `reset` |
+
+**Provisioning:**
+
+- **Users**: `AUTH_USERS` env var (JSON `{username: {password_hash, roles}}`
+  with bcrypt hashes) plus the persistent MongoDB `user_repository`; accounts
+  created through the console register flow always get the standard
+  `analyst` role.
+- **API keys**: `API_KEYS` env var (comma-separated raw `qg_…` keys or
+  `sha256:<hexdigest>` entries); keys are stored as SHA-256 digests — raw key
+  material is never persisted.
+
+**Enforcement points:**
+
+- Router-level `dependencies=[Depends(get_current_principal)]` on
+  `api_v1_router` (`api/v1/router.py`) protects analysis, console, system,
+  datasets, training, scans, analytics and reports; `public_router` (health)
+  stays unauthenticated so orchestrators can probe readiness.
+- `api/v1/endpoints/auth.py` (`/api/v1/auth`): `login`, `refresh`,
+  `register`, `logout`. Bootstrap routes are public by design; `logout`
+  re-authenticates at the endpoint so a caller can only revoke its own
+  tokens. Login and registration are throttled to 5 attempts per IP+username
+  per 15 minutes (`_check_login_rate_limit`).
+- The console ships a login view and stores issued tokens client-side
+  (`ui/static/js/auth.js`, `ui/static/js/views/login.js`); `ui/static/js/api.js`
+  attaches the `Authorization` header to every API call.
 
 Related config lives in `SecuritySettings` (`src\q_guardian\config\settings.py`,
 env prefix empty):
@@ -306,8 +346,9 @@ oversized_prompt, malformed_input, unknown
 
 ## 8. Known Gaps & Roadmap
 
-- **AuthN/Z, API keys, rate limiting**: placeholder only (`security/auth.py`); no
-  password hashing anywhere in the tree.
+- **Per-endpoint rate limiting**: `RateLimitSettings` / `middleware/rate_limit.py`
+  exist but the middleware is disabled by default (`RATE_LIMIT_ENABLED=false`);
+  only the auth login/register routes have enforced throttling (5 per 15 min).
 - **ML/Quantum in decision path**: engines exist (`ml/*`, `quantum/*`) but the
   security decision cascade is rule-only by default (`PromptSecurityConfig.ml_enabled`
   and `.quantum_enabled` default `False`).

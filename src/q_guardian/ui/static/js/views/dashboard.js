@@ -1,6 +1,7 @@
 /* Q-Guardian Console — Dashboard view.
- * Overview aggregates from /console/summary plus a quick-scan control and
- * the most recent analyses. All numbers come from the live API.
+ * Product-workflow overview: aggregates from /api/v1/analytics/summary and
+ * the most recent security scans. All numbers come from real persisted
+ * artifacts — the console never fabricates a figure.
  */
 (function () {
   "use strict";
@@ -10,14 +11,16 @@
   var api = QG.api;
   var U = QG.ui;
 
-  function renderDistribution(history) {
-    var total = history.total || 0;
-    if (!total) return U.emptyState("No scans recorded yet. Run a scan from the Scanner page.");
+  function renderVerdictDistribution(summary) {
+    var scans = summary.scans || {};
+    var byVerdict = scans.by_verdict || {};
+    var total = scans.total || 0;
+    if (!total) return U.emptyState("No security scans recorded yet. Run a security scan from the Security Scans page.");
     var rows = [
-      { key: "allowed", label: "Allowed", count: history.allowed || 0, cls: "success" },
-      { key: "warn", label: "Warning", count: history.warn || 0, cls: "warning" },
-      { key: "review", label: "Review", count: history.review || 0, cls: "review" },
-      { key: "block", label: "Blocked", count: history.blocked || 0, cls: "block" },
+      { label: "Low Risk", count: byVerdict.low_risk || 0, cls: "success" },
+      { label: "Review", count: byVerdict.review || 0, cls: "review" },
+      { label: "High Risk", count: byVerdict.high_risk || 0, cls: "block" },
+      { label: "Unknown", count: byVerdict.unknown || 0, cls: "low" },
     ];
     var bars = rows
       .map(function (row) {
@@ -34,40 +37,55 @@
     return '<div class="distribution">' + bars + "</div>";
   }
 
-  function renderComponents(components) {
-    if (!components || !components.length) return U.emptyState("No pipeline components reported.");
-    var rows = components.map(function (component) {
-      return [
-        { value: component.name, cls: "cell-strong" },
-        U.statusBadge(component.status),
-        component.detail,
-      ];
+  function renderTimeline(timeline) {
+    if (!timeline || !timeline.length) {
+      return U.emptyState("No scan activity in the last 14 days.");
+    }
+    var max = 0;
+    timeline.forEach(function (day) {
+      if (day.scans > max) max = day.scans;
     });
-    return U.table(["Stage", "Status", "Details"], rows);
+    var bars = timeline
+      .map(function (day) {
+        var pct = max ? Math.round((day.scans / max) * 100) : 0;
+        var label = new Date(day.date + "T00:00:00Z").toLocaleDateString("en-US", { month: "short", day: "2-digit" });
+        return (
+          '<div class="dist-row" title="' + U.esc(day.date) + " — " + day.scans + ' scan(s)">' +
+          '<span class="dist-label">' + label + "</span>" +
+          '<div class="dist-track"><div class="dist-fill info" style="width:' + pct + '%"></div></div>' +
+          '<span class="dist-value">' + day.scans + "</span>" +
+          "</div>"
+        );
+      })
+      .join("");
+    return '<div class="distribution">' + bars + "</div>";
   }
 
-  function renderRecent(history) {
-    if (!history.items || !history.items.length) {
-      return U.emptyState("No scans recorded yet.");
+  function renderRecent(scans) {
+    if (!scans || !scans.length) {
+      return U.emptyState("No security scans recorded yet.");
     }
-    var rows = history.items.map(function (item) {
+    var rows = scans.map(function (scan) {
+      var verdict = scan.verdict || {};
       return [
         {
-          html: '<a class="row-link" href="#/detection/' + encodeURIComponent(item.analysis_id) + '">' +
-            U.text(item.analysis_id.slice(0, 8)) + "</a>",
-          title: item.analysis_id,
+          html: '<a class="row-link" href="#/scans/' + encodeURIComponent(scan.scan_id) + '">' +
+            U.text(scan.scan_id) + "</a>",
+          title: scan.scan_id,
         },
-        U.fmtDateTime(item.timestamp),
-        U.decisionBadge(item.decision),
-        { value: Math.round(Number(item.risk_score || 0) * 100) + "%", cls: "cell-mono" },
-        item.finding_count,
-        item.processing_time_ms == null ? "—" : item.processing_time_ms + " ms",
+        U.fmtDateTime(scan.created_at),
+        scan.scan_type || scan.kind || "—",
+        { value: scan.target || "—", cls: "cell-mono" },
+        U.jobBadge(scan.status),
+        U.verdictBadge(verdict.level),
       ];
     });
-    return U.table(
-      ["Analysis", "Timestamp", "Decision", "Risk", "Findings", "Time"],
-      rows
-    );
+    return U.table(["Scan", "Created", "Type", "Target", "Status", "Verdict"], rows);
+  }
+
+  function detectionRate(summary) {
+    var rate = summary.scans && summary.scans.avg_detection_rate;
+    return rate == null ? "—" : U.fmtPct(rate);
   }
 
   QG.views.dashboard = {
@@ -75,84 +93,74 @@
     group: "overview",
     render: async function (el) {
       el.innerHTML = U.loadingState("Loading dashboard…");
-      var summaryPayload = await api.get(api.endpoints.summary);
-      var historyPayload = await api.get(api.endpoints.analysis + "?limit=6");
-      var summary = api.data(summaryPayload);
-      var history = api.envelope(historyPayload);
+      try {
+        var summaryPayload = await api.get(api.endpoints.analyticsSummary);
+        var scansPayload = await api.get(api.endpoints.scans + "?limit=6");
+        var summary = api.data(summaryPayload) || {};
+        var scans = api.data(scansPayload) || [];
 
-      var components = (summary.components || []).length;
-      var rules = summary.rules || {};
-      var ml = summary.ml || {};
-      var quantum = summary.quantum || {};
-      var backends = quantum.backends || [];
-      var installed = backends.filter(function (b) {
-        return b.installed;
-      }).length;
-      var historyCounts = summary.history || {};
+        var datasets = summary.datasets || {};
+        var training = summary.training || {};
+        var data = summary.data || {};
+        var scansStats = summary.scans || {};
 
-      el.innerHTML =
-        '<div class="page-head">' +
-        "<div>" +
-        '<h2 class="page-title">Security Overview</h2>' +
-        '<p class="page-sub">Real-time posture of the Q-Guardian runtime security pipeline: detection rules, model availability, quantum research backends and recent scan activity.</p>' +
-        "</div>" +
-        "</div>" +
+        el.innerHTML =
+          '<div class="page-head">' +
+          "<div>" +
+          '<h2 class="page-title">Security Posture</h2>' +
+          '<p class="page-sub">A live summary of the product workflow: secured datasets, trained detectors, hybrid security scans and cross-pipeline analytics — all derived from persisted artifacts.</p>' +
+          "</div>" +
+          '<button type="button" class="btn ghost" id="refreshDashboard">Refresh</button>' +
+          "</div>" +
 
-        '<div class="card">' +
-        '<div class="card-head"><div><div class="card-title">Quick Scan</div>' +
-        '<div class="card-sub">Submit a prompt through the full analysis pipeline (normalize, validate, features, rules, optional ML).</div></div></div>' +
-        '<form id="dashboardScanForm">' +
-        '<div class="field">' +
-        '<textarea id="dashboardScanInput" rows="3" maxlength="100000" placeholder="Paste a prompt to analyze…"></textarea>' +
-        "</div>" +
-        '<div class="row end"><button type="submit" class="btn primary" id="dashboardScanBtn">Analyze Prompt</button></div>' +
-        "</form>" +
-        "</div>" +
+          '<div class="grid grid-4">' +
+          U.statCard("Prepared Data", datasets.prepared != null ? datasets.prepared : "—", "of " + (datasets.catalog != null ? datasets.catalog : "—") + " catalogued", "success") +
+          U.statCard("Trained Models", training.trained_models != null ? training.trained_models : "—", training.runs != null ? training.runs + " training run(s)" : "", "info") +
+          U.statCard("Security Scans", scansStats.total != null ? scansStats.total : "—", (scansStats.scans_with_metrics != null ? scansStats.scans_with_metrics : "—") + " with metrics", "") +
+          U.statCard("Avg Detection Rate", detectionRate(summary), "fusion recall, scored scans", "") +
+          "</div>" +
 
-        '<div class="grid grid-4">' +
-        U.statCard("Pipeline Components", components, "stages reported", "success") +
-        U.statCard("Detection Rules", rules.enabled != null ? rules.enabled + " / " + rules.total : rules.total, "enabled / total", "success") +
-        U.statCard("ML Models", ml.loaded_models + " / " + ml.total_models, (ml.active ? "active" : "no models loaded"), ml.active ? "success" : "warning") +
-        U.statCard("Quantum Backends", installed + " / " + backends.length, "installed / available", "info") +
-        "</div>" +
+          '<div class="grid grid-2">' +
+          '<div class="card"><div class="card-head"><div class="card-title">Scan Verdicts</div>' +
+          '<div class="card-sub">Verdict distribution across all persisted security scans</div></div>' +
+          renderVerdictDistribution(summary) +
+          "</div>" +
+          '<div class="card"><div class="card-head"><div class="card-title">Prepared Data</div>' +
+          '<div class="card-sub">Total samples staged by the dataset preparation pipeline</div></div>' +
+          '<div class="grid grid-3" style="margin:0;">' +
+          U.statCard("Samples", data.prepared_samples != null ? U.fmtNum(data.prepared_samples) : "—", "total prepared", "success") +
+          U.statCard("Malicious", data.prepared_malicious != null ? U.fmtNum(data.prepared_malicious) : "—", "threat samples", "b") +
+          U.statCard("Benign", data.prepared_benign != null ? U.fmtNum(data.prepared_benign) : "—", "benign samples", "") +
+          "</div>" +
+          "</div>" +
+          "</div>" +
 
-        '<div class="grid grid-2">' +
-        '<div class="card"><div class="card-head"><div class="card-title">Decision Distribution</div>' +
-        '<div class="card-sub">' + U.fmtNum(historyCounts.total || 0) + " scans in this session" + "</div></div>" +
-        renderDistribution(historyCounts) +
-        "</div>" +
-        '<div class="card"><div class="card-head"><div class="card-title">Pipeline Stages</div></div>' +
-        renderComponents(summary.components || []) +
-        "</div>" +
-        "</div>" +
+          '<div class="section-title">Recent Security Scans</div>' +
+          '<div class="card" style="padding:0;box-shadow:none;border:none;background:transparent;">' +
+          renderRecent(scans) +
+          "</div>" +
 
-        '<div class="section-title">Recent Scans</div>' +
-        '<div class="card" style="padding:0;box-shadow:none;border:none;background:transparent;">' +
-        renderRecent(history) +
-        "</div>";
+          '<div class="section-title">Scan Activity (14 days)</div>' +
+          '<div class="card"><div class="card-head"><div class="card-title">Scans per Day</div>' +
+          '<div class="card-sub">Generated ' + U.fmtDateTime(summary.generated_at) + "</div></div>" +
+          renderTimeline(summary.timeline) +
+          "</div>";
 
-      var form = el.querySelector("#dashboardScanForm");
-      var input = el.querySelector("#dashboardScanInput");
-      var btn = el.querySelector("#dashboardScanBtn");
-      form.addEventListener("submit", async function (event) {
-        event.preventDefault();
-        var prompt = input.value.trim();
-        if (!prompt) {
-          U.toast("Enter a prompt to analyze.", "error");
-          return;
+        var refreshBtn = el.querySelector("#refreshDashboard");
+        if (refreshBtn) {
+          refreshBtn.addEventListener("click", function () {
+            QG.views.dashboard.render(el);
+          });
         }
-        btn.disabled = true;
-        try {
-          var result = await api.post(api.endpoints.scan, { prompt: prompt });
-          var item = api.data(result);
-          U.toast("Analysis completed — " + item.decision);
-          window.location.hash = "#/detection/" + encodeURIComponent(item.analysis_id);
-        } catch (err) {
-          U.toast(err.message || "Scan failed.", "error");
-        } finally {
-          btn.disabled = false;
+      } catch (err) {
+        el.innerHTML = U.errorState(err.message || "Could not load dashboard.");
+        var retry = el.querySelector("#refreshDashboard");
+        if (retry) {
+          retry.addEventListener("click", function () {
+            QG.views.dashboard.render(el);
+          });
         }
-      });
+      }
     },
   };
 })();

@@ -143,11 +143,14 @@ existing pipeline objects.
 - **Raw logs**: not exposed. Only structured analysis results are returned.
 - **Read-only surface**: rules, models, configuration, and component pages are
   strictly read-only.
-- **Auth**: the new endpoints match the existing application's
-  unauthenticated API surface. Deploying the console publicly must go through
-  the existing reverse-proxy/network controls; see §9 and the deployment
-  guide. Wiring the existing (placeholder) `RateLimitService` / auth into the
-  API is tracked as a remaining improvement, not silently omitted.
+- **Auth**: the console's API is now authenticated. All `/api/v1/console/*`
+  calls require a JWT access token (issued by `/api/v1/auth/login`) or an
+  `X-API-Key`; the login view is served under `/ui` and `api.js` attaches the
+  `Authorization` header automatically. Registration is public but
+  rate-limited (5 per IP+username per 15 min) and grants only the standard
+  `analyst` role. The static `/ui` assets, `/metrics` and interactive
+  `/docs` remain public; the reverse proxy should still restrict them in
+  production (see §9 and the deployment guide).
 
 ## 6. Serving Strategy
 
@@ -184,8 +187,9 @@ following are updated: this page, `docs/04_Configuration_File_Documentation.md`,
 - Scan history is in-memory and bounded (200 entries); it resets on process
   restart. Persisting analyses via the existing MongoDB repositories is a
   natural follow-up.
-- API authentication/rate limiting for the console endpoints is not wired in
-  (the app currently has no auth on any endpoint); deployment must rely on
-  existing network-level controls until this lands.
+- Per-endpoint rate limiting is still disabled by default
+  (`RATE_LIMIT_ENABLED=false`); only the auth login/register routes are
+  throttled. Enable the rate-limit middleware (or proxy-side limits) before
+  public deployment.
 - The console reports the framework's built-in model/quantum inventory but
   does not train models or retrain anything.

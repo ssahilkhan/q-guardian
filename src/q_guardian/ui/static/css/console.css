@@ -434,6 +434,12 @@ button {
   flex-wrap: wrap;
 }
 
+.card-head.sub {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
 /* -------------------------------- Grids --------------------------------- */
 
 .grid {
@@ -512,6 +518,7 @@ button {
 
 .badge-allow,
 .badge-allowed,
+.badge-success,
 .badge-healthy,
 .badge-valid,
 .badge-active,
@@ -643,9 +650,47 @@ button {
 }
 
 .field .hint,
-.field-hint {
+.field-hint,
+.field-note {
   font-size: 11.5px;
   color: var(--text-faint);
+}
+
+.check-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface);
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.check-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.check-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.check-box input[type="checkbox"] {
+  accent-color: var(--accent);
+}
+
+.text-dim {
+  color: var(--text-muted);
 }
 
 /* ------------------------------ Tabs ----------------------------------- */

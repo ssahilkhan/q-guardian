@@ -39,8 +39,8 @@ Q-Guardian is a **10-module security framework** that protects autonomous AI age
 | **Dataset Auth (M1b)** | M1b | **DONE** | Centralized HF auth, `dataset check-access/authenticate-status` CLI commands |
 | **V2.0 Research Paper** | — | **IN PROGRESS** | External ML study completed; QSVM at chance on external data; classical fusion viable |
 | **Docker / CI / Release** | — | **DONE** | CI pipeline (lint/type/test/build), Dockerfile, docker-compose, GitHub Actions |
-| **Security Hardening** | — | **PARTIAL** | JWT + API key auth implemented; security review done; some gaps remain |
-| **Bayesian Fusion** | — | **NOT DONE** | Interface defined, implementation deferred |
+| **Security Hardening** | — | **PARTIAL** | JWT + API key auth implemented and enforced on all protected v1 endpoints (`Depends(get_current_principal)`); security review done; per-endpoint rate limiting still disabled by default |
+| **Bayesian Fusion** | — | **DONE** | Log-odds fusion with configurable prior, reliability weights, per-call overrides (`docs/Bayesian_Fusion.md`) |
 
 ---
 
@@ -105,23 +105,21 @@ Q-Guardian is a **10-module security framework** that protects autonomous AI age
 ## 6. WHAT'S REMAINING / TODO
 
 ### High Priority
-1. **Bayesian Fusion Strategy** — Interface defined but not implemented (stacking is default)
-2. **Authentication Middleware** — JWT/API key auth is implemented but not wired as FastAPI middleware (endpoints are still unauthenticated by default)
-3. **Research Paper Publication** — External study done, paper draft not yet published
-4. **Live Integration Tests** — MongoDB, SOAR platforms, OpenTelemetry integrations covered by unit tests only
+1. **Research Paper Publication** — External study done; outline + abstract drafted (`docs/25_Research_Paper_Outline.md`); manuscript + submission pending
+2. **Live Integration Tests** — MongoDB, SOAR platforms, OpenTelemetry integrations covered by unit tests only
 
 ### Medium Priority
-5. **UI Coverage for Backend Systems** — ML artifacts, benchmarks, training outputs, audit trail, observability dashboard have no UI surface (BACKEND-ONLY)
-6. **Persistence** — Scan history is in-memory deque (lost on restart); Mongo persistence not wired for scan history
-7. **WildJailbreak Dataset** — Requires HF_TOKEN; cross-dataset generalization incomplete in one direction
-8. **Quantum Hardware** — QSVM at chance on external data; needs higher-qubit encoding or real hardware (>20 qubits)
-9. **P0 Audit Follow-ups** — Pipeline components inventory still hardcoded; some P1/P2 items pending
+3. **UI Coverage for Backend Systems** — ML artifacts, benchmarks, training outputs, audit trail, observability dashboard have no UI surface (BACKEND-ONLY)
+4. **Persistence** — Scan history is in-memory deque (lost on restart); Mongo persistence not wired for scan history
+5. **WildJailbreak Dataset** — Requires HF_TOKEN; cross-dataset generalization incomplete in one direction
+6. **Quantum Hardware** — QSVM at chance on external data; needs higher-qubit encoding or real hardware (>20 qubits)
+7. **P0 Audit Follow-ups** — Pipeline components inventory still hardcoded; some P1/P2 items pending
 
 ### Low Priority
-10. **PyPI Publication** — Not yet published to PyPI (release workflow exists)
-11. **Dependency Pinning** — Upper bounds not set on all dependencies
-12. **Security Hardening** — 6 low-severity items from security review (HSTS, CSP, rate limiting defaults)
-13. **joblib→safetensors migration** — ML model serialization security improvement
+8. **PyPI Publication** — Not yet published to PyPI (release workflow exists)
+9. **Dependency Pinning** — Upper bounds not set on all dependencies
+10. **Security Hardening** — 6 low-severity items from security review (HSTS, CSP, rate limiting defaults)
+11. **joblib→safetensors migration** — ML model serialization security improvement
 
 ---
 
@@ -181,13 +179,11 @@ Q-Guardian is a **10-module security framework** that protects autonomous AI age
 
 ## 10. SUMMARY FOR FACULTY
 
-**The project is substantially complete.** All 10 core modules are implemented and tested (2,755 tests passing). The V2.0 research additions (benchmark, embeddings, training pipeline, web console) are also complete. The external ML study has been conducted with real datasets.
+**The project is substantially complete.** All 10 core modules are implemented and tested (2,755 tests passing). The V2.0 research additions (benchmark, embeddings, Bayesian fusion, training pipeline, web console) are also complete. The external ML study has been conducted with real datasets.
 
 **Key remaining work:**
-1. Research paper publication
-2. Bayesian fusion implementation
-3. Auth middleware wiring
-4. Quantum advantage research (QSVM needs higher-qubit evaluation)
-5. Live integration testing
+1. Research paper manuscript + publication (outline/abstract at `docs/25_Research_Paper_Outline.md`)
+2. Quantum advantage research (QSVM needs higher-qubit evaluation)
+3. Live integration testing
 
 **The framework is production-ready at v1.1.0** with all quality gates passing. Quantum remains research-only as the 5-qubit QSVM shows no measurable advantage over classical models on external data.

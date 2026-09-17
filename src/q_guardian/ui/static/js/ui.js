@@ -183,6 +183,37 @@
     return badge(key, map[key] || "neutral");
   }
 
+  /* Scan verdict levels produced by the analysis pipeline. */
+  var VERDICTS = {
+    low_risk: { label: "Low Risk", cls: "low" },
+    review: { label: "Review", cls: "review" },
+    high_risk: { label: "High Risk", cls: "block" },
+    unknown: { label: "Unknown", cls: "neutral" },
+  };
+
+  function verdictMeta(value) {
+    var key = String(value || "").toLowerCase();
+    return VERDICTS[key] || { label: String(value || "Unknown"), cls: "neutral" };
+  }
+
+  function verdictBadge(value) {
+    var meta = verdictMeta(value);
+    return badge(meta.label, meta.cls);
+  }
+
+  /* Asynchronous job states reported by the job runner. */
+  function jobBadge(value) {
+    var key = String(value || "").toLowerCase();
+    var map = {
+      running: "warn",
+      succeeded: "success",
+      completed: "success",
+      failed: "block",
+      cancelled: "low",
+    };
+    return badge(key === "" ? "idle" : key, map[key] || "neutral");
+  }
+
   /* ---- Higher-level widgets ------------------------------------------- */
 
   function statCard(label, value, foot, tone) {
@@ -394,6 +425,9 @@
   U.decisionBadge = decisionBadge;
   U.severityBadge = severityBadge;
   U.statusBadge = statusBadge;
+  U.verdictMeta = verdictMeta;
+  U.verdictBadge = verdictBadge;
+  U.jobBadge = jobBadge;
   U.statCard = statCard;
   U.riskBar = riskBar;
   U.verdictBanner = verdictBanner;

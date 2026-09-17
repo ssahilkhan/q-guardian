@@ -15,7 +15,17 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends
 
-from q_guardian.api.v1.endpoints import analysis, console, health, system
+from q_guardian.api.v1.endpoints import (
+    analysis,
+    analytics,
+    console,
+    datasets,
+    health,
+    reports,
+    scans,
+    system,
+    training,
+)
 from q_guardian.security.http_auth import get_current_principal
 
 # Public endpoints (no auth required). Health stays public so load
@@ -51,6 +61,31 @@ api_v1_router.include_router(
     system.router,
     tags=["System"],
     prefix="/system",
+)
+api_v1_router.include_router(
+    datasets.router,
+    tags=["Datasets"],
+    prefix="/datasets",
+)
+api_v1_router.include_router(
+    training.router,
+    tags=["Training"],
+    prefix="/training",
+)
+api_v1_router.include_router(
+    scans.router,
+    tags=["Scans"],
+    prefix="/scans",
+)
+api_v1_router.include_router(
+    analytics.router,
+    tags=["Analytics"],
+    prefix="/analytics",
+)
+api_v1_router.include_router(
+    reports.router,
+    tags=["Reports"],
+    prefix="/reports",
 )
 
 # =============================================================================

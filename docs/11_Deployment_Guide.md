@@ -146,10 +146,13 @@ single-page app shipped as package data (`src/q_guardian/ui/static/`, mounted at
 - The console is **read-only** except for submitting prompts to the scan
   pipeline; secrets, internal paths and raw logs are never returned by the
   console endpoints (see `docs/21_Web_Console_UI.md`).
-- Deployment hardening: the console currently inherits the application's
-  unauthenticated API surface. Behind a public reverse proxy, protect `/ui` and
-  `/api` with your existing authentication/rate-limiting layer until the app's
-  built-in auth lands.
+- Deployment hardening: the app's built-in auth is now enforced on every
+  `/api/v1/...` endpoint except `/health` (router-level
+  `Depends(get_current_principal)`; JWT Bearer or `X-API-Key`). Public
+  surfaces that remain unauthenticated are `/`, `/docs`, `/redoc`,
+  `/openapi.json`, `/metrics` and the static `/ui` mount — behind a public
+  reverse proxy, protect `/ui` and `/metrics` and enable the rate-limit
+  middleware (`RATE_LIMIT_ENABLED`) per `docs/10_Security_Overview.md` §5.
 
 ---
 

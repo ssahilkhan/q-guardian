@@ -124,6 +124,41 @@
       return request(path, { method: "POST", body: JSON.stringify(body) });
     },
 
+    delete: function (path) {
+      return request(path, { method: "DELETE" });
+    },
+
+    /* Fetch a raw (non-envelope) response body, e.g. generated report files.
+     * Throws on HTTP errors with the backend error detail when available. */
+    text: async function (path) {
+      var opts = { method: "GET", headers: {} };
+      var auth = authHeaders();
+      for (var key in auth) {
+        if (Object.prototype.hasOwnProperty.call(auth, key)) {
+          opts.headers[key] = auth[key];
+        }
+      }
+      var response = await fetch(fullUrl(path), opts);
+      var body = await response.text();
+      var payload = null;
+      try {
+        payload = JSON.parse(body);
+      } catch (e) { /* non-JSON body */ }
+      if (!response.ok) {
+        var detail =
+          (payload && (payload.detail || payload.message || payload.error)) ||
+          "Request failed (HTTP " + response.status + ")";
+        var message =
+          typeof detail === "string"
+            ? detail
+            : detail && detail.message
+              ? detail.message
+              : JSON.stringify(detail);
+        throw new Error(message);
+      }
+      return payload !== null ? payload : body;
+    },
+
     /* Unwrap the `data` field of a standard envelope. */
     data: function (payload) {
       return payload ? payload.data : null;
@@ -173,6 +208,27 @@
       research: "/api/v1/console/research",
       analysis: "/api/v1/analysis",
       scan: "/api/v1/analysis/scan",
+
+      /* Product workflow APIs (datasets, training, scans, analytics, reports). */
+      datasets: "/api/v1/datasets",
+      datasetsAuthStatus: "/api/v1/datasets/auth-status",
+      datasetsPrepared: "/api/v1/datasets/prepared",
+      training: "/api/v1/training",
+      trainingEvaluate: function (name) {
+        return "/api/v1/training/" + encodeURIComponent(name) + "/evaluate";
+      },
+      scans: "/api/v1/scans",
+      analyticsSummary: "/api/v1/analytics/summary",
+      analyticsCross: "/api/v1/analytics/cross",
+      reports: "/api/v1/reports",
+      reportDownload: function (reportId, format) {
+        return (
+          "/api/v1/reports/" +
+          encodeURIComponent(reportId) +
+          "/download?format=" +
+          encodeURIComponent(format || "md")
+        );
+      },
     },
   };
 })();

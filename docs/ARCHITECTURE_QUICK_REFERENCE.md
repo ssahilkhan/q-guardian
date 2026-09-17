@@ -40,7 +40,7 @@ flowchart TD
         CFS[ConfidenceFusionStrategy]
         AFS[AdaptiveFusionStrategy]
         SFS[StackingFusionStrategy<br/>DEFAULT]
-        BFS[BayesianFusionStrategy<br/>Interface Only]
+        BFS[BayesianFusionStrategy<br/>Log-Odds Fusion]
     end
 
     subgraph Embeddings["V2.0 M3: Embedding Pipeline (Optional)"]
@@ -381,7 +381,7 @@ action_plan.actions[0] > policy_decision.action > risk_assessment > ALLOW
 | Modules | 10 core + 3 V2.0 |
 | Plugin Interfaces | 5 |
 | Standard Events | 15 |
-| Fusion Strategies | 5 (1 interface only) |
+| Fusion Strategies | 5 (5 implemented) |
 | Built-in Policies | 4 |
 | Built-in Playbooks | 4 |
 | Response Actions | 15 |
